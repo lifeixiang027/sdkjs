@@ -2016,6 +2016,8 @@
 			this.startOffset = 0;
 			this.startOffsetPx = 0;
 
+			this.titleRange = null;
+
 			return this;
 		}
 		function CPrintPagesData () {

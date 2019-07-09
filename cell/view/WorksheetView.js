@@ -1599,6 +1599,240 @@
         }
     };
 
+	// ----- Drawing for print -----
+	WorksheetView.prototype._calcPagesPrint2 = function(range, pageOptions, indexWorksheet, arrPages) {
+		if (0 > range.r2 || 0 > range.c2) {
+			// Ничего нет
+			return;
+		}
+
+		var vector_koef = AscCommonExcel.vector_koef / this.getZoom();
+		if (AscCommon.AscBrowser.isRetina) {
+			vector_koef /= AscCommon.AscBrowser.retinaPixelRatio;
+		}
+
+		//TODO  в данный момент с этот флаг не используется. нужно проверить и убрать.
+		var bPageLayout = arguments[4];
+
+		var bFitToWidth = false;
+		var bFitToHeight = false;
+		var pageMargins, pageSetup, pageGridLines, pageHeadings;
+		if (pageOptions) {
+			pageMargins = pageOptions.asc_getPageMargins();
+			pageSetup = pageOptions.asc_getPageSetup();
+			pageGridLines = pageOptions.asc_getGridLines();
+			pageHeadings = pageOptions.asc_getHeadings();
+		}
+
+		var pageWidth, pageHeight, pageOrientation, scale;
+		if (pageSetup instanceof asc_CPageSetup) {
+			pageWidth = pageSetup.asc_getWidth();
+			pageHeight = pageSetup.asc_getHeight();
+			pageOrientation = pageSetup.asc_getOrientation();
+			bFitToWidth = pageSetup.asc_getFitToWidth();
+			bFitToHeight = pageSetup.asc_getFitToHeight();
+			scale = pageSetup.asc_getScale() / 100;
+		}
+
+		var pageLeftField, pageRightField, pageTopField, pageBottomField;
+		if (pageMargins) {
+			pageLeftField = Math.max(pageMargins.asc_getLeft(), c_oAscPrintDefaultSettings.MinPageLeftField);
+			pageRightField = Math.max(pageMargins.asc_getRight(), c_oAscPrintDefaultSettings.MinPageRightField);
+			pageTopField = Math.max(pageMargins.asc_getTop(), c_oAscPrintDefaultSettings.MinPageTopField);
+			pageBottomField = Math.max(pageMargins.asc_getBottom(), c_oAscPrintDefaultSettings.MinPageBottomField);
+		}
+
+		if (null == pageGridLines) {
+			pageGridLines = c_oAscPrintDefaultSettings.PageGridLines;
+		}
+		if (null == pageHeadings) {
+			pageHeadings = c_oAscPrintDefaultSettings.PageHeadings;
+		}
+
+		if (null == pageWidth) {
+			pageWidth = c_oAscPrintDefaultSettings.PageWidth;
+		}
+		if (null == pageHeight) {
+			pageHeight = c_oAscPrintDefaultSettings.PageHeight;
+		}
+		if (null == pageOrientation) {
+			pageOrientation = c_oAscPrintDefaultSettings.PageOrientation;
+		}
+
+		if (null == pageLeftField) {
+			pageLeftField = c_oAscPrintDefaultSettings.PageLeftField;
+		}
+		if (null == pageRightField) {
+			pageRightField = c_oAscPrintDefaultSettings.PageRightField;
+		}
+		if (null == pageTopField) {
+			pageTopField = c_oAscPrintDefaultSettings.PageTopField;
+		}
+		if (null == pageBottomField) {
+			pageBottomField = c_oAscPrintDefaultSettings.PageBottomField;
+		}
+
+		if (Asc.c_oAscPageOrientation.PageLandscape === pageOrientation) {
+			var tmp = pageWidth;
+			pageWidth = pageHeight;
+			pageHeight = tmp;
+		}
+
+		var pageWidthWithFields = pageWidth - pageLeftField - pageRightField;
+		var pageHeightWithFields = pageHeight - pageTopField - pageBottomField;
+		var leftFieldInPx = pageLeftField / vector_koef + 1;
+		var topFieldInPx = pageTopField / vector_koef + 1;
+
+		if (pageHeadings) {
+			// Рисуем заголовки, нужно чуть сдвинуться
+			leftFieldInPx += this.cellsLeft;
+			topFieldInPx += this.cellsTop;
+		}
+
+		//TODO при сравнении резальтатов рассчета страниц в зависимости от scale - LO выдаёт похожие результаты, MS - другие. Необходимо пересмотреть!
+		var pageWidthWithFieldsHeadings = ((pageWidth - pageRightField) / vector_koef - leftFieldInPx) / scale;
+		var pageHeightWithFieldsHeadings = ((pageHeight - pageBottomField) / vector_koef - topFieldInPx) / scale;
+
+		var currentColIndex = range.c1;
+		var currentWidth = 0;
+		var currentRowIndex = range.r1;
+		var currentHeight = 0;
+		var isCalcColumnsWidth = true;
+
+		var bIsAddOffset = false;
+		var nCountOffset = 0;
+
+		var t = this;
+		while (AscCommonExcel.c_kMaxPrintPages > arrPages.length) {
+			var newPagePrint = new asc_CPagePrint();
+
+			var colIndex = currentColIndex, rowIndex = currentRowIndex, pageRange;
+
+			newPagePrint.indexWorksheet = indexWorksheet;
+
+			newPagePrint.pageWidth = pageWidth;
+			newPagePrint.pageHeight = pageHeight;
+			newPagePrint.pageClipRectLeft = pageLeftField / vector_koef;
+			newPagePrint.pageClipRectTop = pageTopField / vector_koef;
+			newPagePrint.pageClipRectWidth = pageWidthWithFields / vector_koef;
+			newPagePrint.pageClipRectHeight = pageHeightWithFields / vector_koef;
+
+			newPagePrint.leftFieldInPx = leftFieldInPx;
+			newPagePrint.topFieldInPx = topFieldInPx;
+
+			for (rowIndex = currentRowIndex; rowIndex <= range.r2; ++rowIndex) {
+				var currentRowHeight = this._getRowHeight(rowIndex);
+				if (!bFitToHeight && currentHeight + currentRowHeight > pageHeightWithFieldsHeadings) {
+					// Закончили рисовать страницу
+					rowIndex = rowIndex;
+					break;
+				}
+				if (isCalcColumnsWidth) {
+					for (colIndex = currentColIndex; colIndex <= range.c2; ++colIndex) {
+						var currentColWidth = this._getColumnWidth(colIndex);
+						if (bIsAddOffset) {
+							newPagePrint.startOffset = ++nCountOffset;
+							newPagePrint.startOffsetPx = (pageWidthWithFieldsHeadings * newPagePrint.startOffset);
+							currentColWidth -= newPagePrint.startOffsetPx;
+						}
+
+						if (!bFitToWidth && currentWidth + currentColWidth > pageWidthWithFieldsHeadings &&
+							colIndex !== currentColIndex) {
+							colIndex = colIndex;
+							break;
+						}
+
+						currentWidth += currentColWidth;
+
+						if (!bFitToWidth && currentWidth > pageWidthWithFieldsHeadings &&
+							colIndex === currentColIndex) {
+							// Смещаем в селедующий раз ячейку
+							bIsAddOffset = true;
+							++colIndex;
+							break;
+						} else {
+							bIsAddOffset = false;
+						}
+					}
+					isCalcColumnsWidth = false;
+					if (pageHeadings) {
+						currentWidth += this.cellsLeft;
+					}
+
+					if (bFitToWidth) {
+						newPagePrint.pageClipRectWidth = Math.max(currentWidth, newPagePrint.pageClipRectWidth);
+						newPagePrint.pageWidth =
+							newPagePrint.pageClipRectWidth * vector_koef + (pageLeftField + pageRightField);
+					} else {
+						newPagePrint.pageClipRectWidth = Math.min(currentWidth, newPagePrint.pageClipRectWidth);
+					}
+				}
+
+				currentHeight += currentRowHeight;
+				currentWidth = 0;
+			}
+
+			if (pageHeadings) {
+				currentHeight += this.cellsTop;
+			}
+			if (bFitToHeight) {
+				newPagePrint.pageClipRectHeight = Math.max(currentHeight, newPagePrint.pageClipRectHeight);
+				newPagePrint.pageHeight =
+					newPagePrint.pageClipRectHeight * vector_koef + (pageTopField + pageBottomField);
+			} else {
+				newPagePrint.pageClipRectHeight = Math.min(currentHeight, newPagePrint.pageClipRectHeight);
+			}
+
+			// Нужно будет пересчитывать колонки
+			isCalcColumnsWidth = true;
+
+			// Рисуем сетку
+			if (pageGridLines) {
+				newPagePrint.pageGridLines = true;
+			}
+
+			if (pageHeadings) {
+				// Нужно отрисовать заголовки
+				newPagePrint.pageHeadings = true;
+			}
+
+			pageRange = new asc_Range(currentColIndex, currentRowIndex, colIndex - 1, rowIndex - 1);
+			newPagePrint.pageRange = pageRange;
+			arrPages.push(newPagePrint);
+
+			if (bIsAddOffset) {
+				// Мы еще не дорисовали колонку
+				colIndex -= 1;
+			} else {
+				nCountOffset = 0;
+			}
+
+			if (colIndex <= range.c2) {
+				// Мы еще не все колонки отрисовали
+				currentColIndex = colIndex;
+				currentHeight = 0;
+			} else {
+				// Мы дорисовали все колонки, нужна новая строка и стартовая колонка
+				currentColIndex = range.c1;
+				currentRowIndex = rowIndex;
+				currentHeight = 0;
+			}
+
+			if (rowIndex > range.r2) {
+				// Мы вышли, т.к. дошли до конца отрисовки по строкам
+				if (colIndex <= range.c2) {
+					currentColIndex = colIndex;
+					currentHeight = 0;
+				} else {
+					// Мы дошли до конца отрисовки
+					currentColIndex = colIndex;
+					currentRowIndex = rowIndex;
+					break;
+				}
+			}
+		}
+	};
+
     // ----- Drawing for print -----
     WorksheetView.prototype._calcPagesPrint = function(range, pageOptions, indexWorksheet, arrPages) {
         if (0 > range.r2 || 0 > range.c2) {
@@ -1693,19 +1927,11 @@
 		var pageWidthWithFieldsHeadings = ((pageWidth - pageRightField) / vector_koef - leftFieldInPx) / scale;
 		var pageHeightWithFieldsHeadings = ((pageHeight - pageBottomField) / vector_koef - topFieldInPx) / scale;
 
-		var currentColIndex = range.c1;
-		var currentWidth = 0;
-		var currentRowIndex = range.r1;
-		var currentHeight = 0;
-		var isCalcColumnsWidth = true;
-
-		var bIsAddOffset = false;
-		var nCountOffset = 0;
-
 		//PRINT TITLES
 		var t = this;
 		var printTitles = this.model.workbook.getDefinesNames("Print_Titles", this.model.getId());
-		var tCol1, tCol2, tRow1, tRow2;
+		var tCol1, tCol2, tRow1, tRow2, tColMax, tRowMax;
+		var titleWidth = 0, titleHeight = 0;
 		if(printTitles) {
 			var printTitleRefs;
 			AscCommonExcel.executeInR1C1Mode(false, function () {
@@ -1725,9 +1951,37 @@
 					}
 				}
 			}
+			if(tCol1 !== undefined) {
+				for(i = tCol1; i <= tCol2; i++) {
+					var curWidth = this._getColumnWidth(i);
+					if(titleWidth + curWidth > pageWidthWithFieldsHeadings) {
+						tColMax = i;
+						break;
+					}
+					titleWidth += curWidth;
+				}
+			}
+			if(tRow1 !== undefined) {
+				for(i = tRow1; i <= tRow2; i++) {
+					var curHeight = this._getRowHeight(i);
+					if(titleHeight + curHeight > pageHeightWithFieldsHeadings) {
+						tRowMax = i;
+						break;
+					}
+					titleHeight += curHeight;
+				}
+			}
 		}
 
-		var titleRow = tRow1, titleCol = tCol1;
+		var currentColIndex = range.c1;
+		var currentWidth = 0;
+		var currentRowIndex = range.r1;
+		var currentHeight = 0;
+		var isCalcColumnsWidth = true;
+
+		var bIsAddOffset = false;
+		var nCountOffset = 0;
+
 		while (AscCommonExcel.c_kMaxPrintPages > arrPages.length) {
 			var newPagePrint = new asc_CPagePrint();
 
@@ -1745,23 +1999,8 @@
 			newPagePrint.leftFieldInPx = leftFieldInPx;
 			newPagePrint.topFieldInPx = topFieldInPx;
 
-			if(titleRow !== undefined && titleRow >= tRow2) {
-				titleRow = tRow1;
-			}
-			if(titleCol !== undefined && titleCol >= tCol2) {
-				titleCol = tCol1;
-			}
-
 			//каждая новая страница должна начинаться с заголовков печати
 			for (rowIndex = currentRowIndex; rowIndex <= range.r2; ++rowIndex) {
-				if(titleRow !== undefined) {
-					if(titleRow <= tRow2) {
-						rowIndex = titleRow;
-					} else if(titleRow === tRow2 + 1 && tRow1 !== currentRowIndex) {
-						rowIndex = currentRowIndex;
-					}
-				}
-
 				var currentRowHeight = this._getRowHeight(rowIndex);
 				if (!bFitToHeight && currentHeight + currentRowHeight > pageHeightWithFieldsHeadings) {
 					// Закончили рисовать страницу
@@ -1770,15 +2009,6 @@
 				}
 				if (isCalcColumnsWidth) {
 					for (colIndex = currentColIndex; colIndex <= range.c2; ++colIndex) {
-
-						if(titleCol !== undefined) {
-							if(titleCol !== undefined && titleCol <= tCol2) {
-								colIndex = titleCol;
-							} else if(titleCol === tCol2 + 1 && tCol1 !== currentColIndex) {
-								colIndex = currentColIndex;
-							}
-						}
-
 						var currentColWidth = this._getColumnWidth(colIndex);
 						if (bIsAddOffset) {
 							newPagePrint.startOffset = ++nCountOffset;
@@ -1803,9 +2033,6 @@
 						} else {
 							bIsAddOffset = false;
 						}
-						if(titleCol !== undefined) {
-							titleCol++;
-						}
 					}
 					isCalcColumnsWidth = false;
 					if (pageHeadings) {
@@ -1823,9 +2050,6 @@
 
 				currentHeight += currentRowHeight;
 				currentWidth = 0;
-				if(titleRow !== undefined) {
-					titleRow++;
-				}
 			}
 
 			if (pageHeadings) {
