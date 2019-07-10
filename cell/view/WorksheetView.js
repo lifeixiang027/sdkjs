@@ -2017,7 +2017,9 @@
 				var currentRowHeight = this._getRowHeight(rowIndex);
 				if (!bFitToHeight && currentHeight + currentRowHeight + curTitleHeight > pageHeightWithFieldsHeadings) {
 					// Закончили рисовать страницу
-					curTitleHeight = titleHeight;
+					if(rowIndex >= tRow2) {
+						curTitleHeight = titleHeight;
+					}
 					rowIndex = rowIndex;
 					break;
 				}
@@ -2034,9 +2036,11 @@
 						}
 
 						if (!bFitToWidth && currentWidth + currentColWidth + curTitleWidth > pageWidthWithFieldsHeadings && colIndex !== currentColIndex) {
-							curTitleWidth = titleWidth;
+							if(colIndex >= tCol2) {
+								curTitleWidth = titleWidth;
+							}
 							colIndex = colIndex;
-						    break;
+							break;
 						}
 
 						currentWidth += currentColWidth;
