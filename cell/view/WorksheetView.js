@@ -1930,7 +1930,7 @@
 		//PRINT TITLES
 		var t = this;
 		var printTitles = this.model.workbook.getDefinesNames("Print_Titles", this.model.getId());
-		var tCol1, tCol2, tRow1, tRow2, tColMax, tRowMax;
+		var tCol1, tCol2, tRow1, tRow2;
 		var titleWidth = 0, titleHeight = 0;
 		if(printTitles) {
 			var printTitleRefs;
@@ -1955,7 +1955,7 @@
 				for(i = tCol1; i <= tCol2; i++) {
 					var curWidth = this._getColumnWidth(i);
 					if(titleWidth + curWidth > pageWidthWithFieldsHeadings) {
-						tColMax = i;
+						tCol2 = i;
 						break;
 					}
 					titleWidth += curWidth;
@@ -1965,7 +1965,7 @@
 				for(i = tRow1; i <= tRow2; i++) {
 					var curHeight = this._getRowHeight(i);
 					if(titleHeight + curHeight > pageHeightWithFieldsHeadings) {
-						tRowMax = i;
+						tRow2 = i;
 						break;
 					}
 					titleHeight += curHeight;
@@ -1982,6 +1982,7 @@
 		var bIsAddOffset = false;
 		var nCountOffset = 0;
 
+		var curTitleWidth = 0, curTitleHeight = 0;
 		while (AscCommonExcel.c_kMaxPrintPages > arrPages.length) {
 			var newPagePrint = new asc_CPagePrint();
 
@@ -1999,15 +2000,31 @@
 			newPagePrint.leftFieldInPx = leftFieldInPx;
 			newPagePrint.topFieldInPx = topFieldInPx;
 
+			if(curTitleWidth !== 0) {
+				newPagePrint.titleC1 = tCol1;
+				newPagePrint.titleC2 = tCol2;
+			}
+			if(curTitleHeight !== 0) {
+				newPagePrint.titleR1 = tRow1;
+				newPagePrint.titleR2 = tRow2;
+			}
+
 			//каждая новая страница должна начинаться с заголовков печати
+			if(range.r1 === rowIndex) {
+				curTitleHeight = 0;
+			}
 			for (rowIndex = currentRowIndex; rowIndex <= range.r2; ++rowIndex) {
 				var currentRowHeight = this._getRowHeight(rowIndex);
-				if (!bFitToHeight && currentHeight + currentRowHeight > pageHeightWithFieldsHeadings) {
+				if (!bFitToHeight && currentHeight + currentRowHeight + curTitleHeight > pageHeightWithFieldsHeadings) {
 					// Закончили рисовать страницу
+					curTitleHeight = titleHeight;
 					rowIndex = rowIndex;
 					break;
 				}
 				if (isCalcColumnsWidth) {
+					if(range.c1 === colIndex) {
+						curTitleWidth = 0;
+					}
 					for (colIndex = currentColIndex; colIndex <= range.c2; ++colIndex) {
 						var currentColWidth = this._getColumnWidth(colIndex);
 						if (bIsAddOffset) {
@@ -2016,8 +2033,8 @@
 							currentColWidth -= newPagePrint.startOffsetPx;
 						}
 
-						if (!bFitToWidth && currentWidth + currentColWidth > pageWidthWithFieldsHeadings &&
-							colIndex !== currentColIndex) {
+						if (!bFitToWidth && currentWidth + currentColWidth + curTitleWidth > pageWidthWithFieldsHeadings && colIndex !== currentColIndex) {
+							curTitleWidth = titleWidth;
 							colIndex = colIndex;
 						    break;
 						}

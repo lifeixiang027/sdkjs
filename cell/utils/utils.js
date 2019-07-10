@@ -2016,7 +2016,10 @@
 			this.startOffset = 0;
 			this.startOffsetPx = 0;
 
-			this.titleRange = null;
+			this.titleC1 = null;
+			this.titleC2 = null;
+			this.titleR1 = null;
+			this.titleR2 = null;
 
 			return this;
 		}
