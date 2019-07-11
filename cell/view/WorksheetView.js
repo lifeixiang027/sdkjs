@@ -1983,6 +1983,7 @@
 		var nCountOffset = 0;
 
 		var curTitleWidth = 0, curTitleHeight = 0;
+		var addedTitleHeight = 0, addedTitleWidth = 0;
 		while (AscCommonExcel.c_kMaxPrintPages > arrPages.length) {
 			var newPagePrint = new asc_CPagePrint();
 
@@ -2000,33 +2001,30 @@
 			newPagePrint.leftFieldInPx = leftFieldInPx;
 			newPagePrint.topFieldInPx = topFieldInPx;
 
-			if(curTitleWidth !== 0) {
-				newPagePrint.titleC1 = tCol1;
-				newPagePrint.titleC2 = tCol2;
-			}
-			if(curTitleHeight !== 0) {
-				newPagePrint.titleR1 = tRow1;
-				newPagePrint.titleR2 = tRow2;
-			}
-
 			//каждая новая страница должна начинаться с заголовков печати
 			if(range.r1 === rowIndex) {
 				curTitleHeight = 0;
+				addedTitleHeight = 0;
 			}
+
+			newPagePrint.titleHeight = curTitleHeight;
+
 			for (rowIndex = currentRowIndex; rowIndex <= range.r2; ++rowIndex) {
 				var currentRowHeight = this._getRowHeight(rowIndex);
 				if (!bFitToHeight && currentHeight + currentRowHeight + curTitleHeight > pageHeightWithFieldsHeadings) {
 					// Закончили рисовать страницу
-					if(rowIndex >= tRow2) {
-						curTitleHeight = titleHeight;
-					}
+					curTitleHeight = addedTitleHeight;
 					rowIndex = rowIndex;
 					break;
 				}
 				if (isCalcColumnsWidth) {
 					if(range.c1 === colIndex) {
 						curTitleWidth = 0;
+						addedTitleWidth = 0;
 					}
+
+					newPagePrint.titleWidth = curTitleWidth;
+
 					for (colIndex = currentColIndex; colIndex <= range.c2; ++colIndex) {
 						var currentColWidth = this._getColumnWidth(colIndex);
 						if (bIsAddOffset) {
@@ -2036,17 +2034,17 @@
 						}
 
 						if (!bFitToWidth && currentWidth + currentColWidth + curTitleWidth > pageWidthWithFieldsHeadings && colIndex !== currentColIndex) {
-							if(colIndex >= tCol2) {
-								curTitleWidth = titleWidth;
-							}
+							curTitleWidth = addedTitleWidth;
 							colIndex = colIndex;
 							break;
 						}
 
 						currentWidth += currentColWidth;
+						if(tCol1 !== undefined && colIndex >= tCol1 && colIndex <= tCol2) {
+							addedTitleWidth += currentColWidth;
+						}
 
-						if (!bFitToWidth && currentWidth > pageWidthWithFieldsHeadings &&
-							colIndex === currentColIndex) {
+						if (!bFitToWidth && currentWidth > pageWidthWithFieldsHeadings && colIndex === currentColIndex) {
 							// Смещаем в селедующий раз ячейку
 							bIsAddOffset = true;
 							++colIndex;
@@ -2070,6 +2068,9 @@
 				}
 
 				currentHeight += currentRowHeight;
+				if(tRow1 !== undefined && rowIndex >= tRow1 && rowIndex <= tRow2) {
+					addedTitleHeight += currentRowHeight;
+				}
 				currentWidth = 0;
 			}
 
@@ -2099,6 +2100,14 @@
 
 			pageRange = new asc_Range(currentColIndex, currentRowIndex, colIndex - 1, rowIndex - 1);
 			newPagePrint.pageRange = pageRange;
+			if(tRow1 !== undefined && currentRowIndex > tRow1) {
+				newPagePrint.titleRowRange = new asc_Range(0, tRow1, colIndex - 1, Math.min(tRow2, rowIndex - 1));
+				//newPagePrint.titleHeight = addedTitleHeight;
+			}
+			if(tCol1 !== undefined && currentColIndex > tCol1) {
+				newPagePrint.titleColRange = new asc_Range(tCol1, 0, Math.min(tCol2, colIndex - 1), rowIndex - 1);
+				//newPagePrint.titleWidth = addedTitleWidth;
+			}
 			arrPages.push(newPagePrint);
 
 			if (bIsAddOffset) {
@@ -2243,7 +2252,8 @@
 	};
 
     WorksheetView.prototype.drawForPrint = function(drawingCtx, printPagesData, indexPrintPage, countPrintPages) {
-		this.stringRender.fontNeedUpdate = true;
+		var t = this;
+    	this.stringRender.fontNeedUpdate = true;
         if (null === printPagesData) {
             // Напечатаем пустую страницу
             drawingCtx.BeginPage(c_oAscPrintDefaultSettings.PageWidth, c_oAscPrintDefaultSettings.PageHeight);
@@ -2258,47 +2268,56 @@
 			//draw header/footer
 			this._drawHeaderFooter(drawingCtx, printPagesData, indexPrintPage, countPrintPages);
 
-            drawingCtx.AddClipRect(printPagesData.pageClipRectLeft, printPagesData.pageClipRectTop,
-              printPagesData.pageClipRectWidth, printPagesData.pageClipRectHeight);
+            //drawingCtx.AddClipRect(printPagesData.pageClipRectLeft, printPagesData.pageClipRectTop,
+              //printPagesData.pageClipRectWidth + printPagesData.titleWidth, printPagesData.pageClipRectHeight + + printPagesData.titleHeight);
 
-            var offsetCols = printPagesData.startOffsetPx;
-            var range = printPagesData.pageRange;
-            var offsetX = this._getColLeft(range.c1) - printPagesData.leftFieldInPx + offsetCols;
-            var offsetY = this._getRowTop(range.r1) - printPagesData.topFieldInPx;
+            var doDraw = function(range, titleWidth, titleHeight) {
+				var offsetCols = printPagesData.startOffsetPx;
+				var offsetX = t._getColLeft(range.c1) - printPagesData.leftFieldInPx + offsetCols - titleWidth;
+				var offsetY = t._getRowTop(range.r1) - printPagesData.topFieldInPx - titleHeight;
 
-            var tmpVisibleRange = this.visibleRange;
-            // Сменим visibleRange для прохождения проверок отрисовки
-            this.visibleRange = range;
+				var tmpVisibleRange = t.visibleRange;
+				// Сменим visibleRange для прохождения проверок отрисовки
+				t.visibleRange = range;
 
-            // Нужно отрисовать заголовки
-            if (printPagesData.pageHeadings) {
-                this._drawColumnHeaders(drawingCtx, range.c1, range.c2, /*style*/ undefined, offsetX,
-                  printPagesData.topFieldInPx - this.cellsTop);
-                this._drawRowHeaders(drawingCtx, range.r1, range.r2, /*style*/ undefined,
-                  printPagesData.leftFieldInPx - this.cellsLeft, offsetY);
-            }
-
-			// Рисуем сетку
-            if (printPagesData.pageGridLines) {
-                var vector_koef = AscCommonExcel.vector_koef / this.getZoom();
-				if (AscCommon.AscBrowser.isRetina) {
-					vector_koef /= AscCommon.AscBrowser.retinaPixelRatio;
+				// Нужно отрисовать заголовки
+				if (printPagesData.pageHeadings) {
+					t._drawColumnHeaders(drawingCtx, range.c1, range.c2, /*style*/ undefined, offsetX,
+						printPagesData.topFieldInPx - t.cellsTop);
+					t._drawRowHeaders(drawingCtx, range.r1, range.r2, /*style*/ undefined,
+						printPagesData.leftFieldInPx - t.cellsLeft, offsetY);
 				}
-                this._drawGrid(drawingCtx, range, offsetX, offsetY, printPagesData.pageWidth / vector_koef,
-                  printPagesData.pageHeight / vector_koef);
-            }
 
-            // Отрисовываем ячейки и бордеры
-            this._drawCellsAndBorders(drawingCtx, range, offsetX, offsetY);
+				// Рисуем сетку
+				if (printPagesData.pageGridLines) {
+					var vector_koef = AscCommonExcel.vector_koef / t.getZoom();
+					if (AscCommon.AscBrowser.isRetina) {
+						vector_koef /= AscCommon.AscBrowser.retinaPixelRatio;
+					}
+					t._drawGrid(drawingCtx, range, offsetX, offsetY, printPagesData.pageWidth / vector_koef,
+						printPagesData.pageHeight / vector_koef);
+				}
 
-			//Отрисовываем панель группировки по строкам
-			//this._drawGroupData(drawingCtx, null, offsetX, offsetY);
+				// Отрисовываем ячейки и бордеры
+				t._drawCellsAndBorders(drawingCtx, range, offsetX, offsetY);
 
-            var drawingPrintOptions = {
-                ctx: drawingCtx, printPagesData: printPagesData
-            };
-            this.objectRender.showDrawingObjectsEx(false, null, drawingPrintOptions);
-            this.visibleRange = tmpVisibleRange;
+				//Отрисовываем панель группировки по строкам
+				//this._drawGroupData(drawingCtx, null, offsetX, offsetY);
+
+				var drawingPrintOptions = {
+					ctx: drawingCtx, printPagesData: printPagesData
+				};
+				t.objectRender.showDrawingObjectsEx(false, null, drawingPrintOptions);
+				t.visibleRange = tmpVisibleRange;
+			};
+
+			if(printPagesData.titleRowRange){
+				doDraw(printPagesData.titleRowRange, 0, 0);
+			}
+			if(printPagesData.titleColRange){
+				doDraw(printPagesData.titleColRange, 0, 0);
+			}
+			doDraw(printPagesData.pageRange, printPagesData.titleWidth, printPagesData.titleHeight);
 
             drawingCtx.RemoveClipRect();
             drawingCtx.EndPage();
