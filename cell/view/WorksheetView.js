@@ -1954,20 +1954,20 @@
 			if(tCol1 !== undefined) {
 				for(i = tCol1; i <= tCol2; i++) {
 					var curWidth = this._getColumnWidth(i);
-					if(titleWidth + curWidth > pageWidthWithFieldsHeadings) {
-						tCol2 = i;
-						break;
-					}
+					//if(titleWidth + curWidth > pageWidthWithFieldsHeadings) {
+						//tCol2 = i;
+						//break;
+					//}
 					titleWidth += curWidth;
 				}
 			}
 			if(tRow1 !== undefined) {
 				for(i = tRow1; i <= tRow2; i++) {
 					var curHeight = this._getRowHeight(i);
-					if(titleHeight + curHeight > pageHeightWithFieldsHeadings) {
-						tRow2 = i;
-						break;
-					}
+					//if(titleHeight + curHeight > pageHeightWithFieldsHeadings) {
+						//tRow2 = i;
+						//break;
+					//}
 					titleHeight += curHeight;
 				}
 			}
@@ -1984,6 +1984,7 @@
 
 		var curTitleWidth = 0, curTitleHeight = 0;
 		var addedTitleHeight = 0, addedTitleWidth = 0;
+		//var startTitleArr = [];
 		while (AscCommonExcel.c_kMaxPrintPages > arrPages.length) {
 			var newPagePrint = new asc_CPagePrint();
 
@@ -2011,7 +2012,7 @@
 
 			for (rowIndex = currentRowIndex; rowIndex <= range.r2; ++rowIndex) {
 				var currentRowHeight = this._getRowHeight(rowIndex);
-				if (!bFitToHeight && currentHeight + currentRowHeight + curTitleHeight > pageHeightWithFieldsHeadings) {
+				if (!bFitToHeight && currentHeight + currentRowHeight + curTitleHeight > pageHeightWithFieldsHeadings && rowIndex !== currentRowIndex) {
 					// Закончили рисовать страницу
 					curTitleHeight = addedTitleHeight;
 					rowIndex = rowIndex;
