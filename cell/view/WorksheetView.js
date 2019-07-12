@@ -2101,11 +2101,11 @@
 			pageRange = new asc_Range(currentColIndex, currentRowIndex, colIndex - 1, rowIndex - 1);
 			newPagePrint.pageRange = pageRange;
 			if(tRow1 !== undefined && currentRowIndex > tRow1) {
-				newPagePrint.titleRowRange = new asc_Range(0, tRow1, colIndex - 1, Math.min(tRow2, rowIndex - 1));
+				newPagePrint.titleRowRange = new asc_Range(pageRange.c1, tRow1, colIndex - 1, Math.min(tRow2, currentRowIndex - 1));
 				//newPagePrint.titleHeight = addedTitleHeight;
 			}
 			if(tCol1 !== undefined && currentColIndex > tCol1) {
-				newPagePrint.titleColRange = new asc_Range(tCol1, 0, Math.min(tCol2, colIndex - 1), rowIndex - 1);
+				newPagePrint.titleColRange = new asc_Range(tCol1, pageRange.r1, Math.min(tCol2, currentColIndex - 1), rowIndex - 1);
 				//newPagePrint.titleWidth = addedTitleWidth;
 			}
 			arrPages.push(newPagePrint);
@@ -2312,11 +2312,15 @@
 			};
 
 			if(printPagesData.titleRowRange){
-				doDraw(printPagesData.titleRowRange, 0, 0);
+				doDraw(printPagesData.titleRowRange, printPagesData.titleWidth, 0);
 			}
 			if(printPagesData.titleColRange){
-				doDraw(printPagesData.titleColRange, 0, 0);
+				doDraw(printPagesData.titleColRange, 0, printPagesData.titleHeight);
 			}
+			if(printPagesData.titleRowRange && printPagesData.titleColRange){
+				doDraw(new asc_Range(printPagesData.titleColRange.c1, printPagesData.titleRowRange.r1, printPagesData.titleColRange.c2, printPagesData.titleRowRange.r2), 0, 0);
+			}
+
 			doDraw(printPagesData.pageRange, printPagesData.titleWidth, printPagesData.titleHeight);
 
             drawingCtx.RemoveClipRect();
