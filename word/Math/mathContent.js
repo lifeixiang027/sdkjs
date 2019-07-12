@@ -5737,27 +5737,29 @@ CMathAutoCorrectEngine.prototype.AutoCorrectTextFunc = function(Elements) {
 
 CMathAutoCorrectEngine.prototype.FindBracketsSkip = function(Elements) {
     var Pos = Elements.length - 1;
-    var Brackets = [];
+    var BracketsR = [];
+    var BracketsL = [];
     while (Pos >= 0) {
         var Elem = Elements[Pos].value;
         if (g_MathRightBracketAutoCorrectCharCodes[Elem]) {
-            Brackets.splice(0,0,Pos);
+            BracketsR.push(Pos);
             Pos--;
             continue;
         } else if (g_MathLeftBracketAutoCorrectCharCodes[Elem]) {
-            if (!Brackets[0]) {
+            if (BracketsR.length < BracketsL.length) {
                 return [];
             }
             if (Pos - 1 >= 0 && g_aMathAutoCorrectSkipBrackets[Elements[Pos-1].value]) {
-                return [Pos,Brackets[0]];
+                BracketsL.push(Pos);
+            } else {
+                BracketsR.pop();
             }
-            Brackets.splice(0,1);
             Pos--;
             continue;
         }
         Pos--;
     }
-    return [];
+    return [BracketsL,BracketsR];
 };
 
 CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
@@ -5793,15 +5795,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
                 } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1]-ElPos[0])),Elements.splice(ElPos[0],1)];
+                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else {
                     tmp =  [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 }
@@ -5843,15 +5843,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
                 } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1]-ElPos[0])),Elements.splice(ElPos[0],1)];
+                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else {
                     tmp =  [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 }
@@ -5881,15 +5879,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
                 } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1]-ElPos[0])),Elements.splice(ElPos[0],1)];
+                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else {
                     tmp =  [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 }
@@ -5912,23 +5908,59 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
             if (!Brackets[0]){
                 break;
             }
-            if (Param.Bracket[0] <= CurPos && CurPos <= Param.Bracket[1]) {
-                Brackets.splice(0,1);
-                CurPos--;
-                continue;
-            } else {
-                var count = Brackets[0] - CurPos + 1;
-                var tmp = Elements.splice(CurPos,count);
-                this.CorrectEquation({Type:MATH_DELIMITER,Props:null,Kind:null},tmp);
-                Elements.splice(CurPos,0,tmp[0]);
-                End = CurPos;
-                for (var i = 0; i < Brackets.length; i++) {
-                    Brackets[i] -= count - 1;
+            var fSkip = false;
+            for (var i = 0; i < Param.Bracket[0].length; i++) {
+                if (Param.Bracket[0][i] <= CurPos && CurPos <= Param.Bracket[1][i]) {
+                    Brackets.splice(0,1);
+                    CurPos--;
+                    fSkip = true;
+                    break;
                 }
-                Brackets.splice(0,1);
-                CurPos--;
+            }
+            if (fSkip) {
                 continue;
             }
+            if (Param.Type !== null) {
+                var tmp = null;
+                var skip = 0;
+                if (Param.Type === MATH_DEGREESubSup) {
+                    tmp = [Elements.splice(ElPos[1]+1,End-ElPos[1]),Elements.splice(ElPos[0]+1,ElPos[1]-ElPos[0]),Elements.splice(CurPos+1,ElPos[0]+1)];
+                } else if (Param.Type == MATH_NARY && ElPos[1]) {
+                    if (ElPos[2]) {
+                        tmp = [Elements.splice(ElPos[2],End-ElPos[2]+1),Elements.splice(ElPos[1],ElPos[2]-ElPos[1]),Elements.splice(0,ElPos[0]+1)];
+                    } else if (ElPos[1]) {
+                        tmp = [Elements.splice(ElPos[1],End-ElPos[1]+1),Elements.splice(0,ElPos[0]+1)];
+                    }
+                } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
+                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
+                    skip = ElPos[0] - CurPos - 1;
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
+                } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
+                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
+                    skip = ElPos[0] - CurPos - 1;
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
+                } else {
+                    tmp =  [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
+                }
+                this.CorrectEquation(Param,tmp);
+                Param.Type = null;
+                ElPos = [];
+                End = CurPos + 1 + skip;
+                Elements.splice(End, 0, tmp[0]);
+            }
+            var count = Brackets[0] - CurPos + 1;
+            var tmp = Elements.splice(CurPos,count);
+            this.CorrectEquation({Type:MATH_DELIMITER,Props:null,Kind:null},tmp);
+            Elements.splice(CurPos,0,tmp[0]);
+            End = CurPos;
+            Brackets.splice(0,1);
+            for (var i = 0; i < Brackets.length; i++) {
+                Brackets[i] -= count - 1;
+            }
+            CurPos--;
+            continue;
         } else if  (Elem.value === 0x005E) { // ^
             if (Param.Type == MATH_FRACTION) {
                 CurPos--;
@@ -5946,15 +5978,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
                 } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1]-ElPos[0])),Elements.splice(ElPos[0],1)];
+                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else {
                     tmp =  [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,(ElPos[0]-CurPos))];
                 }
@@ -5992,15 +6022,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
                 } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1]-ElPos[0])),Elements.splice(ElPos[0],1)];
+                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else {
                     tmp =  [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,(ElPos[0]-CurPos))];
                 }
@@ -6034,15 +6062,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
                 }  else if (g_aAutoCorrectMathSkipType[Param.Type]) {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1]-ElPos[0])),Elements.splice(ElPos[0],1)];
+                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 }
@@ -6075,15 +6101,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
                 } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1]-ElPos[0])),Elements.splice(ElPos[0],1)];
+                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 }
@@ -6098,7 +6122,8 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
             CurPos--;
             continue;
         } else if (Elem.value == 0x25A1 || Elem.value == 0x25AD) { //box OR border box
-            if (Param.Type == MATH_DEGREE || Param.Type == MATH_DEGREESubSup || Param.Type == MATH_FRACTION) {
+            //if (Param.Type == MATH_DEGREE || Param.Type == MATH_DEGREESubSup || Param.Type == MATH_FRACTION) {
+            if (Param.Type !== null) {
                 var tmp = null;
                 var skip = 0;
                 if (Param.Type == MATH_NARY && ElPos[1]) {
@@ -6110,15 +6135,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
                 } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1]-ElPos[0])),Elements.splice(ElPos[0],1)];
+                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 }
@@ -6133,7 +6156,8 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
             CurPos--;
             continue;
         } else if (g_aMathAutoCorrectGroupChar[Elem.value]) { //group character
-            if (Param.Type == MATH_DEGREE || Param.Type == MATH_DEGREESubSup || Param.Type == MATH_FRACTION) {
+            //if (Param.Type == MATH_DEGREE || Param.Type == MATH_DEGREESubSup || Param.Type == MATH_FRACTION) {
+            if (Param.Type !== null) {
                 var tmp = null;
                 var skip = 0;
                 if (Param.Type == MATH_NARY && ElPos[1]) {
@@ -6145,15 +6169,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
                 } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1]-ElPos[0])),Elements.splice(ElPos[0],1)];
+                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 }
@@ -6168,7 +6190,8 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
             CurPos--;
             continue;
         } else if (Elem.value === 0x00AF || Elem.value === 0x2581) { //bar
-            if (Param.Type == MATH_DEGREE || Param.Type == MATH_DEGREESubSup || Param.Type == MATH_FRACTION) {
+            //if (Param.Type == MATH_DEGREE || Param.Type == MATH_DEGREESubSup || Param.Type == MATH_FRACTION) {
+            if (Param.Type !== null) {
                 var tmp = null;
                 var skip = 0;
                 if (Param.Type == MATH_NARY && ElPos[1]) {
@@ -6180,15 +6203,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
                 } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1]-ElPos[0])),Elements.splice(ElPos[0],1)];
+                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 }
@@ -6204,7 +6225,8 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
             CurPos--;
             continue;
         } else if (Elem.value === 0x2588 || Elem.value === 0x24B8) { //eq array
-            if (Param.Type == MATH_DEGREE || Param.Type == MATH_DEGREESubSup || Param.Type == MATH_FRACTION) {
+            //if (Param.Type == MATH_DEGREE || Param.Type == MATH_DEGREESubSup || Param.Type == MATH_FRACTION) {
+            if (Param.Type !== null) {
                 var tmp = null;
                 var skip = 0;
                 if (Param.Type == MATH_NARY && ElPos[1]) {
@@ -6216,15 +6238,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
                 } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1]-ElPos[0])),Elements.splice(ElPos[0],1)];
+                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 }
@@ -6240,7 +6260,8 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
             CurPos--;
             continue;
         } else if (Elem.value === 0x25A0 || Elem.value === 0x24A8 || Elem.value === 0x24A9) { //matrix
-            if (Param.Type == MATH_DEGREE || Param.Type == MATH_DEGREESubSup || Param.Type == MATH_FRACTION) {
+            //if (Param.Type == MATH_DEGREE || Param.Type == MATH_DEGREESubSup || Param.Type == MATH_FRACTION) {
+            if (Param.Type !== null) {
                 var tmp = null;
                 var skip = 0;
                 if (Param.Type == MATH_NARY && ElPos[1]) {
@@ -6252,15 +6273,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
                 } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1]-ElPos[0])),Elements.splice(ElPos[0],1)];
+                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 }
@@ -6293,15 +6312,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
                 } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1]-ElPos[0])),Elements.splice(ElPos[0],1)];
+                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
                     skip = ElPos[0] - CurPos - 1;
-                    for (var i = 0; i < Param.Bracket.length; i++) {
-                        Param.Bracket[i] -= (ElPos[0] + 1);
-                    }
+                    Param.Bracket[0][0] -= (ElPos[0] + 1);
+                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 }
@@ -6334,15 +6351,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
         } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
             tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
             skip = ElPos[0];
-            for (var i = 0; i < Param.Bracket.length; i++) {
-                Param.Bracket[i] -= (skip + 1);
-            }
+            Param.Bracket[0][0] -= (ElPos[0] + 1);
+            Param.Bracket[1][0] -= (ElPos[0] + 1);
         } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-            tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1]-ElPos[0])),Elements.splice(ElPos[0],1)];
+            tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
             skip = ElPos[0] - CurPos - 1;
-            for (var i = 0; i < Param.Bracket.length; i++) {
-                Param.Bracket[i] -= (ElPos[0] + 1);
-            }
+            Param.Bracket[0][0] -= (ElPos[0] + 1);
+            Param.Bracket[1][0] -= (ElPos[0] + 1);
         } else {
             tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(0,ElPos[0]-CurPos)];
         }
@@ -6455,7 +6470,7 @@ CMathAutoCorrectEngine.prototype.CorrectEquation = function(Param, Elements) {
         case MATH_RADICAL:
             Elements.splice(0,2,Elements[1].concat(Elements[0]));
             var props = new CMathRadicalPr();
-            props.degHide = this.CorrectBuffForRadical(Elements, true, Param.Bracket);
+            props.degHide = this.CorrectBuffForRadical(Elements, true, [Param.Bracket[0][0],Param.Bracket[1][0]]);
             props.ctrPrp = this.TextPr.Copy();
             var Radical = new CRadical(props);
             var Base = Radical.getBase();
@@ -6467,7 +6482,8 @@ CMathAutoCorrectEngine.prototype.CorrectEquation = function(Param, Elements) {
                 this.PackTextToContent(Base, Elements[0], true);
             }
             Elements.splice(0,Elements.length, Radical);
-            Param.Bracket.splice(0,Param.Bracket.length);   
+            Param.Bracket[0].splice(0,1);
+            Param.Bracket[1].splice(0,1);
             break;
         case MATH_BOX:
             var symbol = Elements.splice(1,1)[0][0].value;
@@ -6477,7 +6493,8 @@ CMathAutoCorrectEngine.prototype.CorrectEquation = function(Param, Elements) {
             var Base = Box.getBase();
             this.PackTextToContent(Base, Elements[0], true);
             Elements.splice(0,Elements.length, Box);
-            Param.Bracket.splice(0,Param.Bracket.length);   
+            Param.Bracket[0].splice(0,1);
+            Param.Bracket[1].splice(0,1); 
             break;
         case MATH_GROUP_CHARACTER:
             var symbol = Elements.splice(1,1)[0][0].value;
@@ -6497,7 +6514,8 @@ CMathAutoCorrectEngine.prototype.CorrectEquation = function(Param, Elements) {
             var oBase = oGroupChr.getBase();
             this.PackTextToContent(oBase, Elements[0], true);
             Elements.splice(0,Elements.length, oGroupChr);
-            Param.Bracket.splice(0,Param.Bracket.length);   
+            Param.Bracket[0].splice(0,1);
+            Param.Bracket[1].splice(0,1);
             break;
         case MATH_BAR:
             var symbol = Elements.splice(1,1)[0][0].value;
@@ -6507,12 +6525,13 @@ CMathAutoCorrectEngine.prototype.CorrectEquation = function(Param, Elements) {
             var oBase = oBar.getBase();
             this.PackTextToContent(oBase, Elements[0], true);
             Elements.splice(0,Elements.length, oBar);
-            Param.Bracket.splice(0,Param.Bracket.length);   
+            Param.Bracket[0].splice(0,1);
+            Param.Bracket[1].splice(0,1);
             break;
         case MATH_EQ_ARRAY:
-            var symbol = Elements.splice(1,1)[0][0].value;
+            var symbol = Elements.splice(1,1)[0][0];
             var Del = null;
-            if (symbol == 0x24B8) {
+            if (symbol.value == 0x24B8) {
                 var props = new CMathDelimiterPr();
                 props.begChr = 123;
                 props.endChr = -1;
@@ -6522,8 +6541,8 @@ CMathAutoCorrectEngine.prototype.CorrectEquation = function(Param, Elements) {
             var arrContent = [];
             var row = 0;
             arrContent[row] = [];
-            if (Param.Bracket.length) {
-                for (var i = Param.Bracket[0]+1; i < Param.Bracket[1]; i++) {
+            if (Param.Bracket[0].length) {
+                for (var i = Param.Bracket[0][0]+1; i < Param.Bracket[1][0]; i++) {
                     var oCurElem = Elements[0][i];
                     if (oCurElem.value == 0x40) {  // @
                         row++;
@@ -6535,9 +6554,12 @@ CMathAutoCorrectEngine.prototype.CorrectEquation = function(Param, Elements) {
                     }
                 }
             }
-            // if (row < 1) {
-            //     return;
-            // }
+            if (row < 1 && Del) {
+                Elements.splice(0,0, symbol);  
+                Param.Bracket[0].splice(0,1);
+                Param.Bracket[1].splice(0,1);
+                break;
+            }
             var props = new CMathEqArrPr();
             props.row = row + 1;
             props.ctrPrp = this.TextPr.Copy();
@@ -6554,16 +6576,17 @@ CMathAutoCorrectEngine.prototype.CorrectEquation = function(Param, Elements) {
             } else {
                 Elements.splice(0,Elements.length, EqArray);
             }
-            Param.Bracket.splice(0,Param.Bracket.length);           
+            Param.Bracket[0].splice(0,1);
+            Param.Bracket[1].splice(0,1);
             break;
         case MATH_MATRIX:
-            var symbol = Elements.splice(1,1)[0][0].value;
+            var symbol = Elements.splice(1,1)[0][0];
             var Del = null;
-            if (symbol == 0x24A8) {
+            if (symbol.value == 0x24A8) {
                 var props = new CMathDelimiterPr();
                 props.column = 1;
                 Del = new CDelimiter(props);
-            } else if (symbol == 0x24A9) {
+            } else if (symbol.value == 0x24A9) {
                 var props = new CMathDelimiterPr();
                 props.column = 1;
                 props.begChr = 0x2016;
@@ -6577,8 +6600,8 @@ CMathAutoCorrectEngine.prototype.CorrectEquation = function(Param, Elements) {
             arrContent[row] = [];
             arrContent[row][col] = [];
             mcs[0] = {count: 1, mcJc: 0};
-            if (Param.Bracket.length) {
-                for (var i = Param.Bracket[0]+1; i < Param.Bracket[1]; i++) {
+            if (Param.Bracket[0].length) {
+                for (var i = Param.Bracket[0][0]+1; i < Param.Bracket[1][0]; i++) {
                     var oCurElem = Elements[0][i];
                     if (oCurElem.value == 0x26) {  // &
                         col++;
@@ -6596,9 +6619,12 @@ CMathAutoCorrectEngine.prototype.CorrectEquation = function(Param, Elements) {
                     }
                 }
             }
-            // if (row < 1) {
-            //     return;
-            // }
+            if (row < 1) {
+                Elements.splice(0,0, symbol);  
+                Param.Bracket[0].splice(0,1);
+                Param.Bracket[1].splice(0,1);
+                break;
+            }
             var props = new CMathMatrixPr();
             props.row = row + 1;
             props.mcs = mcs;
@@ -6617,6 +6643,8 @@ CMathAutoCorrectEngine.prototype.CorrectEquation = function(Param, Elements) {
             } else {
                 Elements.splice(0,Elements.length, Matrix);                    
             }
+            Param.Bracket[0].splice(0,1);
+            Param.Bracket[1].splice(0,1);
             break;
     }
 };
