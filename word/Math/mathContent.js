@@ -5783,30 +5783,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
         } else if (Elem.value === 0x002F) { // /
             if (Param.Type !== null) {
                 var tmp = null;
-                var skip = 0;
                 if (Param.Type === MATH_DEGREESubSup) {
                     tmp = [Elements.splice(ElPos[1]+1,End-ElPos[1]),Elements.splice(ElPos[0]+1,ElPos[1]-ElPos[0]),Elements.splice(CurPos+1,ElPos[0]+1)];
-                } else if (Param.Type == MATH_NARY && ElPos[1]) {
-                    if (ElPos[2]) {
-                        tmp = [Elements.splice(ElPos[2],End-ElPos[2]+1),Elements.splice(ElPos[1],ElPos[2]-ElPos[1]),Elements.splice(0,ElPos[0]+1)];
-                    } else if (ElPos[1]) {
-                        tmp = [Elements.splice(ElPos[1],End-ElPos[1]+1),Elements.splice(0,ElPos[0]+1)];
-                    }
-                } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else {
                     tmp =  [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 }
                 this.CorrectEquation(Param,tmp);
-                End = CurPos + 1 + skip;
+                End = CurPos + 1;
                 Elements.splice(End, 0, tmp[0]);
             }
             if (CurPos - 1 > 0) {
@@ -5831,30 +5814,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
         } else if (Elem.value === 0x2044) { // fraction
             if (Param.Type !== null) {
                 var tmp = null;
-                var skip = 0;
                 if (Param.Type === MATH_DEGREESubSup) {
                     tmp = [Elements.splice(ElPos[1]+1,End-ElPos[1]),Elements.splice(ElPos[0]+1,ElPos[1]-ElPos[0]),Elements.splice(CurPos+1,ElPos[0]+1)];
-                } else if (Type == MATH_NARY && ElPos[1]) {
-                    if (ElPos[2]) {
-                        tmp = [Elements.splice(ElPos[2],End-ElPos[2]+1),Elements.splice(ElPos[1],ElPos[2]-ElPos[1]),Elements.splice(0,ElPos[0]+1)];
-                    } else if (ElPos[1]) {
-                        tmp = [Elements.splice(ElPos[1],End-ElPos[1]+1),Elements.splice(0,ElPos[0]+1)];
-                    }
-                } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else {
                     tmp =  [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 }
                 this.CorrectEquation(Param,tmp);
-                End = CurPos + 1 + skip;
+                End = CurPos + 1;
                 Elements.splice(End, 0, tmp[0]);
             }
             if (!Brackets[0]) {
@@ -5867,30 +5833,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
         } else if (0x00A6 === Elem.value) { // fraction
             if (Param.Type !== null) {
                 var tmp = null;
-                var skip = 0;
                 if (Param.Type === MATH_DEGREESubSup) {
                     tmp = [Elements.splice(ElPos[1]+1,End-ElPos[1]),Elements.splice(ElPos[0]+1,ElPos[1]-ElPos[0]),Elements.splice(CurPos+1,ElPos[0]+1)];
-                } else if (Param.Type == MATH_NARY && ElPos[1]) {
-                    if (ElPos[2]) {
-                        tmp = [Elements.splice(ElPos[2],End-ElPos[2]+1),Elements.splice(ElPos[1],ElPos[2]-ElPos[1]),Elements.splice(0,ElPos[0]+1)];
-                    } else if (ElPos[1]) {
-                        tmp = [Elements.splice(ElPos[1],End-ElPos[1]+1),Elements.splice(0,ElPos[0]+1)];
-                    }
-                } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else {
                     tmp =  [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 }
                 this.CorrectEquation(Param,tmp);
-                End = CurPos + 1 + skip;
+                End = CurPos + 1;
                 Elements.splice(End, 0, tmp[0]);
             }
             if (!Brackets[0]) {
@@ -5922,32 +5871,15 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
             }
             if (Param.Type !== null) {
                 var tmp = null;
-                var skip = 0;
                 if (Param.Type === MATH_DEGREESubSup) {
                     tmp = [Elements.splice(ElPos[1]+1,End-ElPos[1]),Elements.splice(ElPos[0]+1,ElPos[1]-ElPos[0]),Elements.splice(CurPos+1,ElPos[0]+1)];
-                } else if (Param.Type == MATH_NARY && ElPos[1]) {
-                    if (ElPos[2]) {
-                        tmp = [Elements.splice(ElPos[2],End-ElPos[2]+1),Elements.splice(ElPos[1],ElPos[2]-ElPos[1]),Elements.splice(0,ElPos[0]+1)];
-                    } else if (ElPos[1]) {
-                        tmp = [Elements.splice(ElPos[1],End-ElPos[1]+1),Elements.splice(0,ElPos[0]+1)];
-                    }
-                } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else {
                     tmp =  [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 }
                 this.CorrectEquation(Param,tmp);
                 Param.Type = null;
                 ElPos = [];
-                End = CurPos + 1 + skip;
+                End = CurPos + 1;
                 Elements.splice(End, 0, tmp[0]);
             }
             var count = Brackets[0] - CurPos + 1;
@@ -5967,29 +5899,9 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
                 continue;
             }
             if (Param.Type !== null && (Param.Type !== MATH_DEGREE && Param.Kind !== DEGREE_SUBSCRIPT)) {
-                var tmp = null;
-                var skip = 0;
-                if (Param.Type == MATH_NARY && ElPos[1]) {
-                    if (ElPos[2]) {
-                        tmp = [Elements.splice(ElPos[2],End-ElPos[2]+1),Elements.splice(ElPos[1],ElPos[2]-ElPos[1]),Elements.splice(0,ElPos[0]+1)];
-                    } else if (ElPos[1]) {
-                        tmp = [Elements.splice(ElPos[1],End-ElPos[1]+1),Elements.splice(0,ElPos[0]+1)];
-                    }
-                } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else {
-                    tmp =  [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,(ElPos[0]-CurPos))];
-                }
+                var tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,(ElPos[0]-CurPos))];
                 this.CorrectEquation(Param,tmp);
-                End = CurPos + 1 + skip;
+                End = CurPos + 1;
                 Elements.splice(End, 0, tmp[0]);
             }
             if (Param.Type == MATH_DEGREE && Param.Kind == DEGREE_SUBSCRIPT) {
@@ -6011,29 +5923,9 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
                 continue;
             }
             if (Param.Type !== null && (Param.Type !== MATH_DEGREE && Param.Kind !== DEGREE_SUPERSCRIPT)) {
-                var tmp = null;
-                var skip = 0;
-                if (Param.Type == MATH_NARY && ElPos[1]) {
-                    if (ElPos[2]) {
-                        tmp = [Elements.splice(ElPos[2],End-ElPos[2]+1),Elements.splice(ElPos[1],ElPos[2]-ElPos[1]),Elements.splice(0,ElPos[0]+1)];
-                    } else if (ElPos[1]) {
-                        tmp = [Elements.splice(ElPos[1],End-ElPos[1]+1),Elements.splice(0,ElPos[0]+1)];
-                    }
-                } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else {
-                    tmp =  [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,(ElPos[0]-CurPos))];
-                }
+                var tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,(ElPos[0]-CurPos))];
                 this.CorrectEquation(Param,tmp);
-                End = CurPos + 1 + skip;
+                End = CurPos + 1;
                 Elements.splice(End, 0, tmp[0]);
             }
             if (Param.Type == MATH_DEGREE && Param.Kind == DEGREE_SUPERSCRIPT) {
@@ -6051,246 +5943,145 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
             continue;
         } else if (q_aMathAutoCorrectControlAggregationCodes[Elem.value]) { //cNary
             if (Param.Type !== null && Param.Type !== MATH_DEGREESubSup && Param.Type !== MATH_DEGREE) {
-                var tmp = null;
-                var skip = 0;
-                if (Param.Type == MATH_NARY && ElPos[1]) {
-                    if (ElPos[2]) {
-                        tmp = [Elements.splice(ElPos[2],End-ElPos[2]+1),Elements.splice(ElPos[1],ElPos[2]-ElPos[1]),Elements.splice(0,ElPos[0]+1)];
-                    } else if (ElPos[1]) {
-                        tmp = [Elements.splice(ElPos[1],End-ElPos[1]+1),Elements.splice(0,ElPos[0]+1)];
-                    }
-                }  else if (g_aAutoCorrectMathSkipType[Param.Type]) {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
-                }
+                var tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 this.CorrectEquation(Param,tmp);
-                End = CurPos + 1 + skip;
+                End = CurPos + 1;
                 Elements.splice(End, 0, tmp[0]);
             }
             if (!Brackets[0]) {
+                var tmp = null;
                 if (Param.Type == MATH_DEGREE) {
-                    ElPos[1] = ElPos[0];
+                    tmp = [Elements.splice(ElPos[0],End-ElPos[0]+1),Elements.splice(CurPos,1)];
                 } else if (Param.Type == MATH_DEGREESubSup) {
-                    ElPos[2] = ElPos[1];
-                    ElPos[1] = ElPos[0];
+                    tmp = [Elements.splice(ElPos[1],End-ElPos[1]+1),Elements.splice(ElPos[0],ElPos[1]-ElPos[0]),Elements.splice(CurPos,1)];
+                } else {
+                    tmp = [Elements.splice(CurPos+1,(End-CurPos)),Elements.splice(CurPos,1)];
                 }
                 Param.Type = MATH_NARY;
+                this.CorrectEquation(Param,tmp);
+                End = CurPos;
+                Elements.splice(End,0,tmp[0]);  
+                Param.Type = null;
             }
-            ElPos[0] = CurPos;
             CurPos--;
             continue;
         } else if (g_aMathAutoCorrectRadicalCharCode[Elem.value]) { // sqrt
             if (Param.Type !== null && Param.Type !== MATH_DEGREESubSup && Param.Type !== MATH_DEGREE) {
-                var tmp = null;
-                var skip = 0;
-                if (Param.Type == MATH_NARY && ElPos[1]) {
-                    if (ElPos[2]) {
-                        tmp = [Elements.splice(ElPos[2],End-ElPos[2]+1),Elements.splice(ElPos[1],ElPos[2]-ElPos[1]),Elements.splice(0,ElPos[0]+1)];
-                    } else if (ElPos[1]) {
-                        tmp = [Elements.splice(ElPos[1],End-ElPos[1]+1),Elements.splice(0,ElPos[0]+1)];
-                    }
-                } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
-                }
+                var tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 this.CorrectEquation(Param,tmp);
-                End = CurPos + 1 + skip;
+                End = CurPos + 1;
                 Elements.splice(End, 0, tmp[0]);
             }
             if (!Brackets[0]) {
+                var tmp = [Elements.splice(CurPos+1,(End-CurPos)),Elements.splice(CurPos,1)];
                 Param.Type = MATH_RADICAL;
+                Param.Bracket[0][0] -= (CurPos + 1);
+                Param.Bracket[1][0] -= (CurPos + 1);
+                this.CorrectEquation(Param,tmp);
+                End = CurPos;
+                Elements.splice(End,0,tmp[0]);  
+                Param.Type = null;
             }
-            ElPos[0] = CurPos;
             CurPos--;
             continue;
         } else if (Elem.value == 0x25A1 || Elem.value == 0x25AD) { //box OR border box
             //if (Param.Type == MATH_DEGREE || Param.Type == MATH_DEGREESubSup || Param.Type == MATH_FRACTION) {
             if (Param.Type !== null) {
-                var tmp = null;
-                var skip = 0;
-                if (Param.Type == MATH_NARY && ElPos[1]) {
-                    if (ElPos[2]) {
-                        tmp = [Elements.splice(ElPos[2],End-ElPos[2]+1),Elements.splice(ElPos[1],ElPos[2]-ElPos[1]),Elements.splice(0,ElPos[0]+1)];
-                    } else if (ElPos[1]) {
-                        tmp = [Elements.splice(ElPos[1],End-ElPos[1]+1),Elements.splice(0,ElPos[0]+1)];
-                    }
-                } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
-                }
+                var tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 this.CorrectEquation(Param,tmp);
-                End = CurPos + 1 + skip;
+                End = CurPos + 1;
                 Elements.splice(End, 0, tmp[0]);
             }
             if (!Brackets[0]) {
+                var tmp = [Elements.splice(CurPos+1,(End-CurPos)),Elements.splice(CurPos,1)];
                 Param.Type = MATH_BOX;
+                Param.Bracket[0][0] -= (CurPos + 1);
+                Param.Bracket[1][0] -= (CurPos + 1);
+                this.CorrectEquation(Param,tmp);
+                End = CurPos;
+                Elements.splice(End,0,tmp[0]);  
+                Param.Type = null;
             }
-            ElPos[0] = CurPos;
             CurPos--;
             continue;
         } else if (g_aMathAutoCorrectGroupChar[Elem.value]) { //group character
             //if (Param.Type == MATH_DEGREE || Param.Type == MATH_DEGREESubSup || Param.Type == MATH_FRACTION) {
             if (Param.Type !== null) {
-                var tmp = null;
-                var skip = 0;
-                if (Param.Type == MATH_NARY && ElPos[1]) {
-                    if (ElPos[2]) {
-                        tmp = [Elements.splice(ElPos[2],End-ElPos[2]+1),Elements.splice(ElPos[1],ElPos[2]-ElPos[1]),Elements.splice(0,ElPos[0]+1)];
-                    } else if (ElPos[1]) {
-                        tmp = [Elements.splice(ElPos[1],End-ElPos[1]+1),Elements.splice(0,ElPos[0]+1)];
-                    }
-                } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
-                }
+                var tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 this.CorrectEquation(Param,tmp);
-                End = CurPos + 1 + skip;
+                End = CurPos + 1;
                 Elements.splice(End, 0, tmp[0]);
             }
             if (!Brackets[0]) {
+                var tmp = [Elements.splice(CurPos+1,(End-CurPos)),Elements.splice(CurPos,1)];
                 Param.Type = MATH_GROUP_CHARACTER;
+                Param.Bracket[0][0] -= (CurPos + 1);
+                Param.Bracket[1][0] -= (CurPos + 1);
+                this.CorrectEquation(Param,tmp);
+                End = CurPos;
+                Elements.splice(End,0,tmp[0]);  
+                Param.Type = null;
             }
-            ElPos[0] = CurPos;
             CurPos--;
             continue;
         } else if (Elem.value === 0x00AF || Elem.value === 0x2581) { //bar
             //if (Param.Type == MATH_DEGREE || Param.Type == MATH_DEGREESubSup || Param.Type == MATH_FRACTION) {
             if (Param.Type !== null) {
-                var tmp = null;
-                var skip = 0;
-                if (Param.Type == MATH_NARY && ElPos[1]) {
-                    if (ElPos[2]) {
-                        tmp = [Elements.splice(ElPos[2],End-ElPos[2]+1),Elements.splice(ElPos[1],ElPos[2]-ElPos[1]),Elements.splice(0,ElPos[0]+1)];
-                    } else if (ElPos[1]) {
-                        tmp = [Elements.splice(ElPos[1],End-ElPos[1]+1),Elements.splice(0,ElPos[0]+1)];
-                    }
-                } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
-                }
+                var tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 this.CorrectEquation(Param,tmp);
-                End = CurPos + 1 + skip;
+                End = CurPos + 1;
                 Elements.splice(End, 0, tmp[0]);
             }
             if (!Brackets[0]) {
+                var tmp = [Elements.splice(CurPos+1,(End-CurPos)),Elements.splice(CurPos,1)];
                 Param.Type = MATH_BAR;
+                Param.Bracket[0][0] -= (CurPos + 1);
+                Param.Bracket[1][0] -= (CurPos + 1);
+                this.CorrectEquation(Param,tmp);
+                End = CurPos;
+                Elements.splice(End,0,tmp[0]);  
+                Param.Type = null;
             }
-            ElPos[0] = CurPos;
-
             CurPos--;
             continue;
         } else if (Elem.value === 0x2588 || Elem.value === 0x24B8) { //eq array
             //if (Param.Type == MATH_DEGREE || Param.Type == MATH_DEGREESubSup || Param.Type == MATH_FRACTION) {
             if (Param.Type !== null) {
-                var tmp = null;
-                var skip = 0;
-                if (Param.Type == MATH_NARY && ElPos[1]) {
-                    if (ElPos[2]) {
-                        tmp = [Elements.splice(ElPos[2],End-ElPos[2]+1),Elements.splice(ElPos[1],ElPos[2]-ElPos[1]),Elements.splice(0,ElPos[0]+1)];
-                    } else if (ElPos[1]) {
-                        tmp = [Elements.splice(ElPos[1],End-ElPos[1]+1),Elements.splice(0,ElPos[0]+1)];
-                    }
-                } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
-                }
+                var tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 this.CorrectEquation(Param,tmp);
-                End = CurPos + 1 + skip;
+                End = CurPos + 1;
                 Elements.splice(End, 0, tmp[0]);
             }
-           
             if (!Brackets[0]) {
+                tmp = [Elements.splice(CurPos+1,(Param.Bracket[1][0]-CurPos)),Elements.splice(CurPos,1)];
                 Param.Type = MATH_EQ_ARRAY;
+                Param.Bracket[0][0] -= (CurPos + 1);
+                Param.Bracket[1][0] -= (CurPos + 1);
+                this.CorrectEquation(Param,tmp);
+                End = CurPos;
+                Elements.splice(End,0,tmp[0]);  
+                Param.Type = null;
             }
-            ElPos[0] = CurPos;
             CurPos--;
             continue;
         } else if (Elem.value === 0x25A0 || Elem.value === 0x24A8 || Elem.value === 0x24A9) { //matrix
             //if (Param.Type == MATH_DEGREE || Param.Type == MATH_DEGREESubSup || Param.Type == MATH_FRACTION) {
             if (Param.Type !== null) {
-                var tmp = null;
-                var skip = 0;
-                if (Param.Type == MATH_NARY && ElPos[1]) {
-                    if (ElPos[2]) {
-                        tmp = [Elements.splice(ElPos[2],End-ElPos[2]+1),Elements.splice(ElPos[1],ElPos[2]-ElPos[1]),Elements.splice(0,ElPos[0]+1)];
-                    } else if (ElPos[1]) {
-                        tmp = [Elements.splice(ElPos[1],End-ElPos[1]+1),Elements.splice(0,ElPos[0]+1)];
-                    }
-                } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
-                }
+                var tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 this.CorrectEquation(Param,tmp);
-                End = CurPos + 1 + skip;
+                End = CurPos + 1;
                 Elements.splice(End, 0, tmp[0]);
             }
             if (!Brackets[0]) {
+                tmp = [Elements.splice(CurPos+1,(Param.Bracket[1][0]-CurPos)),Elements.splice(CurPos,1)];
                 Param.Type = MATH_MATRIX;
+                Param.Bracket[0][0] -= (CurPos + 1);
+                Param.Bracket[1][0] -= (CurPos + 1);
+                this.CorrectEquation(Param,tmp);
+                End = CurPos;
+                Elements.splice(End,0,tmp[0]);  
+                Param.Type = null;
             }
-            ElPos[0] = CurPos;
             CurPos--;
             continue;
         } else if (g_aMathAutoCorrectFracCharCodes[Elem.value] && !Brackets[0]) { //space + - # @ and another
@@ -6300,30 +6091,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
             }
             if (Param.Type !== null) {
                 var tmp = null;
-                var skip = 0;
                 if (Param.Type === MATH_DEGREESubSup) {
                     tmp = [Elements.splice(ElPos[1]+1,End-ElPos[1]),Elements.splice(ElPos[0]+1,ElPos[1]-ElPos[0]),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
-                } else if (Param.Type == MATH_NARY && ElPos[1]) {
-                    if (ElPos[2]) {
-                        tmp = [Elements.splice(ElPos[2],End-ElPos[2]+1),Elements.splice(ElPos[1],ElPos[2]-ElPos[1]),Elements.splice(0,ElPos[0]+1)];
-                    } else if (ElPos[1]) {
-                        tmp = [Elements.splice(ElPos[1],End-ElPos[1]+1),Elements.splice(0,ElPos[0]+1)];
-                    }
-                } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
-                } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-                    tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
-                    skip = ElPos[0] - CurPos - 1;
-                    Param.Bracket[0][0] -= (ElPos[0] + 1);
-                    Param.Bracket[1][0] -= (ElPos[0] + 1);
                 } else {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 }
                 this.CorrectEquation(Param,tmp);
-                Elements.splice(CurPos + 1, 0 + skip, tmp[0]);
+                Elements.splice(CurPos + 1, 0, tmp[0]);
                 
                 Param.Type = null;
                 Param.Props = {};
@@ -6339,30 +6113,13 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
     }
     if (Param.Type !== null) { // && ElPos !== null) {
         var tmp = null;
-        var skip = 0;
         if (Param.Type === MATH_DEGREESubSup) {
             tmp = [Elements.splice(ElPos[1]+1,End-ElPos[1]),Elements.splice(ElPos[0]+1,ElPos[1]-ElPos[0]),Elements.splice(0,ElPos[0]+1)];
-        } else if (Param.Type == MATH_NARY && ElPos[1]) {
-            if (ElPos[2]) {
-                tmp = [Elements.splice(ElPos[2],End-ElPos[2]+1),Elements.splice(ElPos[1],ElPos[2]-ElPos[1]),Elements.splice(0,ElPos[0]+1)];
-            } else if (ElPos[1]) {
-                tmp = [Elements.splice(ElPos[1],End-ElPos[1]+1),Elements.splice(0,ElPos[0]+1)];
-            }
-        } else if (g_aAutoCorrectMathSkipType[Param.Type]) {
-            tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(ElPos[0],1)];
-            skip = ElPos[0];
-            Param.Bracket[0][0] -= (ElPos[0] + 1);
-            Param.Bracket[1][0] -= (ElPos[0] + 1);
-        } else if (Param.Type == MATH_EQ_ARRAY || Param.Type == MATH_MATRIX) {
-            tmp = [Elements.splice(ElPos[0]+1,(Param.Bracket[1][0]-ElPos[0])),Elements.splice(ElPos[0],1)];
-            skip = ElPos[0] - CurPos - 1;
-            Param.Bracket[0][0] -= (ElPos[0] + 1);
-            Param.Bracket[1][0] -= (ElPos[0] + 1);
         } else {
             tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(0,ElPos[0]-CurPos)];
         }
         this.CorrectEquation(Param,tmp);
-        Elements.splice(skip,0,tmp[0]);
+        Elements.splice(0,0,tmp[0]);
     }
 
 };
@@ -10436,11 +10193,6 @@ var g_aMathAutoCorrectSkipBrackets = {
 //символы MATH_GROUP_CHARACTER
 var g_aMathAutoCorrectGroupChar = {
     0x23DE : 1, 0x23DC : 1, 0x23E0 : 1, 0x23DF : 1, 0x23DD : 1
-};
-// типы при кторых нужно рассчитать отступ для автозамены
-var g_aAutoCorrectMathSkipType = {
-    // radical, box, group character, bar
-    3 : 1, 12 : 1, 6 : 1, 14 : 1
 };
 
 
