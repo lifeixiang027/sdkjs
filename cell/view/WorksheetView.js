@@ -2269,8 +2269,8 @@
 			//draw header/footer
 			this._drawHeaderFooter(drawingCtx, printPagesData, indexPrintPage, countPrintPages);
 
-            //drawingCtx.AddClipRect(printPagesData.pageClipRectLeft, printPagesData.pageClipRectTop,
-              //printPagesData.pageClipRectWidth + printPagesData.titleWidth, printPagesData.pageClipRectHeight + + printPagesData.titleHeight);
+            drawingCtx.AddClipRect(printPagesData.pageClipRectLeft, printPagesData.pageClipRectTop,
+              printPagesData.pageClipRectWidth + printPagesData.titleWidth, printPagesData.pageClipRectHeight + printPagesData.titleHeight);
 
             var doDraw = function(range, titleWidth, titleHeight) {
 				var offsetCols = printPagesData.startOffsetPx;
@@ -2280,14 +2280,6 @@
 				var tmpVisibleRange = t.visibleRange;
 				// Сменим visibleRange для прохождения проверок отрисовки
 				t.visibleRange = range;
-
-				// Нужно отрисовать заголовки
-				if (printPagesData.pageHeadings) {
-					t._drawColumnHeaders(drawingCtx, range.c1, range.c2, /*style*/ undefined, offsetX,
-						printPagesData.topFieldInPx - t.cellsTop);
-					t._drawRowHeaders(drawingCtx, range.r1, range.r2, /*style*/ undefined,
-						printPagesData.leftFieldInPx - t.cellsLeft, offsetY);
-				}
 
 				// Рисуем сетку
 				if (printPagesData.pageGridLines) {
@@ -2305,22 +2297,36 @@
 				//Отрисовываем панель группировки по строкам
 				//this._drawGroupData(drawingCtx, null, offsetX, offsetY);
 
+				var oldRange = printPagesData.pageRange;
+				printPagesData.pageRange = range;
 				var drawingPrintOptions = {
 					ctx: drawingCtx, printPagesData: printPagesData
 				};
+
 				t.objectRender.showDrawingObjectsEx(false, null, drawingPrintOptions);
+				printPagesData.pageRange = oldRange;
+
+				// Нужно отрисовать заголовки
+				if (printPagesData.pageHeadings) {
+					t._drawColumnHeaders(drawingCtx, range.c1, range.c2, /*style*/ undefined, offsetX,
+						printPagesData.topFieldInPx - t.cellsTop);
+					t._drawRowHeaders(drawingCtx, range.r1, range.r2, /*style*/ undefined,
+						printPagesData.leftFieldInPx - t.cellsLeft, offsetY);
+				}
+
 				t.visibleRange = tmpVisibleRange;
 			};
 
+			if(printPagesData.titleRowRange && printPagesData.titleColRange){
+				doDraw(new asc_Range(printPagesData.titleColRange.c1, printPagesData.titleRowRange.r1, printPagesData.titleColRange.c2, printPagesData.titleRowRange.r2), 0, 0);
+			}
 			if(printPagesData.titleRowRange){
 				doDraw(printPagesData.titleRowRange, printPagesData.titleWidth, 0);
 			}
 			if(printPagesData.titleColRange){
 				doDraw(printPagesData.titleColRange, 0, printPagesData.titleHeight);
 			}
-			if(printPagesData.titleRowRange && printPagesData.titleColRange){
-				doDraw(new asc_Range(printPagesData.titleColRange.c1, printPagesData.titleRowRange.r1, printPagesData.titleColRange.c2, printPagesData.titleRowRange.r2), 0, 0);
-			}
+
 
 			doDraw(printPagesData.pageRange, printPagesData.titleWidth, printPagesData.titleHeight);
 
