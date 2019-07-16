@@ -1931,7 +1931,7 @@
 		var t = this;
 		var printTitles = this.model.workbook.getDefinesNames("Print_Titles", this.model.getId());
 		var tCol1, tCol2, tRow1, tRow2;
-		var titleWidth = 0, titleHeight = 0;
+		//var titleWidth = 0, titleHeight = 0;
 		if(printTitles) {
 			var printTitleRefs;
 			AscCommonExcel.executeInR1C1Mode(false, function () {
@@ -1951,26 +1951,16 @@
 					}
 				}
 			}
-			if(tCol1 !== undefined) {
+			/*if(tCol1 !== undefined) {
 				for(i = tCol1; i <= tCol2; i++) {
-					var curWidth = this._getColumnWidth(i);
-					//if(titleWidth + curWidth > pageWidthWithFieldsHeadings) {
-						//tCol2 = i;
-						//break;
-					//}
-					titleWidth += curWidth;
+					titleWidth += this._getColumnWidth(i);
 				}
 			}
 			if(tRow1 !== undefined) {
 				for(i = tRow1; i <= tRow2; i++) {
-					var curHeight = this._getRowHeight(i);
-					//if(titleHeight + curHeight > pageHeightWithFieldsHeadings) {
-						//tRow2 = i;
-						//break;
-					//}
-					titleHeight += curHeight;
+					titleHeight += this._getRowHeight(i);
 				}
-			}
+			}*/
 		}
 
 		var currentColIndex = range.c1;
@@ -1984,7 +1974,8 @@
 
 		var curTitleWidth = 0, curTitleHeight = 0;
 		var addedTitleHeight = 0, addedTitleWidth = 0;
-		//var startTitleArr = [];
+
+		var startTitleArrRow = [];
 		while (AscCommonExcel.c_kMaxPrintPages > arrPages.length) {
 			var newPagePrint = new asc_CPagePrint();
 
@@ -2006,6 +1997,10 @@
 			if(range.r1 === rowIndex) {
 				curTitleHeight = 0;
 				addedTitleHeight = 0;
+			} else if(undefined !== startTitleArrRow[rowIndex - 1]) {
+				//TODO в дальнейшем для функционала печати страниц по вертикали необходимо сделать аналогично для столбцов
+				curTitleHeight = startTitleArrRow[rowIndex - 1];
+				addedTitleHeight = startTitleArrRow[rowIndex - 1];
 			}
 
 			newPagePrint.titleHeight = curTitleHeight;
@@ -2099,6 +2094,7 @@
 				newPagePrint.pageHeadings = true;
 			}
 
+			startTitleArrRow[rowIndex - 1] = curTitleHeight;
 			pageRange = new asc_Range(currentColIndex, currentRowIndex, colIndex - 1, rowIndex - 1);
 			newPagePrint.pageRange = pageRange;
 			if(tRow1 !== undefined && currentRowIndex > tRow1) {
