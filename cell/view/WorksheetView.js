@@ -2306,6 +2306,8 @@
 				t.objectRender.showDrawingObjectsEx(false, null, drawingPrintOptions);
 				printPagesData.pageRange = oldRange;
 
+				drawingCtx.RemoveClipRect();
+
 				// Нужно отрисовать заголовки
 				if (printPagesData.pageHeadings) {
 					t._drawColumnHeaders(drawingCtx, range.c1, range.c2, /*style*/ undefined, offsetX,
@@ -2314,38 +2316,39 @@
 						printPagesData.leftFieldInPx - t.cellsLeft, offsetY);
 				}
 
-				drawingCtx.RemoveClipRect();
 				t.visibleRange = tmpVisibleRange;
 			};
 
 
             if(printPagesData.titleRowRange || printPagesData.titleColRange) {
-				if(printPagesData.titleRowRange && printPagesData.titleColRange){
-					clipLeft = printPagesData.pageClipRectLeft;
-					clipTop =  printPagesData.pageClipRectTop;
-					clipWidth = printPagesData.titleWidth + this.cellsLeft;
-					clipHeight = printPagesData.titleHeight + this.cellsTop;
+				var cellsLeft = printPagesData.pageHeadings ? this.cellsLeft : 0;
+				var cellsTop = printPagesData.pageHeadings ? this.cellsTop : 0;
+            	if(printPagesData.titleRowRange && printPagesData.titleColRange){
+					clipLeft = printPagesData.pageClipRectLeft + cellsLeft;
+					clipTop =  printPagesData.pageClipRectTop + cellsTop;
+					clipWidth = printPagesData.titleWidth + cellsLeft;
+					clipHeight = printPagesData.titleHeight + cellsTop;
 					doDraw(new asc_Range(printPagesData.titleColRange.c1, printPagesData.titleRowRange.r1, printPagesData.titleColRange.c2, printPagesData.titleRowRange.r2), 0, 0);
 				}
 				if(printPagesData.titleRowRange){
-					clipLeft = printPagesData.pageClipRectLeft + printPagesData.titleWidth + (printPagesData.titleWidth ? this.cellsLeft : 0);
-					clipTop =  printPagesData.pageClipRectTop;
-					clipWidth = printPagesData.pageClipRectWidth;
-					clipHeight = printPagesData.titleHeight + this.cellsTop;
+					clipLeft = printPagesData.pageClipRectLeft + printPagesData.titleWidth + (printPagesData.titleWidth ? cellsLeft : 0);
+					clipTop =  printPagesData.pageClipRectTop + cellsTop;
+					clipWidth = printPagesData.pageClipRectWidth - (printPagesData.titleWidth ? cellsLeft : 0);
+					clipHeight = printPagesData.titleHeight + cellsTop;
 					doDraw(printPagesData.titleRowRange, printPagesData.titleWidth, 0);
 				}
 				if(printPagesData.titleColRange){
-					clipLeft = printPagesData.pageClipRectLeft;
-					clipTop =  printPagesData.pageClipRectTop + printPagesData.titleHeight + (printPagesData.titleHeight ? this.cellsTop : 0);
-					clipWidth = printPagesData.titleWidth + this.cellsLeft;
-					clipHeight = printPagesData.pageClipRectHeight;
+					clipLeft = printPagesData.pageClipRectLeft + cellsLeft;
+					clipTop =  printPagesData.pageClipRectTop + printPagesData.titleHeight + (printPagesData.titleHeight ? cellsTop : 0);
+					clipWidth = printPagesData.titleWidth + cellsLeft;
+					clipHeight = printPagesData.pageClipRectHeight - (printPagesData.titleHeight ? cellsTop : 0);
 					doDraw(printPagesData.titleColRange, 0, printPagesData.titleHeight);
 				}
 
-				clipLeft = printPagesData.pageClipRectLeft + printPagesData.titleWidth + (printPagesData.titleWidth ? this.cellsLeft : 0);
-				clipTop =  printPagesData.pageClipRectTop + printPagesData.titleHeight + (printPagesData.titleHeight ? this.cellsTop : 0);
-				clipWidth = printPagesData.pageClipRectWidth - (printPagesData.titleWidth ? this.cellsLeft : 0);
-				clipHeight = printPagesData.pageClipRectHeight - (printPagesData.titleHeight ? this.cellsTop : 0);
+				clipLeft = printPagesData.pageClipRectLeft + printPagesData.titleWidth + (printPagesData.titleWidth ? cellsLeft : 0);
+				clipTop =  printPagesData.pageClipRectTop + printPagesData.titleHeight + (printPagesData.titleHeight ? cellsTop : 0);
+				clipWidth = printPagesData.pageClipRectWidth - (printPagesData.titleWidth ? cellsLeft : 0);
+				clipHeight = printPagesData.pageClipRectHeight - (printPagesData.titleHeight ? cellsTop : 0);
 				doDraw(printPagesData.pageRange, printPagesData.titleWidth, printPagesData.titleHeight);
 			} else {
 				clipLeft = printPagesData.pageClipRectLeft;
