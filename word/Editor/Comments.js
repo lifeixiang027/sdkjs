@@ -523,6 +523,13 @@ CComment.prototype.IsGlobalComment = function()
 {
 	return (!this.Data || null === this.Data.GetQuoteText());
 };
+CComment.prototype.GetDurableId = function()
+{
+	if (this.Data)
+		return this.Data.m_nDurableId;
+
+	return -1;
+};
 
 var comments_NoComment        = 0;
 var comments_NonActiveComment = 1;
@@ -698,6 +705,17 @@ CComments.prototype.SetUseSolved = function(isUse)
 CComments.prototype.IsUseSolved = function()
 {
 	return this.m_bUseSolved;
+};
+CComments.prototype.GetCommentIdByGuid = function(sGuid)
+{
+	var nDurableId = parseInt(sGuid, 16);
+	for (var sId in this.m_aComments)
+	{
+		if (this.m_aComments[sId].GetDurableId() === nDurableId)
+			return sId;
+	}
+
+	return "";
 };
 
 /**

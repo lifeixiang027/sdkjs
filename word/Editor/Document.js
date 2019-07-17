@@ -2793,8 +2793,8 @@ CDocument.prototype.private_Recalculate = function(_RecalcData, isForceStrictRec
 		var ChangedElement = this.Content[ChangeIndex];
 		if (ChangedElement.GetPagesCount() > 0 && -1 !== ChangedElement.GetIndex() && ChangedElement.Get_StartPage_Absolute() < RecalcData.Inline.PageNum - 1)
 		{
-			StartIndex = ChangeIndex;
-			StartPage  = RecalcData.Inline.PageNum - 1;
+			StartPage  = ChangedElement.GetStartPageForRecalculate(RecalcData.Inline.PageNum - 1);
+			StartIndex = this.Pages[StartPage].Pos;
 		}
 		else
 		{
@@ -18659,9 +18659,10 @@ CDocument.prototype.SelectTrackMove = function(sMoveId, isFrom, isSetCurrentChan
 			var oStartDocPos = private_GetDocumentPosition(oStart);
 			var oEndDocPos   = private_GetDocumentPosition(oEnd);
 
-			if (oStartDocPos && oEndDocPos)
+			if (oStartDocPos && oEndDocPos && oStartDocPos[0].Class === oEndDocPos[0].Class)
 			{
-				this.SetSelectionByContentPositions(oStartDocPos, oEndDocPos);
+				var oDocContent = oStartDocPos[0].Class;
+				oDocContent.SetSelectionByContentPositions(oStartDocPos, oEndDocPos);
 
 				if (isSetCurrentChange)
 				{
