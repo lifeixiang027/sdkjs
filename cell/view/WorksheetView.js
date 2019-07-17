@@ -2269,10 +2269,10 @@
 			//draw header/footer
 			this._drawHeaderFooter(drawingCtx, printPagesData, indexPrintPage, countPrintPages);
 
-            drawingCtx.AddClipRect(printPagesData.pageClipRectLeft, printPagesData.pageClipRectTop,
-              printPagesData.pageClipRectWidth + printPagesData.titleWidth, printPagesData.pageClipRectHeight + printPagesData.titleHeight);
-
+            var clipLeft, clipTop, clipWidth, clipHeight;
             var doDraw = function(range, titleWidth, titleHeight) {
+				drawingCtx.AddClipRect(clipLeft, clipTop, clipWidth, clipHeight);
+
 				var offsetCols = printPagesData.startOffsetPx;
 				var offsetX = t._getColLeft(range.c1) - printPagesData.leftFieldInPx + offsetCols - titleWidth;
 				var offsetY = t._getRowTop(range.r1) - printPagesData.topFieldInPx - titleHeight;
@@ -2300,7 +2300,7 @@
 				var oldRange = printPagesData.pageRange;
 				printPagesData.pageRange = range;
 				var drawingPrintOptions = {
-					ctx: drawingCtx, printPagesData: printPagesData
+					ctx: drawingCtx, printPagesData: printPagesData, titleWidth: titleWidth, titleHeight: titleHeight
 				};
 
 				t.objectRender.showDrawingObjectsEx(false, null, drawingPrintOptions);
@@ -2314,23 +2314,47 @@
 						printPagesData.leftFieldInPx - t.cellsLeft, offsetY);
 				}
 
+				drawingCtx.RemoveClipRect();
 				t.visibleRange = tmpVisibleRange;
 			};
 
-			if(printPagesData.titleRowRange && printPagesData.titleColRange){
-				doDraw(new asc_Range(printPagesData.titleColRange.c1, printPagesData.titleRowRange.r1, printPagesData.titleColRange.c2, printPagesData.titleRowRange.r2), 0, 0);
-			}
-			if(printPagesData.titleRowRange){
-				doDraw(printPagesData.titleRowRange, printPagesData.titleWidth, 0);
-			}
-			if(printPagesData.titleColRange){
-				doDraw(printPagesData.titleColRange, 0, printPagesData.titleHeight);
+
+            if(printPagesData.titleRowRange || printPagesData.titleColRange) {
+				if(printPagesData.titleRowRange && printPagesData.titleColRange){
+					clipLeft = printPagesData.pageClipRectLeft;
+					clipTop =  printPagesData.pageClipRectTop;
+					clipWidth = printPagesData.titleWidth + this.cellsLeft;
+					clipHeight = printPagesData.titleHeight + this.cellsTop;
+					doDraw(new asc_Range(printPagesData.titleColRange.c1, printPagesData.titleRowRange.r1, printPagesData.titleColRange.c2, printPagesData.titleRowRange.r2), 0, 0);
+				}
+				if(printPagesData.titleRowRange){
+					clipLeft = printPagesData.pageClipRectLeft + printPagesData.titleWidth + (printPagesData.titleWidth ? this.cellsLeft : 0);
+					clipTop =  printPagesData.pageClipRectTop;
+					clipWidth = printPagesData.pageClipRectWidth;
+					clipHeight = printPagesData.titleHeight + this.cellsTop;
+					doDraw(printPagesData.titleRowRange, printPagesData.titleWidth, 0);
+				}
+				if(printPagesData.titleColRange){
+					clipLeft = printPagesData.pageClipRectLeft;
+					clipTop =  printPagesData.pageClipRectTop + printPagesData.titleHeight + (printPagesData.titleHeight ? this.cellsTop : 0);
+					clipWidth = printPagesData.titleWidth + this.cellsLeft;
+					clipHeight = printPagesData.pageClipRectHeight;
+					doDraw(printPagesData.titleColRange, 0, printPagesData.titleHeight);
+				}
+
+				clipLeft = printPagesData.pageClipRectLeft + printPagesData.titleWidth + (printPagesData.titleWidth ? this.cellsLeft : 0);
+				clipTop =  printPagesData.pageClipRectTop + printPagesData.titleHeight + (printPagesData.titleHeight ? this.cellsTop : 0);
+				clipWidth = printPagesData.pageClipRectWidth - (printPagesData.titleWidth ? this.cellsLeft : 0);
+				clipHeight = printPagesData.pageClipRectHeight - (printPagesData.titleHeight ? this.cellsTop : 0);
+				doDraw(printPagesData.pageRange, printPagesData.titleWidth, printPagesData.titleHeight);
+			} else {
+				clipLeft = printPagesData.pageClipRectLeft;
+				clipTop =  printPagesData.pageClipRectTop;
+				clipWidth = printPagesData.pageClipRectWidth;
+				clipHeight = printPagesData.pageClipRectHeight;
+            	doDraw(printPagesData.pageRange, 0, 0);
 			}
 
-
-			doDraw(printPagesData.pageRange, printPagesData.titleWidth, printPagesData.titleHeight);
-
-            drawingCtx.RemoveClipRect();
             drawingCtx.EndPage();
         }
     };
