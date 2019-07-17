@@ -435,6 +435,7 @@
         this.arrRowGroups = null;
         this.arrColGroups = null;
         this.clickedGroupButton = null;
+        this.ignoreGroupSize = null;//для печати не нужно учитывать отступы групп
 
         this._init();
 
@@ -1452,7 +1453,7 @@
             this.headersWidth = Asc.round(this.model.modelColWidthToColWidth(nCharCount) * this.getZoom());
         }
         //todo приравниваю headersLeft и groupWidth. Необходимо пересмотреть!
-        this.headersLeft = this.groupWidth;
+        this.headersLeft = this.ignoreGroupSize ? 0 : this.groupWidth;
         this.cellsLeft = this.headersLeft + this.headersWidth;
         return old !== this.cellsLeft;
     };
@@ -1463,7 +1464,7 @@
 			Asc.round(this.headersHeightByFont * this.getZoom());
 
 		//todo приравниваю headersTop и groupHeight. Необходимо пересмотреть!
-		this.headersTop = this.groupHeight;
+		this.headersTop = this.ignoreGroupSize ? 0 : this.groupHeight;
         this.cellsTop = this.headersTop + this.headersHeight;
     };
 
@@ -2197,8 +2198,11 @@
 		};
 
 		//TODO для печати не нужно учитывать размер группы
-		this.cellsTop -= this.groupHeight;
-		this.cellsLeft -= this.groupWidth;
+		if(this.groupWidth || this.groupHeight) {
+			this.ignoreGroupSize = true;
+			this._calcHeaderColumnWidth();
+			this._calcHeaderRowHeight();
+		}
 
 		var printAreaRanges = !printOnlySelection && printArea ? getPrintAreaRanges() : null;
 		if (printOnlySelection) {
@@ -2255,8 +2259,11 @@
 			this._calcPagesPrint(range, pageOptions, indexWorksheet, arrPages);
 		}
 
-		this.cellsTop += this.groupHeight;
-		this.cellsLeft += this.groupWidth;
+		if(this.groupWidth || this.groupHeight) {
+			this.ignoreGroupSize = false;
+			this._calcHeaderColumnWidth();
+			this._calcHeaderRowHeight();
+		}
 	};
 
     WorksheetView.prototype.drawForPrint = function(drawingCtx, printPagesData, indexPrintPage, countPrintPages) {
@@ -2274,8 +2281,11 @@
             drawingCtx.BeginPage(printPagesData.pageWidth, printPagesData.pageHeight);
 
 			//TODO для печати не нужно учитывать размер группы
-			this.cellsTop -= this.groupHeight;
-			this.cellsLeft -= this.groupWidth;
+			if(this.groupWidth || this.groupHeight) {
+				this.ignoreGroupSize = true;
+				this._calcHeaderColumnWidth();
+				this._calcHeaderRowHeight();
+			}
 
 			//draw header/footer
 			this._drawHeaderFooter(drawingCtx, printPagesData, indexPrintPage, countPrintPages);
@@ -2369,8 +2379,11 @@
             	doDraw(printPagesData.pageRange, 0, 0);
 			}
 
-			this.cellsTop += this.groupHeight;
-			this.cellsLeft += this.groupWidth;
+			if(this.groupWidth || this.groupHeight) {
+				this.ignoreGroupSize = false;
+				this._calcHeaderColumnWidth();
+				this._calcHeaderRowHeight();
+			}
 
             drawingCtx.EndPage();
         }
