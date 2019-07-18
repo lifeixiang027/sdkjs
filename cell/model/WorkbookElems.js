@@ -5910,6 +5910,20 @@ function RangeDataManagerElem(bbox, data)
 		this.SortState.SortConditions[0] = new AscCommonExcel.SortCondition();
 	};
 
+	//при открытии в случае если не валидный Ref приходит в объекте AutoFilter
+	//получаем этот Ref из табличного
+	TablePart.prototype.generateAutoFilterRef = function () {
+		var res = null;
+		if(this.Ref) {
+			if(this.isTotalsRow()) {
+				res = new Asc.Range(this.Ref.c1, this.Ref.r1, this.Ref.c2, this.Ref.r2 - 1);
+			} else {
+				res = new Asc.Range(this.Ref.c1, this.Ref.r1, this.Ref.c2, this.Ref.r2);
+			}
+		}
+		return res;
+	};
+
 	/** @constructor */
 	function AutoFilter() {
 		this.Ref = null;
@@ -6334,6 +6348,19 @@ function RangeDataManagerElem(bbox, data)
 		this.TotalsRowFormula = null;
 		this.dxf = null;
 		this.CalculatedColumnFormula = null;
+
+		//формируется на сохранения
+		//this.queryTableFieldId = null;
+		this.uniqueName = null;
+
+		//queryTableField
+		this.clipped = null;
+		this.dataBound = null;//default true
+		this.fillFormulas = null;
+		this.queryName = null;
+		this.rowNumbers = null;
+		//формируется на сохранения
+		//this.tableColumnId = null;
 	}
 
 	TableColumn.prototype.onFormulaEvent = function (type, eventData) {

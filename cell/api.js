@@ -1206,6 +1206,16 @@ var editor;
     this.collaborativeEditing.sendChanges();
   };
 
+  // GoTo
+  spreadsheet_api.prototype.goTo = function(action) {
+    var comment = this.wbModel.getComment(action && action['data']);
+    if (comment) {
+      this.asc_showWorksheet(this.wbModel.getWorksheetById(comment.wsId).getIndex());
+      this.asc_selectComment(comment.nId);
+      this.asc_showComment(comment.nId);
+    }
+  };
+
   /////////////////////////////////////////////////////////////////////////
   ///////////////////CoAuthoring and Chat api//////////////////////////////
   /////////////////////////////////////////////////////////////////////////
@@ -1730,6 +1740,9 @@ var editor;
 		this._applyPreOpenLocks();
 		// Применяем пришедшие при открытии изменения
 		this._applyFirstLoadChanges();
+		// Go to if sent options
+		var options = this.DocInfo && this.DocInfo.asc_getOptions();
+		this.goTo(options && options["action"]);
 
 		// Меняем тип состояния (на никакое)
 		this.advancedOptionsAction = c_oAscAdvancedOptionsAction.None;
