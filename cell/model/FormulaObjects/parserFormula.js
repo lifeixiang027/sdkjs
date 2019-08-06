@@ -383,7 +383,9 @@ function (window, undefined) {
 						tokens.push(new ParsedThing(token, TOK_TYPE_OPERAND, null, offset, token.length));
 						token = "";
 					}
-					tokens.push(tokenStack.pop());
+					if(tokenStack.length) {
+						tokens.push(tokenStack.pop());
+					}
 					break;
 				}
 				default:
@@ -6351,7 +6353,7 @@ function parserFormula( formula, parent, _ws ) {
 
 		for (i = 0; i < this.outStack.length; i++) {
 			elem = this.outStack[i];
-			if (elem.type == cElementType.table && elem.tableName == defName.name) {
+			if (elem.type == cElementType.table && elem.tableName.toLowerCase() == defName.name.toLowerCase()) {
 				if(bConvertTableFormulaToRef)
 				{
 					this.outStack[i] = this.outStack[i].toRef(bbox, bConvertTableFormulaToRef);
@@ -6367,7 +6369,7 @@ function parserFormula( formula, parent, _ws ) {
 		var i, elem;
 		for (i = 0; i < this.outStack.length; i++) {
 			elem = this.outStack[i];
-			if (elem.type == cElementType.table && elem.tableName == tableName) {
+			if (elem.type == cElementType.table && tableName && elem.tableName.toLowerCase() == tableName.toLowerCase()) {
 				if (elem.removeTableColumn(deleted)) {
 					this.outStack[i] = new cError(cErrorType.bad_reference);
 				}
@@ -6378,7 +6380,7 @@ function parserFormula( formula, parent, _ws ) {
 		var i, elem;
 		for (i = 0; i < this.outStack.length; i++) {
 			elem = this.outStack[i];
-			if (elem.type == cElementType.table && elem.tableName == tableName) {
+			if (elem.type == cElementType.table && tableName && elem.tableName.toLowerCase() == tableName.toLowerCase()) {
 				if (!elem.renameTableColumn()) {
 					this.outStack[i] = new cError(cErrorType.bad_reference);
 				}
@@ -6389,7 +6391,7 @@ function parserFormula( formula, parent, _ws ) {
 		var i, elem;
 		for (i = 0; i < this.outStack.length; i++) {
 			elem = this.outStack[i];
-			if (elem.type == cElementType.table && elem.tableName == tableName) {
+			if (elem.type == cElementType.table && tableName && elem.tableName.toLowerCase() == tableName.toLowerCase()) {
 				elem.changeTableRef();
 			}
 		}
