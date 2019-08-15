@@ -6154,51 +6154,7 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
             }
             CurPos--;
             continue;
-        } else if (Elem.value === 0x2588 || Elem.value === 0x24B8) { //eq array
-            if (Param.Type == MATH_FRACTION) {
-                CurPos--;
-                continue;
-            }
-            if (Param.Type !== null) {
-                var fSkip = false;
-                var tmp = null;
-                if (Param.Type === MATH_DEGREESubSup) {
-                    tmp = [Elements.splice(ElPos[1]+1,End-ElPos[1]),Elements.splice(ElPos[0]+1,ElPos[1]-ElPos[0]),Elements.splice(CurPos,ElPos[0]-CurPos+1)];
-                    fSkip = true;
-                } else if (Param.Type === MATH_DEGREE) {
-                    tmp =  [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos,ElPos[0]-CurPos+1)];
-                    fSkip = true;
-                } else {
-                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
-                }
-                this.CorrectEquation(Param,tmp);
-                if (fSkip) {
-                    End = CurPos;
-                    Elements.splice(End, 0, tmp[0]);
-                    CurPos--;
-                    Param.Type = null;
-                    Param.Props = {};
-                    Param.Kind = null;
-                    continue;
-                }
-                End = CurPos + 1;
-                Elements.splice(End, 0, tmp[0]);
-            }
-            if (!Brackets[0]) {
-                tmp = [Elements.splice(CurPos+1,(Param.Bracket[1][0]-CurPos)),Elements.splice(CurPos,1)];
-                Param.Type = MATH_EQ_ARRAY;
-                Param.Bracket[0][0] -= (CurPos + 1);
-                Param.Bracket[1][0] -= (CurPos + 1);
-                this.CorrectEquation(Param,tmp);
-                End = CurPos;
-                Elements.splice(End,0,tmp[0]);  
-                Param.Type = null;
-                Param.Props = {};
-                Param.Kind = null;
-            }
-            CurPos--;
-            continue;
-        } else if (Elem.value === 0x25A0 || Elem.value === 0x24A8 || Elem.value === 0x24A9) { //matrix
+        } else if (Elem.value === 0x2588 || Elem.value === 0x24B8 || Elem.value === 0x25A0 || Elem.value === 0x24A8 || Elem.value === 0x24A9) { //eq array and matrix
             if (Param.Type == MATH_FRACTION) {
                 CurPos--;
                 continue;
@@ -6532,120 +6488,119 @@ CMathAutoCorrectEngine.prototype.CorrectEquation = function(Param, Elements) {
             Param.Bracket[0].splice(0,1);
             Param.Bracket[1].splice(0,1);
             break;
-        case MATH_EQ_ARRAY:
-            var symbol = Elements.splice(1,1)[0][0];
-            var Del = null;
-            if (symbol.value == 0x24B8) {
-                var props = new CMathDelimiterPr();
-                props.begChr = 123;
-                props.endChr = -1;
-                props.column = 1;
-                Del = new CDelimiter(props);
-            }
-            var arrContent = [];
-            var row = 0;
-            arrContent[row] = [];
-            if (Param.Bracket[0].length) {
-                for (var i = Param.Bracket[0][0]+1; i < Param.Bracket[1][0]; i++) {
-                    var oCurElem = Elements[0][i];
-                    if (oCurElem.value == 0x40) {  // @
-                        row++;
-                        arrContent[row] = [];
-                    } else if (oCurElem.IsText()) {
-                        arrContent[row].push(oCurElem);
-                    } else {
-                        arrContent[row].push(oCurElem);
-                    }
-                }
-            }
-            if (row < 1 && Del) {
-                Elements.splice(0,0, symbol);  
-                Param.Bracket[0].splice(0,1);
-                Param.Bracket[1].splice(0,1);
-                break;
-            }
-            var props = new CMathEqArrPr();
-            props.row = row + 1;
-            props.ctrPrp = this.TextPr.Copy();
-            var EqArray = new CEqArray(props);
-            for (var i = 0; i < arrContent.length; i++) {
-                var El = EqArray.getElement(i);
-                //getElementMathContent
-                this.PackTextToContent(El, arrContent[i], false);
-            }
-            if (Del) {
-                var oDelElem = Del.getBase(0);
-                oDelElem.addElementToContent(EqArray);
-                Elements.splice(0,Elements.length, Del);
-            } else {
-                Elements.splice(0,Elements.length, EqArray);
-            }
-            Param.Bracket[0].splice(0,1);
-            Param.Bracket[1].splice(0,1);
-            break;
         case MATH_MATRIX:
+            var bEqArray = false;
+            // var symbols = {0x24B8 : 1, 0x2588 : 1, 0x25A0 : 1, 0x24A8 : 1, 0x24A9 : 1};
             var symbol = Elements.splice(1,1)[0][0];
-            var Del = null;
-            if (symbol.value == 0x24A8) {
-                var props = new CMathDelimiterPr();
-                props.column = 1;
-                Del = new CDelimiter(props);
-            } else if (symbol.value == 0x24A9) {
-                var props = new CMathDelimiterPr();
-                props.column = 1;
-                props.begChr = 0x2016;
-                props.endChr = 0x2016;
-                Del = new CDelimiter(props);
+            if (symbol.value == 0x24B8 || symbol.value == 0x2588) {
+                bEqArray = true;
             }
-            var arrContent = [];
-            var col = 0;
-            var row = 0;
-            var mcs = [];
-            arrContent[row] = [];
-            arrContent[row][col] = [];
-            mcs[0] = {count: 1, mcJc: 0};
-            if (Param.Bracket[0].length) {
-                for (var i = Param.Bracket[0][0]+1; i < Param.Bracket[1][0]; i++) {
-                    var oCurElem = Elements[0][i];
-                    if (oCurElem.value == 0x26) {  // &
-                        col++;
-                        if (col+1 > mcs[0].count) {
-                            mcs[0] = {count: col+1, mcJc: 0};
+            var Del = null;
+            switch (symbol.value) {
+                case 0x24B8:
+                    var props = new CMathDelimiterPr();
+                    props.begChr = 123;
+                    props.endChr = -1;
+                    props.column = 1;
+                    Del = new CDelimiter(props);
+                    break;
+                case 0x24A8:
+                    var props = new CMathDelimiterPr();
+                    props.column = 1;
+                    Del = new CDelimiter(props);
+                    break;
+                case 0x24A9:
+                    var props = new CMathDelimiterPr();
+                    props.column = 1;
+                    props.begChr = 0x2016;
+                    props.endChr = 0x2016;
+                    Del = new CDelimiter(props);
+                    break;
+            }
+            var Element = null;
+            if (bEqArray) {
+                var arrContent = [];
+                var row = 0;
+                arrContent[row] = [];
+                if (Param.Bracket[0].length) {
+                    for (var i = Param.Bracket[0][0]+1; i < Param.Bracket[1][0]; i++) {
+                        var oCurElem = Elements[0][i];
+                        if (oCurElem.value == 0x40) {  // @
+                            row++;
+                            arrContent[row] = [];
+                        } else if (oCurElem.IsText()) {
+                            arrContent[row].push(oCurElem);
+                        } else {
+                            arrContent[row].push(oCurElem);
                         }
-                        arrContent[row][col] = [];
-                    } else if (oCurElem.value == 0x40) { // @
-                        row++;
-                        col = 0;
-                        arrContent[row] = [];
-                        arrContent[row][col] = [];
-                    } else {
-                        arrContent[row][col].push(oCurElem);
                     }
                 }
-            }
-            if (row < 1) {
-                Elements.splice(0,0, symbol);  
-                Param.Bracket[0].splice(0,1);
-                Param.Bracket[1].splice(0,1);
-                break;
-            }
-            var props = new CMathMatrixPr();
-            props.row = row + 1;
-            props.mcs = mcs;
-            props.ctrPrp = this.TextPr.Copy();
-            var Matrix = new CMathMatrix(props);
-            for (var i = 0; i < arrContent.length; i++) {
-                for (var j = 0; j < arrContent[i].length; j++) {
-                    var El = Matrix.getElement(i,j);
-                    this.PackTextToContent(El, arrContent[i][j], false)
+                if (row < 1 && Del) {
+                    Elements.splice(0,0, symbol);  
+                    Param.Bracket[0].splice(0,1);
+                    Param.Bracket[1].splice(0,1);
+                    break;
+                }
+                var props = new CMathEqArrPr();
+                props.row = row + 1;
+                props.ctrPrp = this.TextPr.Copy();
+                Element = new CEqArray(props);
+                for (var i = 0; i < arrContent.length; i++) {
+                    var El = Element.getElement(i);
+                    //getElementMathContent
+                    this.PackTextToContent(El, arrContent[i], false);
+                }
+            } else {
+                var arrContent = [];
+                var col = 0;
+                var row = 0;
+                var mcs = [];
+                arrContent[row] = [];
+                arrContent[row][col] = [];
+                mcs[0] = {count: 1, mcJc: 0};
+                if (Param.Bracket[0].length) {
+                    for (var i = Param.Bracket[0][0]+1; i < Param.Bracket[1][0]; i++) {
+                        var oCurElem = Elements[0][i];
+                        if (oCurElem.value == 0x26) {  // &
+                            col++;
+                            if (col+1 > mcs[0].count) {
+                                mcs[0] = {count: col+1, mcJc: 0};
+                            }
+                            arrContent[row][col] = [];
+                        } else if (oCurElem.value == 0x40) { // @
+                            row++;
+                            col = 0;
+                            arrContent[row] = [];
+                            arrContent[row][col] = [];
+                        } else {
+                            arrContent[row][col].push(oCurElem);
+                        }
+                    }
+                }
+                if ((row < 1 && Del && bEqArray) || (row < 1 && !bEqArray)) {
+                    Elements.splice(0,0, symbol);  
+                    Param.Bracket[0].splice(0,1);
+                    Param.Bracket[1].splice(0,1);
+                    break;
+                }
+                var props = new CMathMatrixPr();
+                props.row = row + 1;
+                props.mcs = mcs;
+                props.ctrPrp = this.TextPr.Copy();
+                Element = new CMathMatrix(props);
+                for (var i = 0; i < arrContent.length; i++) {
+                    for (var j = 0; j < arrContent[i].length; j++) {
+                        var El = Element.getElement(i,j);
+                        this.PackTextToContent(El, arrContent[i][j], false)
+                    }
                 }
             }
             if (Del) {
                 var oDelElem = Del.getBase(0);
-                oDelElem.addElementToContent(Matrix);
+                oDelElem.addElementToContent(Element);
                 Elements.splice(0,Elements.length, Del);
             } else {
-                Elements.splice(0,Elements.length, Matrix);
+                Elements.splice(0,Elements.length, Element);
             }
             Param.Bracket[0].splice(0,1);
             Param.Bracket[1].splice(0,1);
@@ -7422,167 +7377,149 @@ CMathAutoCorrectEngine.prototype.AutoCorrectBar = function(buff) {
     this.ReplaceContent.unshift(oBar);
 };
 
-CMathAutoCorrectEngine.prototype.AutoCorrectEqArray = function(buff) {
-    buff = buff[0];
-    var RemoveCount = null;
-    var symbol = null;
-    for (var i = 0; i < buff.length; i++) {
-        if (!symbol && (buff[i].value == 0x24B8 || buff[i].value == 0x2588)) {
-            symbol = i;
-            if (buff[i+1] && buff[i+1].value != 0x28) {
-                break;
-            }
-        } else if (symbol !== null) {
-            if (buff[i].value == 0x29) {
-                RemoveCount = i;
-                break;
-            }
-        }
-    }
-    buff.splice(0,symbol);
-    if (!RemoveCount) {
-        RemoveCount = 1;
-    } else {
-        RemoveCount -= symbol;
-    }
-    symbol = buff.shift().value;
-    var Del = null;
-    if (symbol == 0x24B8) {
-        var props = new CMathDelimiterPr();
-        props.begChr = 123;
-        props.endChr = -1;
-        props.column = 1;
-        Del = new CDelimiter(props);
-    }
-    var arrContent = [];
-    var row = 0;
-    arrContent[row] = [];
-    if (RemoveCount > 1) {
-        for (var i = 1; i < RemoveCount - 1; i++) {
-            var oCurElem = buff[i];
-            if (oCurElem.value == 0x40) {  // @
-                row++;
-                arrContent[row] = [];
-            } else {
-                arrContent[row].push(oCurElem);
-            }
-        }
-        RemoveCount++;
-    }
-    if (row < 1 && Del) {
-        return;
-    }
-    var props = new CMathEqArrPr();
-    props.row = row + 1;
-    props.ctrPrp = this.TextPr.Copy();
-    var EqArray = new CEqArray(props);
-    for (var i = 0; i < arrContent.length; i++) {
-        var El = EqArray.getElement(i);
-        //getElementMathContent
-        this.PackTextToContent(El, arrContent[i], false);
-    }
-    var Start = this.Elements.length - buff.length - 2; // - this.Shift;
-    this.Remove.push({Count:RemoveCount, Start:Start});
-    if (Del) {
-        var oDelElem = Del.getBase(0);
-        oDelElem.addElementToContent(EqArray);
-        this.ReplaceContent.unshift(Del);
-    } else {
-        this.ReplaceContent.unshift(EqArray);
-    }
-    if (this.ActionElement.value == 0x20) {
-        this.Remove.push({Count:1, Start:(this.Elements.length-1)});
-    }
-};
-
 CMathAutoCorrectEngine.prototype.AutoCorrectMatrix = function(buff) {
-    buff = buff[0];
-    var RemoveCount = null;
-    var symbol = null;
-    for (var i = 0; i < buff.length; i++) {
-        if (!symbol && (buff[i].value == 0x25A0 || buff[i].value == 0x24A8 || buff[i].value == 0x24A9)) {
-            symbol = i;
-            if (buff[i+1] && buff[i+1].value != 0x28) {
-                break;
-            }
-        } else if (symbol !== null) {
-            if (buff[i].value == 0x29) {
-                RemoveCount = i;
-                break;
-            }
-        }
-    }
-    buff.splice(0,symbol);
-    if (!RemoveCount) {
-        RemoveCount = 1;
-    } else {
-        RemoveCount -= symbol;
-    }
-    symbol = buff.shift().value;
-    var Del = null;
-    if (symbol == 0x24A8) {
-        var props = new CMathDelimiterPr();
-        props.column = 1;
-        Del = new CDelimiter(props);
-    } else if (symbol == 0x24A9) {
-        var props = new CMathDelimiterPr();
-        props.column = 1;
-        props.begChr = 0x2016;
-        props.endChr = 0x2016;
-        Del = new CDelimiter(props);
-    }
-    var arrContent = [];
-    var col = 0;
-    var row = 0;
-    var mcs = [];
-    arrContent[row] = [];
-    arrContent[row][col] = [];
-    mcs[0] = {count: 1, mcJc: 0};
-    if (RemoveCount > 1) {
-        for (var i = 1; i < RemoveCount - 1; i++) {
-            var oCurElem = buff[i];
-            if (oCurElem.value == 0x26) {  // &
-                col++;
-                if (col+1 > mcs[0].count) {
-                    mcs[0] = {count: col+1, mcJc: 0};
+    var Shift = 0;
+    var symbols = {0x24B8 : 1, 0x2588 : 1, 0x25A0 : 1, 0x24A8 : 1, 0x24A9 : 1};
+    for (var k = 0; k < buff.length - 1; k++) 
+    {
+        var bEqArray = false;
+        var buffer = buff[k];
+        var RemoveCount = null;
+        var symbol = null;
+        for (var i = 0; i < buffer.length; i++) {
+            if (!symbol && (symbols[buffer[i].value])) {
+                symbol = i;
+                if (buffer[i+1] && buffer[i+1].value != 0x28) {
+                    break;
                 }
-                arrContent[row][col] = [];
-            } else if (oCurElem.value == 0x40) { // @
-                row++;
-                col = 0;
-                arrContent[row] = [];
-                arrContent[row][col] = [];
-            } else {
-                arrContent[row][col].push(oCurElem);
+            } else if (symbol !== null) {
+                if (buffer[i].value == 0x29) {
+                    RemoveCount = i;
+                    break;
+                }
             }
         }
-        RemoveCount++;
-    }
-    if (row < 1) {
-        return;
-    }
-    var props = new CMathMatrixPr();
-    props.row = row + 1;
-    props.mcs = mcs;
-    props.ctrPrp = this.TextPr.Copy();
-    var Matrix = new CMathMatrix(props);
-    for (var i = 0; i < arrContent.length; i++) {
-        for (var j = 0; j < arrContent[i].length; j++) {
-            var El = Matrix.getElement(i,j);
-            this.PackTextToContent(El, arrContent[i][j], false)
+        // buffer.splice(0,symbol);
+        if (!RemoveCount) {
+            RemoveCount = 1;
+        } else {
+            RemoveCount -= symbol;
         }
-    }
-    var Start = this.Elements.length - buff.length - 2;
-    this.Remove.push({Count:RemoveCount, Start:Start});
-    if (Del) {
-        var oDelElem = Del.getBase(0);
-        oDelElem.addElementToContent(Matrix);
-        this.ReplaceContent.unshift(Del);
-    } else {
-        this.ReplaceContent.unshift(Matrix);
-    }
-    if (this.ActionElement.value == 0x20) {
-        this.Remove.push({Count:1, Start:(this.Elements.length-1)});
+        symbol = buffer.shift().value;
+        if (symbol == 0x24B8 || symbol == 0x2588) {
+            bEqArray = true;
+        }
+        var Del = null;
+        switch (symbol) {
+            case 0x24B8:
+                var props = new CMathDelimiterPr();
+                props.begChr = 123;
+                props.endChr = -1;
+                props.column = 1;
+                Del = new CDelimiter(props);
+                break;
+            case 0x24A8:
+                var props = new CMathDelimiterPr();
+                props.column = 1;
+                Del = new CDelimiter(props);
+                break;
+            case 0x24A9:
+                var props = new CMathDelimiterPr();
+                props.column = 1;
+                props.begChr = 0x2016;
+                props.endChr = 0x2016;
+                Del = new CDelimiter(props);
+                break;
+        }
+        var Element = null;
+        if (bEqArray) {
+            var arrContent = [];
+            var row = 0;
+            arrContent[row] = [];
+            if (RemoveCount > 1) {
+                for (var i = 1; i < RemoveCount - 1; i++) {
+                    var oCurElem = buffer[i];
+                    if (oCurElem.value == 0x40) {  // @
+                        row++;
+                        arrContent[row] = [];
+                    } else {
+                        arrContent[row].push(oCurElem);
+                    }
+                }
+                RemoveCount++;
+            }
+            if ((row < 1 && Del && bEqArray) || (row < 1 && !bEqArray)) {
+                return;
+            }
+            var props = new CMathEqArrPr();
+            props.row = row + 1;
+            props.ctrPrp = this.TextPr.Copy();
+            Element = new CEqArray(props);
+            for (var i = 0; i < arrContent.length; i++) {
+                var El = Element.getElement(i);
+                //getElementMathContent
+                this.PackTextToContent(El, arrContent[i], false);
+            }
+        } else {
+            var arrContent = [];
+            var col = 0;
+            var row = 0;
+            var mcs = [];
+            arrContent[row] = [];
+            arrContent[row][col] = [];
+            mcs[0] = {count: 1, mcJc: 0};
+            if (RemoveCount > 1) {
+                for (var i = 1; i < RemoveCount - 1; i++) {
+                    var oCurElem = buffer[i];
+                    if (oCurElem.value == 0x26) {  // &
+                        col++;
+                        if (col+1 > mcs[0].count) {
+                            mcs[0] = {count: col+1, mcJc: 0};
+                        }
+                        arrContent[row][col] = [];
+                    } else if (oCurElem.value == 0x40) { // @
+                        row++;
+                        col = 0;
+                        arrContent[row] = [];
+                        arrContent[row][col] = [];
+                    } else {
+                        arrContent[row][col].push(oCurElem);
+                    }
+                }
+                RemoveCount++;
+            }
+            if (row < 1) {
+                return;
+            }
+            var props = new CMathMatrixPr();
+            props.row = row + 1;
+            props.mcs = mcs;
+            props.ctrPrp = this.TextPr.Copy();
+            Element = new CMathMatrix(props);
+            for (var i = 0; i < arrContent.length; i++) {
+                for (var j = 0; j < arrContent[i].length; j++) {
+                    var El = Element.getElement(i,j);
+                    this.PackTextToContent(El, arrContent[i][j], false)
+                }
+            } 
+        }
+        var Start = this.Elements.length - buffer.length - 2 - this.Remove.total - Shift;
+        if (k == 0) {
+            Shift = buffer.length - RemoveCount + 1;
+        }   
+        this.Remove.push({Count:RemoveCount, Start:Start});
+        this.Remove.total += RemoveCount;
+        if (Del) {
+            var oDelElem = Del.getBase(0);
+            oDelElem.addElementToContent(Element);
+            this.ReplaceContent.push(Del);
+        } else {
+            this.ReplaceContent.push(Element);
+        }
+        if (this.ActionElement.value == 0x20 && k == buff.length-2) {
+            this.Remove.push({Count:1, Start:(this.Elements.length-1)});
+            this.ReplaceContent.push(null);
+        }
     }
 };
 
@@ -8464,25 +8401,13 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
             }
             this.CurPos--;
             continue;
-        } else if (Elem.value === 0x2588 || Elem.value === 0x24B8) { //eq array
-            if(this.Type == MATH_EQ_ARRAY && !bBrackOpen) {
-                break;
-            }
+        } else if (Elem.value === 0x2588 || Elem.value === 0x24B8 || Elem.value === 0x25A0 || Elem.value === 0x24A8 || Elem.value === 0x24A9) { //eq array and matrix
             buffer[CurLvBuf].splice(0, 0, Elem);
-            if (g_aMathAutoCorrectDoNotMatrix[this.ActionElement.value]) {
-                this.CurPos--;
-                continue;
+            if((this.Type == MATH_MATRIX || this.Type === null || this.Type == MATH_DELIMITER) && !bBrackOpen) {
+                CurLvBuf++;
+                buffer[CurLvBuf] = [];
             }
-            if (!bBrackOpen && (this.Type === null || this.Type == MATH_DELIMITER)) {
-                this.Type = MATH_EQ_ARRAY;
-            }
-            this.CurPos--;
-            continue;
-        } else if (Elem.value === 0x25A0 || Elem.value === 0x24A8 || Elem.value === 0x24A9) { //matrix
-            if(this.Type == MATH_MATRIX && !bBrackOpen) {
-                break;
-            }
-            buffer[CurLvBuf].splice(0, 0, Elem);
+            
             if (g_aMathAutoCorrectDoNotMatrix[this.ActionElement.value]) {
                 this.CurPos--;
                 continue;
@@ -8593,9 +8518,6 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
             return true;
         case MATH_BAR:
             this.AutoCorrectBar(buffer);
-            return true;
-        case MATH_EQ_ARRAY:
-            this.AutoCorrectEqArray(buffer);
             return true;
         case MATH_MATRIX:
             this.AutoCorrectMatrix(buffer);
