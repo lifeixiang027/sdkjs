@@ -5429,7 +5429,7 @@ CMathContent.prototype.Process_AutoCorrect = function(ActionElement) {
     }
     if (bFindFunction || CanMakeAutoCorrect || CanMakeAutoCorrectEquation || CanMakeAutoCorrectFunc) {
         var Cursor = this.CurPos;
-        for (var i = AutoCorrectEngine.Remove.length - 1; i >= 0; i--) {
+        for (var i = 0; i < AutoCorrectEngine.Remove.length; i++) {
             var ElCount = AutoCorrectEngine.Elements.length;
             var LastEl = null;
             var Start = AutoCorrectEngine.Remove[i].Start;
@@ -5444,7 +5444,9 @@ CMathContent.prototype.Process_AutoCorrect = function(ActionElement) {
                     // if (FirstEl.Element.Parent === LastEl.Element.Parent) {
                     //     FirstEl.ContPos--;
                     // }
-                    LastEl.Element.Parent.Remove_FromContent(LastEl.ContPos, 1);
+                    this.Content[LastEl.ElPos].Remove_FromContent(LastEl.ContPos, 1);
+                  
+                    // LastEl.Element.Parent.Remove_FromContent(LastEl.ContPos, 1); //не работает корректно, так как у некоторых елементов не правильно указан parent
                 } else {
                     this.Remove_FromContent(LastEl.ElPos, 1);
                     // FirstElPos--;
@@ -5483,8 +5485,8 @@ CMathContent.prototype.Process_AutoCorrect = function(ActionElement) {
                         this.CurPos = this.Content.length - 1;
                     }
                     Cursor++;
-                    this.Content[this.CurPos].MoveCursorToStartPos();
-                    // this.Content[this.CurPos].MoveCursorToEndPos();
+                    // this.Content[this.CurPos].MoveCursorToStartPos();
+                    this.Content[this.CurPos].MoveCursorToEndPos();
                 }
 
                 if (true === bCursorStepRight) {
@@ -6154,7 +6156,7 @@ CMathAutoCorrectEngine.prototype.AutoCorrectEquation = function(Elements) {
             }
             CurPos--;
             continue;
-        } else if (Elem.value === 0x2588 || Elem.value === 0x24B8 || Elem.value === 0x25A0 || Elem.value === 0x24A8 || Elem.value === 0x24A9) { //eq array and matrix
+        } else if (g_aMathAutoCorrectEqArrayMatrix[Elem.value]) { //eq array and matrix
             if (Param.Type == MATH_FRACTION) {
                 CurPos--;
                 continue;
@@ -6490,7 +6492,6 @@ CMathAutoCorrectEngine.prototype.CorrectEquation = function(Param, Elements) {
             break;
         case MATH_MATRIX:
             var bEqArray = false;
-            // var symbols = {0x24B8 : 1, 0x2588 : 1, 0x25A0 : 1, 0x24A8 : 1, 0x24A9 : 1};
             var symbol = Elements.splice(1,1)[0][0];
             if (symbol.value == 0x24B8 || symbol.value == 0x2588) {
                 bEqArray = true;
@@ -6536,7 +6537,7 @@ CMathAutoCorrectEngine.prototype.CorrectEquation = function(Param, Elements) {
                     }
                 }
                 if (row < 1 && Del) {
-                    Elements.splice(0,0, symbol);  
+                    Elements.splice(0,0, symbol);
                     Param.Bracket[0].splice(0,1);
                     Param.Bracket[1].splice(0,1);
                     break;
@@ -6816,19 +6817,28 @@ CMathAutoCorrectEngine.prototype.PackTextToContent = function(Element, TempEleme
             }
         }
         this.AutoCorrectEquation(TempElements);
+        var bNewRun = true;
+        var MathRun = null;
+        var PosElemnt = 0;
+        var PosInRun = 0;
         for (var nPos = 0; nPos < TempElements.length; nPos++) {
-            if (undefined === TempElements[nPos].value) {
-                Element.Internal_Content_Add(nPos, TempElements[nPos]);
+            if (TempElements[nPos].value === undefined) {
+                Element.Internal_Content_Add(PosElemnt, TempElements[nPos]);
+                bNewRun = true;
+                PosElemnt++;
+                PosInRun = 0;
             } else {
-                var MathRun = new ParaRun(this.ParaMath.Paragraph, true);
-
-                MathRun.Set_Pr(this.TextPr.Copy());
-                MathRun.Set_MathPr(this.MathPr.Copy());
-
-                var MathText = new CMathText();
-                MathText.add(TempElements[nPos].value);
-                MathRun.Add_ToContent(nPos, MathText);
-                Element.Internal_Content_Add(nPos, MathRun);
+                if (bNewRun) {
+                    MathRun = new ParaRun(this.ParaMath.Paragraph, true);
+                    MathRun.Set_Pr(this.TextPr.Copy());
+                    MathRun.Set_MathPr(this.MathPr.Copy());
+                    Element.Internal_Content_Add(PosElemnt, MathRun);
+                    bNewRun = false;
+                    PosElemnt++;
+                    PosInRun = 0;
+                }
+                MathRun.Add_ToContent(PosInRun, TempElements[nPos]);
+                PosInRun++;
             }
         }
     }  
@@ -7379,7 +7389,6 @@ CMathAutoCorrectEngine.prototype.AutoCorrectBar = function(buff) {
 
 CMathAutoCorrectEngine.prototype.AutoCorrectMatrix = function(buff) {
     var Shift = 0;
-    var symbols = {0x24B8 : 1, 0x2588 : 1, 0x25A0 : 1, 0x24A8 : 1, 0x24A9 : 1};
     for (var k = 0; k < buff.length - 1; k++) 
     {
         var bEqArray = false;
@@ -7387,7 +7396,7 @@ CMathAutoCorrectEngine.prototype.AutoCorrectMatrix = function(buff) {
         var RemoveCount = null;
         var symbol = null;
         for (var i = 0; i < buffer.length; i++) {
-            if (!symbol && (symbols[buffer[i].value])) {
+            if (!symbol && (g_aMathAutoCorrectEqArrayMatrix[buffer[i].value])) {
                 symbol = i;
                 if (buffer[i+1] && buffer[i+1].value != 0x28) {
                     break;
@@ -7516,9 +7525,9 @@ CMathAutoCorrectEngine.prototype.AutoCorrectMatrix = function(buff) {
         } else {
             this.ReplaceContent.push(Element);
         }
-        if (this.ActionElement.value == 0x20 && k == buff.length-2) {
-            this.Remove.push({Count:1, Start:(this.Elements.length-1)});
-            this.ReplaceContent.push(null);
+        if (this.ActionElement.value == 0x20 && k == 0) {
+            this.Remove.unshift({Count:1, Start:(this.Elements.length-1)});
+            this.ReplaceContent.unshift(null);
         }
     }
 };
@@ -8401,7 +8410,7 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
             }
             this.CurPos--;
             continue;
-        } else if (Elem.value === 0x2588 || Elem.value === 0x24B8 || Elem.value === 0x25A0 || Elem.value === 0x24A8 || Elem.value === 0x24A9) { //eq array and matrix
+        } else if (g_aMathAutoCorrectEqArrayMatrix[Elem.value]) { //eq array and matrix
             buffer[CurLvBuf].splice(0, 0, Elem);
             if((this.Type == MATH_MATRIX || this.Type === null || this.Type == MATH_DELIMITER) && !bBrackOpen) {
                 CurLvBuf++;
@@ -10501,6 +10510,10 @@ var g_aMathAutoCorrectSkipBrackets = {
 //символы MATH_GROUP_CHARACTER
 var g_aMathAutoCorrectGroupChar = {
     0x23DE : 1, 0x23DC : 1, 0x23E0 : 1, 0x23DF : 1, 0x23DD : 1
+};
+//symbols matrix and eqarray
+var g_aMathAutoCorrectEqArrayMatrix = {
+    0x24B8 : 1, 0x2588 : 1, 0x25A0 : 1, 0x24A8 : 1, 0x24A9 : 1
 };
 
 
