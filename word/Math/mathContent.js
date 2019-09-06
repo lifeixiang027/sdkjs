@@ -5428,55 +5428,14 @@ CMathContent.prototype.Process_AutoCorrect = function(ActionElement) {
         }
     }
     if (bFindFunction || CanMakeAutoCorrect || CanMakeAutoCorrectEquation || CanMakeAutoCorrectFunc) {
-        for (var i = 0; i < AutoCorrectEngine.Remove.length; i++) {
+        for (var i = AutoCorrectEngine.Remove.length - 1; i >= 0; i--) {
+            var ElCount = AutoCorrectEngine.Elements.length;
+            var LastEl = null;
             var Start = AutoCorrectEngine.Remove[i].Start;
             var End = AutoCorrectEngine.Remove[i].Start + AutoCorrectEngine.Remove[i].Count - 1;
             var FirstEl = AutoCorrectEngine.Elements[Start];
-            var LastEl = AutoCorrectEngine.Elements[End];
-
-            // if (FirstEl.ElPos == LastEl.ElPos) {
-            //     if (FirstEl.ContPos !== undefined) {
-            //         var count = AutoCorrectEngine.Remove[i].Count;
-            //         if (count == this.Content[FirstEl.ElPos].Content.length) {
-            //             this.Remove_FromContent(FirstEl.ElPos, 1);
-            //             FirstEl.ElPos--;
-            //         } else {
-            //             this.Content[FirstEl.ElPos].Remove_FromContent(FirstEl.ContPos, count);
-            //             if (this.CurPos == FirstEl.ElPos && this.Content[FirstEl.ElPos].State.ContentPos > FirstEl.ContPos) {
-            //                 this.Content[FirstEl.ElPos].State.ContentPos -= count;
-            //             }
-            //         }
-            //     } else {
-            //         this.Remove_FromContent(FirstEl.ElPos, 1);
-            //         FirstEl.ElPos--;
-            //     }
-            // } else {
-            //     if (LastEl.ContPos == this.Content[LastEl.ElPos].Content.length - 1) {
-            //         this.Remove_FromContent(LastEl.ElPos, 1);
-            //     } else {
-            //         this.Content[LastEl.ElPos].Remove_FromContent(0, LastEl.ContPos + 1);
-            //         if (this.CurPos == LastEl.ElPos && this.Content[LastEl.ElPos].State.ContentPos > (LastEl.ContPos)) {
-            //             this.Content[LastEl.ElPos].State.ContentPos -= LastEl.ContPos;
-            //         }
-            //     }
-                
-            //     var count = this.Content[FirstEl.ElPos].Content.length - FirstEl.ContPos;
-            //     if (count == this.Content[FirstEl.ElPos].Content.length) {
-            //         this.Remove_FromContent(FirstEl.ElPos, 1);
-            //     } else {
-            //         this.Content[FirstEl.ElPos].Remove_FromContent(FirstEl.ContPos, count);
-            //         if (this.CurPos == FirstEl.ElPos && this.Content[FirstEl.ElPos].State.ContentPos > FirstEl.ContPos) {
-            //             this.Content[FirstEl.ElPos].State.ContentPos -= count;
-            //         }
-            //     }
-            // }
-
-            // if (AutoCorrectEngine.ReplaceContent[i]) {
-
-            // }
-
-
-
+            var FirstElPos = FirstEl.ElPos;
+            var bDelete = false;
             
             for (var nPos = End; nPos >= Start; nPos--) {
                 LastEl = AutoCorrectEngine.Elements[nPos];
@@ -5484,23 +5443,19 @@ CMathContent.prototype.Process_AutoCorrect = function(ActionElement) {
                     this.Content[LastEl.ElPos].Remove_FromContent(LastEl.ContPos, 1, true);
                     if (!this.Content[LastEl.ElPos].Content.length) {
                         this.Remove_FromContent(LastEl.ElPos, 1);
+                        bDelete = true;
                         if (FirstEl.ElPos == LastEl.ElPos) {
                             FirstEl.ElPos--;
                         }
                     }
                 } else {
                     this.Remove_FromContent(LastEl.ElPos, 1);
+                    bDelete = true;
                     if (FirstEl.ElPos == LastEl.ElPos) {
                         FirstEl.ElPos--;
                     }
                 }
             }
-            // if (!this.Content[this.CurPos].State.ContentPos) {
-            //     this.CurPos--;
-            //     this.Content[this.CurPos].MoveCursorToEndPos();
-            // }
-
-
 
             if (AutoCorrectEngine.ReplaceContent[i]) {
                 //обработать отдельно cNary и все типы автозамены, где курсов выставляется внутрь объекта
@@ -7584,18 +7539,18 @@ CMathAutoCorrectEngine.prototype.AutoCorrectMatrix = function(buff) {
         }
         var Start = this.Elements.length - buffer.length - 2 - this.Remove.total - Shift;
         Shift += buffer.length - RemoveCount + 1;
-        this.Remove.push({Count:RemoveCount, Start:Start});
+        this.Remove.unshift({Count:RemoveCount, Start:Start});
         this.Remove.total += RemoveCount;
         if (Del) {
             var oDelElem = Del.getBase(0);
             oDelElem.addElementToContent(Element);
-            this.ReplaceContent.push(Del);
+            this.ReplaceContent.unshift(Del);
         } else {
-            this.ReplaceContent.push(Element);
+            this.ReplaceContent.unshift(Element);
         }
-        if (this.ActionElement.value == 0x20 && k == 0) {
-            this.Remove.unshift({Count:1, Start:(this.Elements.length-1)});
-            this.ReplaceContent.unshift(null);
+        if (this.ActionElement.value == 0x20 && k == buff.length - 2) {
+            this.Remove.push({Count:1, Start:(this.Elements.length-1)});
+            this.ReplaceContent.push(null);
         }
     }
 };
@@ -7613,10 +7568,10 @@ CMathAutoCorrectEngine.prototype.AutoCorrectAccent = function(buff) {
     RemoveCount = TempElements.length + 1;
     this.PackTextToContent(oBase, TempElements, true);
     this.Remove.push({Count:RemoveCount, Start:Start});
-    this.ReplaceContent.push(oAccent);
+    this.ReplaceContent.unshift(oAccent);
     if (this.ActionElement.value == 0x20) {
-        this.Remove.unshift({Count:1, Start:(this.Elements.length-1)});
-        this.ReplaceContent.unshift(null);
+        this.Remove.push({Count:1, Start:(this.Elements.length-1)});
+        this.ReplaceContent.push(null);
     }
 };
 
@@ -8391,15 +8346,12 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
             }
             continue;
         } else if (q_aMathAutoCorrectControlAggregationCodes[Elem.value]) { //cNary
-            if ((this.Type == MATH_DEGREE || this.Type == MATH_DEGREESubSup) && !bBrackOpen) {
-                break;
-            }
             buffer[CurLvBuf].splice(0, 0, Elem);
             if (g_aMathAutoCorrectNotDoCNary[this.ActionElement.value]) {
                 this.CurPos--;
                 continue;
             }
-            if (!bBrackOpen) { // && this.Type !== MATH_FRACTION) {
+            if (!bBrackOpen && this.Type !== MATH_FRACTION) {
                 this.Type = MATH_NARY;
                 break;
             } else {
