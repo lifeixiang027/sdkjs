@@ -751,7 +751,17 @@
 					return true;
 
 				case 120: // F9
-					t.handlers.trigger("calcAll", ctrlKey, event.altKey, shiftKey);
+					var type;
+					if (ctrlKey && altKey && shiftKey) {
+						type = Asc.c_oAscCalculateType.All;
+					} else if (ctrlKey && altKey) {
+						type = Asc.c_oAscCalculateType.Workbook;
+					} else if (shiftKey) {
+						type = Asc.c_oAscCalculateType.ActiveSheet;
+					} else {
+						type = Asc.c_oAscCalculateType.WorkbookOnlyChanged;
+					}
+					t.handlers.trigger("calculate", type);
 					return result;
 
 				case 113: // F2
@@ -788,7 +798,7 @@
 					return result;
 
 				case 9: // tab
-					if (t.getCellEditMode()) {
+					if (t.getCellEditMode() || t.isSelectionDialogMode) {
 						return true;
 					}
 					// Отключим стандартную обработку браузера нажатия tab
@@ -805,7 +815,7 @@
 					break;
 
 				case 13:  // "enter"
-					if (t.getCellEditMode()) {
+					if (t.getCellEditMode() || t.isSelectionDialogMode) {
 						return true;
 					}
 					// Особый случай (возможно движение в выделенной области)

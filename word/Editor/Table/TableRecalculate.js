@@ -1733,7 +1733,7 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
 
     var X_max = -1;
     var X_min = -1;
-    if ( this.HeaderInfo.Count > 0 && this.HeaderInfo.PageIndex != -1 && CurPage > this.HeaderInfo.PageIndex )
+	if (this.HeaderInfo.Count > 0 && this.HeaderInfo.PageIndex != -1 && CurPage > this.HeaderInfo.PageIndex && this.IsInline())
     {
     	this.HeaderInfo.HeaderRecalculate = true;
         this.HeaderInfo.Pages[CurPage] = {};
@@ -2350,6 +2350,12 @@ CTable.prototype.private_RecalculatePage = function(CurPage)
                 {
                     Cell = this.Internal_Get_StartMergedCell( CurRow, CurGridCol, GridSpan );
                     CellMar = Cell.GetMargins();
+
+                    var oTempRow         = Cell.GetRow();
+					var oTempCellMetrics = oTempRow.GetCellInfo(Cell.GetIndex());
+
+					X_content_start = Page.X + oTempCellMetrics.X_content_start;
+					X_content_end   = Page.X + oTempCellMetrics.X_content_end;
 
                     Y_content_start = Cell.Temp.Y + CellMar.Top.W;
                 }

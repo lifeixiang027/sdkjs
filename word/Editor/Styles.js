@@ -7070,6 +7070,30 @@ CStyle.prototype.CreateIntenseQuote = function()
 	});
 };
 /**
+ * Default settings for Caption style
+ */
+CStyle.prototype.CreateCaption = function()
+{
+	this.SetUiPriority(35);
+	this.SetSemiHidden(true);
+	this.SetUnhideWhenUsed(true);
+	this.SetQFormat(true);
+	this.SetParaPr({
+		Spacing : {
+			Line     : 1.15,
+			LineRule : linerule_Auto
+		}
+	});
+	this.SetTextPr({
+		Bold       : true,
+		BoldCS     : true,
+		Color      : { r : 0x4F, g : 0x81, b : 0xBD },
+		Unifill    : AscCommonWord.CreateThemeUnifill(EThemeColor.themecolorAccent1, null, null),
+		FontSize   : 9,
+		FontSizeCS : 9
+	});
+};
+/**
  * Конвертируем стиль в Asc.CAscStyle
  * @returns {Asc.CAscStyle}
  */
@@ -7180,7 +7204,8 @@ function CStyles(bCreateDefault)
 			Quote             : null,
 			IntenseQuote      : null,
 			TOC               : [],
-			TOCHeading        : null
+			TOCHeading        : null,
+			Caption           : null
 		};
 
         // Заполняем значения по умолчанию
@@ -7268,6 +7293,12 @@ function CStyles(bCreateDefault)
 		oFooter.CreateFooter();
 		this.Default.Footer = this.Add(oFooter);
 		this.Add(oFooter.CreateLinkedCharacterStyle("Footer Char", this.Default.Character));
+
+		// Create default style for objects caption
+		var oCaption = new CStyle("Caption", this.Default.Paragraph, this.Default.Paragraph, styletype_Paragraph);
+		oCaption.CreateCaption();
+		this.Default.Caption = this.Add(oCaption);
+		this.Add(oFooter.CreateLinkedCharacterStyle("Caption Char", this.Default.Caption));
 
         var fUF = AscCommonWord.CreateThemeUnifill;
 
@@ -7843,7 +7874,8 @@ function CStyles(bCreateDefault)
 			FootnoteReference : null,
 
 			TOC               : [],
-			TOCHeading        : null
+			TOCHeading        : null,
+			Caption           : null
 		};
 
 		// Заполняем значения по умолчанию
@@ -8054,6 +8086,15 @@ CStyles.prototype =
 		}
 	},
 
+	SetDefaultCaption : function(Id)
+	{
+		if(Id !== this.Default.Caption)
+		{
+			History.Add(new CChangesStylesChangeDefaultCaption(this, this.Default.Caption, Id));
+			this.Default.Caption = Id;
+		}
+	},
+
 	RemapIdReferences : function(OldId, NewId)
 	{
 		if (OldId === this.Default.Paragraph)
@@ -8113,6 +8154,9 @@ CStyles.prototype =
 		if (OldId === this.Default.IntenseQuote)
 			this.SetDefaultIntenseQuote(NewId);
 
+		if (OldId === this.Default.Caption)
+			this.SetDefaultCaption(NewId);
+
 		for (var Id in this.Style)
 		{
 			this.Style[Id].RemapIdReferences(OldId, NewId);
@@ -8144,6 +8188,7 @@ CStyles.prototype =
 		Styles.Default.Subtitle     = this.Default.Subtitle;
 		Styles.Default.Quote        = this.Default.Quote;
 		Styles.Default.IntenseQuote = this.Default.IntenseQuote;
+		Styles.Default.Caption      = this.Default.Caption;
 
         for (var Index = 0, Count = this.Default.Headings.length; Index < Count; Index++)
         {
@@ -14223,6 +14268,12 @@ CParaPr.prototype.Copy = function(bCopyPrChange)
 	if (undefined !== this.OutlineLvl)
 		ParaPr.OutlineLvl = this.OutlineLvl;
 
+	if (undefined !== this.OutlineLvlStyle)
+		ParaPr.OutlineLvlStyle = this.OutlineLvlStyle;
+
+	if (undefined !== this.Locked)
+		ParaPr.Locked = this.Locked;
+
 	return ParaPr;
 };
 CParaPr.prototype.Merge = function(ParaPr)
@@ -14644,6 +14695,9 @@ CParaPr.prototype.Compare = function(ParaPr)
 
 	if (this.OutlineLvl === ParaPr.OutlineLvl)
 		Result_ParaPr.OutlineLvl = this.OutlineLvl;
+
+	if (this.OutlineLvlStyle || ParaPr.OutlineLvlStyle)
+		Result_ParaPr.OutlineLvlStyle = true;
 
 	return Result_ParaPr;
 };

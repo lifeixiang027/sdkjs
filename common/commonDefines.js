@@ -169,11 +169,13 @@
 			MaxDataSeriesError : -80,
 			CannotFillRange    : -81,
 
-			ConvertationOpenError : -82,
-            ConvertationSaveError : -83,
+			ConvertationOpenError      : -82,
+            ConvertationSaveError      : -83,
+			ConvertationOpenLimitError : -84,
 
 			UserDrop : -100,
 			Warning  : -101,
+			UpdateVersion : -102,
 
 			PrintMaxPagesCount					: -110,
 
@@ -426,34 +428,12 @@
 		t       : 9
 	};
 
-	var c_oAscChartCatAxisSettings = {
-		none        : 0,
-		leftToRight : 1,
-		rightToLeft : 2,
-		noLabels    : 3
-	};
-
-	var c_oAscChartValAxisSettings = {
-		none      : 0,
-		byDefault : 1,
-		thousands : 2,
-		millions  : 3,
-		billions  : 4,
-		log       : 5
-	};
-
-	var c_oAscAxisTypeSettings = {
-		vert : 0,
-		hor  : 1
-	};
-
 	var c_oAscGridLinesSettings = {
 		none       : 0,
 		major      : 1,
 		minor      : 2,
 		majorMinor : 3
 	};
-
 
 	var c_oAscChartTypeSettings = {
 		barNormal              : 0,
@@ -497,7 +477,6 @@
 		unknown                : 38
 	};
 
-
 	var c_oAscValAxisRule = {
 		auto  : 0,
 		fixed : 1
@@ -539,12 +518,6 @@
 		minValue : 3
 	};
 
-	var c_oAscHorAxisType = {
-		auto : 0,
-		date : 1,
-		text : 2
-	};
-
 	var c_oAscBetweenLabelsRule = {
 		auto   : 0,
 		manual : 1
@@ -554,7 +527,6 @@
 		byDivisions      : 0,
 		betweenDivisions : 1
 	};
-
 
 	var c_oAscAxisType = {
 		auto : 0,
@@ -857,7 +829,6 @@
 		DeleteTable             : 5
 	};
 
-
 	// Print default options (in mm)
 	var c_oAscPrintDefaultSettings = {
 		// Размеры страницы при печати
@@ -879,6 +850,13 @@
 
 		PageGridLines : 0,
 		PageHeadings  : 0
+	};
+
+	// Тип печати
+	var c_oAscPrintType = {
+		ActiveSheets: 0,	// Активные листы
+		EntireWorkbook: 1,	// Всю книгу
+		Selection: 2		// Выделенный фрагмент
 	};
 
 	var c_oZoomType = {
@@ -1430,14 +1408,15 @@
 
 	/** @enum {number} */
 	var c_oAscNumberingFormat = {
-		None        : 0x0000,
-		Bullet      : 0x1001,
-		Decimal     : 0x2002,
-		LowerRoman  : 0x2003,
-		UpperRoman  : 0x2004,
-		LowerLetter : 0x2005,
-		UpperLetter : 0x2006,
-		DecimalZero : 0x2007,
+		None                  : 0x0000,
+		Bullet                : 0x1001,
+		Decimal               : 0x2002,
+		LowerRoman            : 0x2003,
+		UpperRoman            : 0x2004,
+		LowerLetter           : 0x2005,
+		UpperLetter           : 0x2006,
+		DecimalZero           : 0x2007,
+		DecimalEnclosedCircle : 0x2008,
 
 
 		BulletFlag   : 0x1000,
@@ -1586,6 +1565,7 @@
 	prot['MobileUnexpectedCharCount']        = prot.MobileUnexpectedCharCount;
 	prot['MailMergeLoadFile']                = prot.MailMergeLoadFile;
 	prot['MailMergeSaveFile']                = prot.MailMergeSaveFile;
+	prot['DataValidate']                     = prot.DataValidate;
 	prot['AutoFilterDataRangeError']         = prot.AutoFilterDataRangeError;
 	prot['AutoFilterChangeFormatTableError'] = prot.AutoFilterChangeFormatTableError;
 	prot['AutoFilterChangeError']            = prot.AutoFilterChangeError;
@@ -1603,6 +1583,7 @@
 	prot['CannotFillRange']                  = prot.CannotFillRange;
 	prot['ConvertationOpenError']            = prot.ConvertationOpenError;
 	prot['ConvertationSaveError']            = prot.ConvertationSaveError;
+	prot['ConvertationOpenLimitError']       = prot.ConvertationOpenLimitError;
 	prot['UserDrop']                         = prot.UserDrop;
 	prot['Warning']                          = prot.Warning;
 	prot['PrintMaxPagesCount']               = prot.PrintMaxPagesCount;
@@ -2016,6 +1997,12 @@
 	prot['DeleteRows']              = prot.DeleteRows;
 	prot['DeleteTable']             = prot.DeleteTable;
 
+	window['Asc']['c_oAscPrintType'] = window['Asc'].c_oAscPrintType = c_oAscPrintType;
+	prot = c_oAscPrintType;
+	prot['ActiveSheets'] = prot.ActiveSheets;
+	prot['EntireWorkbook'] = prot.EntireWorkbook;
+	prot['Selection'] = prot.Selection;
+
 	window['Asc']['c_oDashType'] = window['Asc'].c_oDashType = c_oDashType;
 	prot                  = c_oDashType;
 	prot['dash']          = prot.dash;
@@ -2270,6 +2257,7 @@
 	prot['LowerLetter'] = c_oAscNumberingFormat.LowerLetter;
 	prot['UpperLetter'] = c_oAscNumberingFormat.UpperLetter;
 	prot['DecimalZero'] = c_oAscNumberingFormat.DecimalZero;
+	prot['DecimalEnclosedCircle'] = c_oAscNumberingFormat.DecimalEnclosedCircle;
 
 	window['Asc']['c_oAscNumberingSuff'] = window['Asc'].c_oAscNumberingSuff = c_oAscNumberingSuff;
 	prot = c_oAscNumberingSuff;

@@ -323,7 +323,7 @@ CTable.prototype.Get_Props = function()
 			{
 				VAlign        = Cell.Get_VAlign();
 				TextDirection = Cell.Get_TextDirection();
-				NoWrap        = Cell.Get_NoWrap();
+				NoWrap        = Cell.GetNoWrap();
 			}
 			else
 			{
@@ -333,7 +333,7 @@ CTable.prototype.Get_Props = function()
 				if (TextDirection !== Cell.Get_TextDirection())
 					TextDirection = null;
 
-				if (NoWrap !== Cell.Get_NoWrap())
+				if (NoWrap !== Cell.GetNoWrap())
 					NoWrap = null;
 			}
 
@@ -592,7 +592,7 @@ CTable.prototype.Get_Props = function()
 
 		Pr.CellsVAlign        = Cell.Get_VAlign();
 		Pr.CellsTextDirection = Cell.Get_TextDirection();
-		Pr.CellsNoWrap        = Cell.Get_NoWrap();
+		Pr.CellsNoWrap        = Cell.GetNoWrap();
 
 		Pr.CellsBackground = CellShd.Copy();
 
@@ -2102,12 +2102,12 @@ CTable.prototype.Set_Props = function(Props)
 			{
 				var Pos  = this.Selection.Data[Index];
 				var Cell = this.Content[Pos.Row].Get_Cell(Pos.Cell);
-				Cell.Set_NoWrap(Props.CellsNoWrap);
+				Cell.SetNoWrap(Props.CellsNoWrap);
 			}
 		}
 		else
 		{
-			this.CurCell.Set_NoWrap(Props.CellsNoWrap);
+			this.CurCell.SetNoWrap(Props.CellsNoWrap);
 		}
 	}
 
@@ -2279,23 +2279,41 @@ CTable.prototype.GetAllFields = function(isSelection, arrFields)
 {
 	if (!arrFields)
 		arrFields = [];
-	if(isSelection)
-	{
-		var Cells_array = this.Internal_Get_SelectionArray();
-		for (var Index = 0; Index < Cells_array.length; Index++)
-		{
-			var CurPos      = Cells_array[Index];
-			var CurCell     = this.Content[CurPos.Row].Get_Cell(CurPos.Cell);
-			var CellContent = CurCell.Content;
 
-			CellContent.GetAllFields(isSelection, arrFields);
+	if (isSelection && this.IsCellSelection())
+	{
+		var arrCellsArray = this.GetSelectionArray();
+		for (var nPos = 0, nCount = arrCellsArray.length; nPos < nCount; ++nPos)
+		{
+			var oCellPos     = arrCellsArray[nPos];
+			var oCurCell     = this.GetRow(oCellPos.Row).GetCell(oCellPos.Cell);
+			var oCellContent = oCurCell.GetContent();
+
+			oCellContent.SelectAll();
+			oCellContent.GetAllFields(true, arrFields);
+			oCellContent.RemoveSelection();
 		}
 	}
 	else
 	{
 		this.CurCell.Content.GetAllFields(isSelection, arrFields);
 	}
+
 	return arrFields;
+};
+
+CTable.prototype.GetAllSeqFieldsByType = function(sType, aFields)
+{
+	var aRows = this.Content;
+	for(var i = 0; i < aRows.length; ++i)
+	{
+		var aCells = aRows[i].Content;
+		for(var j = 0; j < aCells.length; ++j)
+		{
+			var oCell = aCells[j];
+			oCell.Content.GetAllSeqFieldsByType(sType, aFields);
+		}
+	}
 };
 /**
  * Данная функция запрашивает новую позицию для содержимого у ячейки, разбивающейся на несколько страниц
@@ -14695,6 +14713,13 @@ CTable.prototype.GetPlaceHolderObject = function()
 		return null;
 
 	return this.CurCell.GetContent().GetPlaceHolderObject();
+};
+CTable.prototype.GetPresentationField = function()
+{
+	if (this.IsCellSelection())
+		return null;
+
+	return this.CurCell.GetContent().GetPresentationField();
 };
 /**
  * Получаем колонку в виде массива ячеек

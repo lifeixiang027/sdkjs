@@ -1103,6 +1103,12 @@
 			case AscDFH.historydescription_Document_ChangeTableFormula:
 				sString = "Document_ChangeTableFormula";
 				break;
+			case AscDFH.historydescription_Document_SetParagraphOutlineLvl:
+				sString = "Document_SetParagraphOutlineLvl";
+				break;
+			case AscDFH.historydescription_Document_RemoveTableCells:
+				sString = "Document_RemoveTableCells";
+				break;
 		}
 		return sString;
 	}
@@ -1625,6 +1631,7 @@
 	window['AscDFH'].historyitem_Styles_ChangeDefaultSubtitleId          = window['AscDFH'].historyitem_type_Styles | 20;
 	window['AscDFH'].historyitem_Styles_ChangeDefaultQuoteId             = window['AscDFH'].historyitem_type_Styles | 21;
 	window['AscDFH'].historyitem_Styles_ChangeDefaultIntenseQuoteId      = window['AscDFH'].historyitem_type_Styles | 22;
+	window['AscDFH'].historyitem_Styles_ChangeDefaultCaption             = window['AscDFH'].historyitem_type_Styles | 23;
 	//------------------------------------------------------------------------------------------------------------------
 	// Типы изменений в классе ParaMath
 	//------------------------------------------------------------------------------------------------------------------
@@ -3122,6 +3129,8 @@
 	window['AscDFH'].historydescription_Document_AddWatermark                       = 0x0160;
 	window['AscDFH'].historydescription_Presentation_SetHF                          = 0x0161;
 	window['AscDFH'].historydescription_Presentation_AddSlideNumber                 = 0x0162;
+	window['AscDFH'].historydescription_Document_SetParagraphOutlineLvl             = 0x0163;
+	window['AscDFH'].historydescription_Document_RemoveTableCells                   = 0x0164;
 
 
 

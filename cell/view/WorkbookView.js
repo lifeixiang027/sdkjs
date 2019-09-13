@@ -460,16 +460,9 @@
 				  return self.stateFormatPainter;
 			  },
 
-			  //calcAll
-			  'calcAll': function (ctrlKey, altKey, shiftKey) {
-				  if (ctrlKey && altKey && shiftKey) {
-					  self.model.recalcWB(true);
-				  } else if (shiftKey) {
-					  var ws = self.model.getActiveWs();
-					  self.model.recalcWB(false, ws.getId());
-				  } else {
-					  self.model.recalcWB(false);
-				  }
+			  //calculate
+			  'calculate': function () {
+			  	self.calculate.apply(self, arguments);
 			  },
 
 			  'changeFormatTableInfo': function () {
@@ -967,6 +960,7 @@
     this.handlers.trigger("asc_onSelectionChanged", this.oSelectionInfo);
     this.handlers.trigger("asc_onSelectionEnd");
     this._onInputMessage();
+    this.Api.cleanSpelling();
   };
 
   WorkbookView.prototype._onInputMessage = function () {
@@ -1499,6 +1493,8 @@
         /*isHideCursor*/isHideCursor, /*isQuickInput*/isQuickInput, selectionRange);
       t.input.disabled = false;
 
+      t.Api.cleanSpelling();
+
       // Эвент на обновление состояния редактора
       t.cellEditor._updateEditorState();
       asc_applyFunction(callback, true);
@@ -1521,7 +1517,7 @@
     };
 
     // Стартуем редактировать ячейку
-    this.collaborativeEditing.onStartEditCell();
+	  activeCellRange = ws.expandActiveCellByFormulaArray(activeCellRange);
     if (ws._isLockedCells(activeCellRange, /*subType*/null, editLockCallback)) {
       editFunction();
     }
@@ -1773,6 +1769,8 @@
     } else if (ws.updateZoom) {
       ws.changeZoom(true);
     }
+
+    this.updateGroupData();
 
     if (this.cellEditor && this.cellFormulaEnterWSOpen) {
       if (ws === this.cellFormulaEnterWSOpen) {
@@ -2674,6 +2672,11 @@
     }
   };
 
+  WorkbookView.prototype.calculate = function (type) {
+  	this.model.calculate(type);
+  	this.drawWS();
+  };
+
   WorkbookView.prototype.reInit = function() {
     var ws = this.getWorksheet();
     ws._initCellsArea(AscCommonExcel.recalcType.full);
@@ -2946,7 +2949,7 @@
 			//None style
 			var emptyStyle = new Asc.CTableStyle();
 			emptyStyle.displayName = "None";
-			emptyStyle.pivot = false;
+			emptyStyle.pivot = bPivotTable;
 			addStyles({null: emptyStyle}, AscCommon.c_oAscStyleImage.Default, true);
 		}
 		addStyles(defaultStyles, AscCommon.c_oAscStyleImage.Default);

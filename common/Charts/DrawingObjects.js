@@ -646,6 +646,7 @@ CSparklineView.prototype.initFromSparkline = function(oSparkline, oSparklineGrou
         }
         var chartSeries = {series: [ser], parsedHeaders: {bLeft: false, bTop: false}};
         var chart_space = AscFormat.DrawingObjectsController.prototype._getChartSpace(chartSeries, settings, true);
+        chart_space.isSparkline = true;
         chart_space.setBDeleted(false);
         if(worksheetView){
             chart_space.setWorksheet(worksheetView.model);
@@ -1977,7 +1978,7 @@ function DrawingObjects() {
                 _this.drawingArea.clear();
             }
 
-            if ( aObjects.length ) {
+            if ( aObjects.length || api.watermarkDraw ) {
                 var shapeCtx = api.wb.shapeCtx;
                 if (graphicOption) {
                     // Выставляем нужный диапазон для отрисовки
@@ -2030,6 +2031,7 @@ function DrawingObjects() {
                     }
                 }
 
+
 				if (graphicOption)
                 {
                     shapeCtx.m_oContext.restore();
@@ -2041,7 +2043,7 @@ function DrawingObjects() {
         if ( !printOptions ) {
 
             var bChangedFrozen = _this.lasteForzenPlaseNum !== _this.drawingArea.frozenPlaces.length;
-            if ( _this.controller.selectedObjects.length || _this.drawingArea.frozenPlaces.length > 1 || bChangedFrozen) {
+            if ( _this.controller.selectedObjects.length || _this.drawingArea.frozenPlaces.length > 1 || bChangedFrozen || window['Asc']['editor'].watermarkDraw) {
                 _this.OnUpdateOverlay();
                 _this.controller.updateSelectionState(true);
             }

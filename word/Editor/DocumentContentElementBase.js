@@ -883,6 +883,16 @@ CDocumentContentElementBase.prototype.GetAllComments = function(AllComments)
 CDocumentContentElementBase.prototype.GetAllMaths = function(AllMaths)
 {
 };
+
+/**
+ * Find all SEQ complex fields with specified type
+ * @param {String} sType - field type
+ * @param {Array} aFields - array which accumulates complex fields
+ */
+CDocumentContentElementBase.prototype.GetAllSeqFieldsByType = function(sType, aFields)
+{
+};
+
 CDocumentContentElementBase.prototype.UpdateBookmarks = function(oManager)
 {
 };
@@ -1089,6 +1099,14 @@ CDocumentContentElementBase.prototype.CheckRunContent = function(fCheck)
 CDocumentContentElementBase.prototype.GetStartPageForRecalculate = function(nPageAbs)
 {
 	return nPageAbs;
+};
+/**
+ * Проверяем выделено ли сейчас какое-либо презентационное поле, если да, то возвращаем управляющий объект
+ * @returns {?Object}
+ */
+CDocumentContentElementBase.prototype.GetPresentationField = function()
+{
+	return null;
 };
 
 //--------------------------------------------------------export--------------------------------------------------------

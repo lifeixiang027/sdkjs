@@ -5140,11 +5140,18 @@ PasteProcessor.prototype =
 				addTextIntoRun(newParaRun, insertText);
 				newParagraph.Internal_Content_Add(newParagraph.Content.length - 1, newParaRun, false);
 				insertText = "";
-			} else if(13 === _charCode){
+			} else if(13 === _charCode) {
 				continue;
 			} else {
 				insertText += _char;
 			}
+		}
+
+		if(insertText !== "") {
+			newParaRun = getNewParaRun();
+			addTextIntoRun(newParaRun, insertText);
+			newParagraph.Internal_Content_Add(newParagraph.Content.length - 1, newParaRun, false);
+			this.aContent.push(newParagraph);
 		}
 	},
 
@@ -8132,7 +8139,7 @@ PasteProcessor.prototype =
 
 		var whiteSpace = this._getStyle(node, computedStyle, "white-space");
 		if("nowrap" === whiteSpace || true === node.noWrap) {
-			cell.Set_NoWrap(true);
+			cell.SetNoWrap(true);
 		}
 
         //content

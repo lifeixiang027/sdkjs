@@ -360,26 +360,26 @@ CDocumentContent.prototype.GetNumbering = function()
 };
 CDocumentContent.prototype.Get_Styles = function(lvl)
 {
-	if(!this.bPresentation)
+	if (!this.bPresentation)
 	{
 		return this.Styles;
 	}
 	else
 	{
-		return this.Parent.Get_Styles(lvl);
+		return this.Parent ? this.Parent.Get_Styles(lvl) : this.LogicDocument ? this.LogicDocument.GetStyles() : null;
 	}
 };
 CDocumentContent.prototype.Get_TableStyleForPara = function()
 {
-	return this.Parent.Get_TableStyleForPara();
+	return this.Parent ? this.Parent.Get_TableStyleForPara() : null;
 };
 CDocumentContent.prototype.Get_ShapeStyleForPara = function()
 {
-	return this.Parent.Get_ShapeStyleForPara();
+	return this.Parent ? this.Parent.Get_ShapeStyleForPara() : null;
 };
 CDocumentContent.prototype.Get_TextBackGroundColor = function()
 {
-	return this.Parent.Get_TextBackGroundColor();
+	return this.Parent ? this.Parent.Get_TextBackGroundColor() : undefined;
 };
 CDocumentContent.prototype.Recalc_AllParagraphs_CompiledPr = function()
 {
@@ -4025,7 +4025,7 @@ CDocumentContent.prototype.GetSelectedElementsInfo = function(oInfo)
 					if (this.Selection.StartPos != this.Selection.EndPos)
 						oInfo.Set_MixedSelection();
 
-					if (oInfo.IsCheckAllSelection() || this.Selection.StartPos !== this.Selection.EndPos)
+					if (oInfo.IsCheckAllSelection() || this.Selection.StartPos === this.Selection.EndPos)
 					{
 						var nStartPos = this.Selection.StartPos < this.Selection.EndPos ? this.Selection.StartPos : this.Selection.EndPos;
 						var nEndPos   = this.Selection.StartPos < this.Selection.EndPos ? this.Selection.EndPos : this.Selection.StartPos;
@@ -5415,19 +5415,15 @@ CDocumentContent.prototype.GetCalculatedParaPr = function()
 				Pr.Ind.FirstLine = StartPr.Ind.FirstLine;
 
 			Result_ParaPr             = Pr;
-			Result_ParaPr.CanAddTable = ( true === Pr.Locked ? false : true ) && !(this.bPresentation === true);
+			Result_ParaPr.CanAddTable = (true !== Pr.Locked) && !(this.bPresentation === true);
 		}
 		else
 		{
 			var Item = this.Content[this.CurPos.ContentPos];
 			if (type_Paragraph == Item.GetType())
 			{
-				var ParaPr = Item.Get_CompiledPr2(false).ParaPr;
-				var Locked = Item.Lock.Is_Locked();
-
-				Result_ParaPr             = ParaPr.Copy();
-				Result_ParaPr.Locked      = Locked;
-				Result_ParaPr.CanAddTable = ( ( true === Locked ) ? ( ( true === Item.IsCursorAtEnd() ) ? true : false ) : true ) && !(this.bPresentation === true);
+				Result_ParaPr             = Item.GetCalculatedParaPr().Copy();
+				Result_ParaPr.CanAddTable = (true === Result_ParaPr.Locked ? Item.IsCursorAtEnd() : true) && !(this.bPresentation === true);
 			}
 			else
 			{
@@ -8163,6 +8159,19 @@ CDocumentContent.prototype.SetIsRecalculated = function(isRecalculated)
 {
 	if (this.Parent && this.Parent.SetIsRecalculated)
 		this.Parent.SetIsRecalculated(isRecalculated);
+};
+CDocumentContent.prototype.GetPresentationField = function()
+{
+	var nCurPos = this.CurPos.ContentPos;
+	if (this.Selection.Use)
+	{
+		if (this.Selection.StartPos === this.Selection.EndPos)
+			nCurPos = this.Selection.StartPos;
+		else
+			return null;
+	}
+
+	return this.Content[nCurPos].GetPresentationField();
 };
 
 function CDocumentContentStartState(DocContent)

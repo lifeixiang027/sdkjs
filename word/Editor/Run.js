@@ -776,7 +776,7 @@ ParaRun.prototype.Remove = function(Direction, bOnAddText)
 
     var ReviewType  = this.GetReviewType();
     var oReviewInfo = this.GetReviewInfo();
-    if (true === TrackRevisions && (reviewtype_Add !== ReviewType || !oReviewInfo.IsCurrentUser() || !oReviewInfo.IsMovedTo() || !this.Paragraph.LogicDocument.TrackMoveRelocation) && (reviewtype_Remove !== ReviewType || !oReviewInfo.IsPrevAddedByCurrentUser()))
+    if (true === TrackRevisions && (reviewtype_Add !== ReviewType || !oReviewInfo.IsCurrentUser() || (oReviewInfo.IsMovedTo() && !this.Paragraph.LogicDocument.TrackMoveRelocation)) && (reviewtype_Remove !== ReviewType || !oReviewInfo.IsPrevAddedByCurrentUser()))
     {
     	if (reviewtype_Remove === ReviewType)
 		{
@@ -6064,7 +6064,7 @@ ParaRun.prototype.Draw_Lines = function(PDSL)
 // Функции для работы с курсором
 //-----------------------------------------------------------------------------------
 // Находится ли курсор в начале рана
-ParaRun.prototype.Is_CursorPlaceable = function()
+ParaRun.prototype.IsCursorPlaceable = function()
 {
     return true;
 };
@@ -10035,6 +10035,37 @@ ParaRun.prototype.SetThisElementCurrentInParagraph = function()
 	oContentPos.Add(this.State.ContentPos);
 	this.Paragraph.Set_ParaContentPos(oContentPos, true, -1, -1, false);
 };
+ParaRun.prototype.SelectThisElement = function(nDirection)
+{
+	if (!this.Paragraph)
+		return false;
+
+	var oContentPos = this.Paragraph.Get_PosByElement(this);
+	if (!oContentPos)
+		return false;
+
+	var oStartPos = oContentPos.Copy();
+	var oEndPos   = oContentPos.Copy();
+
+	if (nDirection > 0)
+	{
+		this.Get_StartPos(oStartPos, oStartPos.GetDepth() + 1);
+		this.Get_EndPos(true, oEndPos, oEndPos.GetDepth() + 1);
+	}
+	else
+	{
+		this.Get_StartPos(oEndPos, oEndPos.Get_Depth() + 1);
+		this.Get_EndPos(true, oStartPos, oStartPos.Get_Depth() + 1);
+	}
+
+	this.Paragraph.Selection.Use   = true;
+	this.Paragraph.Selection.Start = false;
+	this.Paragraph.Set_ParaContentPos(oStartPos, true, -1, -1);
+	this.Paragraph.Set_SelectionContentPos(oStartPos, oEndPos, false);
+	this.Paragraph.Document_SetThisElementCurrent(false);
+
+	return true;
+};
 ParaRun.prototype.GetAllParagraphs = function(Props, ParaArray)
 {
     var ContentLen = this.Content.length;
@@ -10749,6 +10780,58 @@ ParaRun.prototype.GetAllFields = function(isUseSelection, arrFields)
 		}
 	}
 };
+
+ParaRun.prototype.GetAllSeqFieldsByType = function(sType, aFields)
+{
+	for (var nPos = 0; nPos < this.Content.length; ++nPos)
+	{
+		var oItem = this.Content[nPos];
+		if (para_FieldChar === oItem.Type)
+		{
+			var oComplexField = oItem.GetComplexField();
+			if(oComplexField)
+			{
+				var oInstruction = oComplexField.Instruction;
+				if(oInstruction)
+				{
+					if(oInstruction.Type === fieldtype_SEQ)
+					{
+						if(oInstruction.Id === sType)
+						{
+							var isNeedAdd = true;
+							for (var nFieldIndex = 0, nFieldsCount = aFields.length; nFieldIndex < nFieldsCount; ++nFieldIndex)
+							{
+								if (oComplexField === aFields[nFieldIndex])
+								{
+									isNeedAdd = false;
+									break;
+								}
+							}
+							if (isNeedAdd)
+							{
+								aFields.push(oComplexField);
+							}
+						}
+					}
+				}
+			}
+		}
+		else if(para_Field === oItem.Type)
+		{
+			if(oItem.FieldType === fieldtype_SEQ)
+			{
+				if(oItem.Arguments[0] === sType)
+				{
+					aFields.push(oItem);
+				}
+			}
+		}
+		else if (para_Drawing === oItem.Type)
+		{
+			oItem.GetAllSeqFieldsByType(sType, aFields);
+		}
+	}
+};
 ParaRun.prototype.AddToContent = function(nPos, oItem, isUpdatePositions)
 {
 	return this.Add_ToContent(nPos, oItem, isUpdatePositions);
@@ -10852,7 +10935,11 @@ ParaRun.prototype.ProcessAutoCorrect = function(nPos)
 			if (arrElements.length > 0)
 			{
 				var oPrevElement = arrElements[0];
-				if (para_Text === oPrevElement.Type && 45 !== oPrevElement.Value)
+				if (para_Text === oPrevElement.Type
+					&& 45 !== oPrevElement.Value
+					&& 40 !== oPrevElement.Value
+					&& 91 !== oPrevElement.Value
+					&& 123 !== oPrevElement.Value)
 					isOpenQuote = false;
 			}
 
@@ -11227,6 +11314,14 @@ ParaRun.prototype.GetSelectedElementsInfo = function(oInfo)
 	if (oInfo && oInfo.IsCheckAllSelection() && !this.IsSelectionEmpty(true))
 	{
 		oInfo.RegisterRunWithReviewType(this.GetReviewType());
+
+		for (var nPos = 0, nCount = this.Content.length; nPos < nCount; ++nPos)
+		{
+			if (para_RevisionMove === this.Content[nPos].Type)
+			{
+				oInfo.RegisterTrackMoveMark(this.Content[nPos].Type);
+			}
+		}
 	}
 };
 ParaRun.prototype.GetLastTrackMoveMark = function()

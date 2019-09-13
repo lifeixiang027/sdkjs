@@ -407,6 +407,10 @@
 		// Сброс состояния редактора
 		this.m_nEditorState = c_oAscCellEditorState.editEnd;
 		this.handlers.trigger("closed");
+		if(callback) {
+			callback(true);
+		}
+
 		return true;
 	};
 
@@ -1040,14 +1044,14 @@
 						continue;
 				}
 
-				if (ret && t.cursorPos > _s && t.cursorPos <= _s + r.oper.value.length) {
+				if (ret && t.cursorPos > _s && t.cursorPos <= _s + refStr.length) {
 					range = t._parseRangeStr(refStr);
 					if (range) {
 						if (this.handlers.trigger("getActiveWS") && this.handlers.trigger("getActiveWS").getName() != wsName) {
 							return {index: -1, length: 0, range: null};
 						}
 						range.isName = isName;
-						return {index: _s, length: r.oper.value.length, range: range, wsName: wsName};
+						return {index: _s, length: refStr.length, range: range, wsName: wsName};
 					}
 				}
 			}

@@ -373,6 +373,11 @@ CShape.prototype.recalculate = function ()
     }
     AscFormat.ExecuteNoHistory(function()
     {
+        var bRecalcShadow = this.recalcInfo.recalculateBrush ||
+            this.recalcInfo.recalculatePen ||
+            this.recalcInfo.recalculateTransform ||
+            this.recalcInfo.recalculateGeometry ||
+            this.recalcInfo.recalculateBounds;
         if(this.bWordShape)
         {
             if (this.recalcInfo.recalculateBrush) {
@@ -398,12 +403,15 @@ CShape.prototype.recalculate = function ()
             {
                 this.recalculateBounds();
                 this.recalcInfo.recalculateBounds = false;
-                this.recalculateShdw();
             }
             if(this.recalcInfo.recalculateWrapPolygon)
             {
                 this.recalculateWrapPolygon();
                 this.recalcInfo.recalculateWrapPolygon = false;
+            }
+            if(bRecalcShadow)
+            {
+                this.recalculateShdw();
             }
         }
         else
@@ -442,6 +450,10 @@ CShape.prototype.recalculate = function ()
             {
                 this.recalculateBounds();
                 this.recalcInfo.recalculateBounds = false;
+            }
+
+            if(bRecalcShadow)
+            {
                 this.recalculateShdw();
             }
         }
@@ -1081,9 +1093,31 @@ CShape.prototype.Get_ColorMap = function()
     return editor.WordControl.m_oLogicDocument.Get_ColorMap();
 };
 
-CShape.prototype.Is_TopDocument = function()
+CShape.prototype.Is_TopDocument = function(bReturn)
 {
-    return false;
+    if(!bReturn)
+    {
+        return false;
+    }
+    else
+    {
+        var para_drawing;
+        if (this.group)
+        {
+            var main_group = this.group.getMainGroup();
+            para_drawing   = main_group.parent;
+        }
+        else
+        {
+            para_drawing = this.parent;
+        }
+
+        if (para_drawing && para_drawing.DocumentContent)
+        {
+            return para_drawing.DocumentContent.Is_TopDocument(bReturn);
+        }
+        return null;
+    }
 };
 
 CShape.prototype.recalcText = function(bResetRecalcCache)

@@ -2421,9 +2421,9 @@
 			ws.reassignImageUrls(oImages);
 		});
 	};
-	Workbook.prototype.recalcWB = function(rebuild, opt_sheetId) {
+	Workbook.prototype.calculate = function (type) {
 		var formulas;
-		if (rebuild) {
+		if (type === Asc.c_oAscCalculateType.All) {
 			formulas = this.getAllFormulas();
 			for (var i = 0; i < formulas.length; ++i) {
 				var formula = formulas[i];
@@ -2432,9 +2432,9 @@
 				formula.parse();
 				formula.buildDependencies();
 			}
-		} else if (opt_sheetId) {
+		} else if (type === Asc.c_oAscCalculateType.ActiveSheet) {
 			formulas = [];
-			var ws = this.getWorksheetById(opt_sheetId);
+			var ws = this.getActiveWs();
 			ws.getAllFormulas(formulas);
 		} else {
 			formulas = this.getAllFormulas();
@@ -2968,15 +2968,14 @@
 		var sheetId = this.getSheetIdByIndex(ascName.LocalSheetId);
 		return new UndoRedoData_DefinedNames(ascName.Name, ascName.Ref, sheetId, ascName.isTable, ascName.isXLNM);
 	};
-	Workbook.prototype.changeColorScheme = function (index) {
-		var scheme = AscCommon.getColorThemeByIndex(index);
+	Workbook.prototype.changeColorScheme = function (sSchemeName) {
+		var scheme = AscCommon.getColorSchemeByName(sSchemeName);
 		if (!scheme) {
-			index -= AscCommon.g_oUserColorScheme.length;
-			if (index < 0 || index >= this.theme.extraClrSchemeLst.length) {
-				return false;
-			}
-
-			scheme = this.theme.extraClrSchemeLst[index].clrScheme.createDuplicate();
+			scheme = this.theme.getExtraClrScheme(sSchemeName);
+		}
+		if(!scheme)
+		{
+			return;
 		}
 		History.Create_NewPoint();
 		//не делаем Duplicate потому что предполагаем что схема не будет менять частями, а только обьектом целиком.
@@ -4772,9 +4771,9 @@
 
 		History.Create_NewPoint();
 		History.Add(AscCommonExcel.g_oUndoRedoWorksheet, AscCH.historyitem_Worksheet_SetSummaryRight, this.getId(), null,
-			new UndoRedoData_FromTo(this.sheetPr.summaryRight, val));
+			new UndoRedoData_FromTo(this.sheetPr.SummaryRight, val));
 
-		this.sheetPr.summaryRight = val;
+		this.sheetPr.SummaryRight = val;
 	};
 	Worksheet.prototype.setSummaryBelow = function (val) {
 		if (!this.sheetPr){
@@ -4783,9 +4782,9 @@
 
 		History.Create_NewPoint();
 		History.Add(AscCommonExcel.g_oUndoRedoWorksheet, AscCH.historyitem_Worksheet_SetSummaryBelow, this.getId(), null,
-			new UndoRedoData_FromTo(this.sheetPr.summaryBelow, val));
+			new UndoRedoData_FromTo(this.sheetPr.SummaryBelow, val));
 
-		this.sheetPr.summaryBelow = val;
+		this.sheetPr.SummaryBelow = val;
 	};
 	Worksheet.prototype.setGroupCol = function (bDel, start, stop) {
 		var oThis = this;
@@ -6487,15 +6486,12 @@
 				continue;
 			}
 			style = this.workbook.TableStyles.AllStyles[styleInfo.asc_getName()];
-			if (!style) {
-				continue;
-			}
 
-			wholeStyle = style.wholeTable && style.wholeTable.dxf;
+			wholeStyle = style && style.wholeTable && style.wholeTable.dxf;
 
 			// Page Field Labels, Page Field Values
-			dxfLabels = style.pageFieldLabels && style.pageFieldLabels.dxf;
-			dxfValues = style.pageFieldValues && style.pageFieldValues.dxf;
+			dxfLabels = style && style.pageFieldLabels && style.pageFieldLabels.dxf;
+			dxfValues = style && style.pageFieldValues && style.pageFieldValues.dxf;
 			for (j = 0; j < pivotTable.pageFieldsPositions.length; ++j) {
 				pos = pivotTable.pageFieldsPositions[j];
 				cells = this.getRange4(pos.row, pos.col);
@@ -6510,6 +6506,10 @@
 
 			cells = this.getRange3(pivotRange.r1, pivotRange.c1, pivotRange.r2, pivotRange.c2);
 			cells.clearTableStyle();
+
+			if (!style) {
+				continue;
+			}
 
 			countC = pivotTable.getColumnFieldsCount();
 			countR = pivotTable.getRowFieldsCount(true);
@@ -6973,32 +6973,56 @@
 		//проверка на внутренний сдвиг
 		var res = true;
 
-		var checkRange = function(formulaRange) {
-			var isHor = offset && offset.col;
-			var isDelete = offset && (offset.col < 0 || offset.row < 0);
+		var isHor = offset && offset.col;
+		var isDelete = offset && (offset.col < 0 || offset.row < 0);
 
+		var checkRange = function(formulaRange) {
 			//частичное выделение при удалении столбца/строки
-			if(formulaRange.intersection(range) && !range.containsRange(formulaRange)) {
+			if(isDelete && formulaRange.intersection(range) && !range.containsRange(formulaRange)) {
 				return false;
 			}
 
-			/*if (isHor) {
-				//частичный сдвиг влево/вправо
+			if (isHor) {
 				if(range.r1 > formulaRange.r1 && range.r1 <= formulaRange.r2) {
 					return false;
 				}
-			} else {
-				//частичный сдвиг вверх/вниз
+				if(range.r2 >= formulaRange.r1 && range.r2 < formulaRange.r2) {
+					return false;
+				}
 				if(range.c1 > formulaRange.c1 && range.c1 <= formulaRange.c2) {
 					return false;
 				}
-			}*/
+				/*if(range.c1 < formulaRange.c1 && range.c2 >= formulaRange.c1 && range.c2 < formulaRange.c2) {
+					return false;
+				}*/
+			} else {
+				if(range.c1 > formulaRange.c1 && range.c1 <= formulaRange.c2) {
+					return false;
+				}
+				if(range.c2 >= formulaRange.c1 && range.c2 < formulaRange.c2) {
+					return false;
+				}
+				if(range.r1 > formulaRange.r1 && range.r1 <= formulaRange.r2) {
+					return false;
+				}
+				/*if(range.r1 < formulaRange.r1 && range.r2 >= formulaRange.r1 && range.r2 < formulaRange.r2) {
+					return false;
+				}*/
+			}
 
 			return true;
 		};
 
+		//if intersection with range
 		var alreadyCheckFormulas = [];
-		this.getRange3(range.r1, range.c1, range.r2, range.c2)._foreachNoEmpty(function(cell) {
+		var r2 = range.r2, c2 = range.c2;
+		if(isHor) {
+			c2 = gc_nMaxCol0;
+		} else {
+			r2 = gc_nMaxRow0;
+		}
+
+		this.getRange3(range.r1, range.c1, r2, c2)._foreachNoEmpty(function(cell) {
 			if(res && cell.isFormula()) {
 				var formulaParsed = cell.getFormulaParsed();
 				var arrayFormulaRef = formulaParsed.getArrayFormulaRef();
@@ -7412,6 +7436,9 @@
 		}
 		var isFirstArrayFormulaCell = byRef && this.nCol === byRef.c1 && this.nRow === byRef.r1;
 		var newFP = this.setValueGetParsed(val, callback, isCopyPaste, byRef);
+		if (undefined === newFP) {
+			return;
+		}
 		//удаляем старые значения
 		this.cleanText();
 		this.setFormulaInternal(null);
@@ -7556,7 +7583,7 @@
 				cell.setFormulaInternal(newFP);
 				newFP.calculate();
 				cell._updateCellValue();
-			} else if (formula) {
+			} else if (undefined !== newFP) {
 				cell._setValue(formula);
 			}
 		} else {
@@ -7580,9 +7607,17 @@
 				History.Add(AscCommonExcel.g_oUndoRedoCell, typeHistory, this.ws.getId(), new Asc.Range(this.nCol, this.nRow, this.nCol, this.nRow), new UndoRedoData_CellSimpleData(this.nRow, this.nCol, DataOld, DataNew), bHistoryUndo);}
 		}
 	};
-	Cell.prototype.setFormula = function(formula, bHistoryUndo) {
+	Cell.prototype.setFormula = function(formula, bHistoryUndo, formulaRef) {
 		var cellWithFormula = new CCellWithFormula(this.ws, this.nRow, this.nCol);
-		this.setFormulaParsed(new parserFormula(formula, cellWithFormula, this.ws), bHistoryUndo);
+		var parser = new parserFormula(formula, cellWithFormula, this.ws);
+		if(formulaRef) {
+			parser.setArrayFormulaRef(formulaRef);
+			this.ws.getRange3(formulaRef.r1, formulaRef.c1, formulaRef.r2, formulaRef.c2)._foreachNoEmpty(function(cell){
+				cell.setFormulaParsed(parser, bHistoryUndo);
+			});
+		} else {
+			this.setFormulaParsed(parser, bHistoryUndo);
+		}
 	};
 	Cell.prototype.setFormulaParsed = function(parsed, bHistoryUndo) {
 		this.setFormulaTemplate(bHistoryUndo, function(cell){
@@ -8061,12 +8096,19 @@
 	Cell.prototype.getValueData = function(){
 		this._checkDirty();
 		var formula = this.isFormula() ? this.getFormula() : null;
-		return new UndoRedoData_CellValueData(formula, new AscCommonExcel.CCellValue(this));
+		var formulaRef;
+		if(formula) {
+			var parser = this.getFormulaParsed();
+			if(parser) {
+				formulaRef = this.getFormulaParsed().getArrayFormulaRef();
+			}
+		}
+		return new UndoRedoData_CellValueData(formula, new AscCommonExcel.CCellValue(this), formulaRef);
 	};
 	Cell.prototype.setValueData = function(Val){
 		//значения устанавляваются через setValue, чтобы пересчитались формулы
 		if(null != Val.formula)
-			this.setFormula(Val.formula);
+			this.setFormula(Val.formula, null, Val.formulaRef);
 		else if(null != Val.value)
 		{
 			var DataOld = null;
@@ -8833,6 +8875,10 @@
 		var flags = stream.GetUShortLE();
 		if (0 !== (flags & 0x4)) {
 			this.fromXLSBFormulaExt(stream, tmp.formula, flags);
+			if (0 !== (flags & 0x4000)) {
+				this.setTypeInternal(CellValueType.Number);
+				this.setValueNumberInternal(null);
+			}
 		}
 		if (0 !== (flags & 0x2000)) {
 			this.setTypeInternal(CellValueType.String);
@@ -8917,6 +8963,7 @@
 			len += this.getXLSBSizeFormula(formulaToWrite);
 		}
 		var textToWrite;
+		var isBlankFormula = false;
 		if (formulaToWrite) {
 			if (!this.isNullTextString()) {
 				switch (this.type) {
@@ -8942,6 +8989,7 @@
 				type = AscCommonExcel.XLSB.rt_FMLA_STRING;
 				textToWrite = "";
 				len += 4 + 2 * textToWrite.length;
+				isBlankFormula = true;
 			}
 		} else {
 			if (!this.isNullTextString()) {
@@ -9029,7 +9077,7 @@
 		}
 		var flags = 0;
 		if (formulaToWrite) {
-			flags = this.toXLSBFormula(stream, formulaToWrite);
+			flags = this.toXLSBFormula(stream, formulaToWrite, isBlankFormula);
 		}
 		stream.WriteUShort(flags);
 		if (formulaToWrite) {
@@ -9052,7 +9100,7 @@
 		}
 		return len;
 	};
-	Cell.prototype.toXLSBFormula = function(stream, formulaToWrite) {
+	Cell.prototype.toXLSBFormula = function(stream, formulaToWrite, isBlankFormula) {
 		var flags = 0;
 		if (formulaToWrite.ca) {
 			flags |= 0x2;
@@ -9074,6 +9122,9 @@
 		}
 		if (undefined !== formulaToWrite.si) {
 			flagsExt |= 0x1000;
+		}
+		if (isBlankFormula) {
+			flagsExt |= 0x4000;
 		}
 		return flagsExt;
 	};
