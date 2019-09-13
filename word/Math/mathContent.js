@@ -5429,12 +5429,10 @@ CMathContent.prototype.Process_AutoCorrect = function(ActionElement) {
     }
     if (bFindFunction || CanMakeAutoCorrect || CanMakeAutoCorrectEquation || CanMakeAutoCorrectFunc) {
         for (var i = AutoCorrectEngine.Remove.length - 1; i >= 0; i--) {
-            var ElCount = AutoCorrectEngine.Elements.length;
             var LastEl = null;
             var Start = AutoCorrectEngine.Remove[i].Start;
             var End = AutoCorrectEngine.Remove[i].Start + AutoCorrectEngine.Remove[i].Count - 1;
             var FirstEl = AutoCorrectEngine.Elements[Start];
-            var FirstElPos = FirstEl.ElPos;
             var bDelete = false;
             
             for (var nPos = End; nPos >= Start; nPos--) {
@@ -5458,129 +5456,37 @@ CMathContent.prototype.Process_AutoCorrect = function(ActionElement) {
             }
 
             if (AutoCorrectEngine.ReplaceContent[i]) {
-                //обработать отдельно cNary и все типы автозамены, где курсов выставляется внутрь объекта
-                //да и проверить еще раз в целом
-                
-                //обработать потом
-                // this.Correct_Content(true);
                 if (FirstEl.Element.Type != para_Math_Composition) {
-                    var NewRun = FirstEl.Element.Parent.Split2(FirstEl.ContPos);
-                    if (NewRun.Content.length) {
-                        this.Internal_Content_Add(FirstEl.ElPos + 1, NewRun, false);
-                        this.CurPos++;
+                    if (!bDelete) {
+                        var NewRun = this.Content[FirstEl.ElPos].Split2(FirstEl.ContPos);
+                        if (NewRun.Content.length) {
+                            this.Internal_Content_Add(FirstEl.ElPos + 1, NewRun, false);
+                            this.CurPos++;
+                        }
                     }
                     this.Internal_Content_Add(FirstEl.ElPos + 1, AutoCorrectEngine.ReplaceContent[i], false);
+                    this.CurPos++;
                 } else {
                     this.Internal_Content_Add(FirstEl.ElPos, AutoCorrectEngine.ReplaceContent[i], false);
-                }
-                // if (AutoCorrectEngine.ReplaceContent[i].kind && AutoCorrectEngine.ReplaceContent[i].kind == 4) {
-                //     var oContentElem = this.Content[this.CurPos];
-                //     this.Correct_Content(true);
-
-                //     var CurrentContent = new CParagraphContentPos();
-                //     this.ParaMath.Get_ParaContentPos(false, false, CurrentContent);
-
-                //     var LeftContentPos = new CParagraphSearchPos();
-                //     this.ParaMath.Get_LeftPos(LeftContentPos, CurrentContent, 0, true);
-                //     // this.ParaMath.Set_ParaContentPos(LeftContentPos.ContPos, 0);
-
-                //     this.CurPos++;
-                //     oContentElem.CurPos = 2;
-                //     oContentElem.Content[2].MoveCursorToStartPos();
-                // } else {
                     this.CurPos++;
-                // }
-
-                // if (CanMakeAutoCorrectEquation && AutoCorrectEngine.Type == MATH_NARY) {
-                //     // var oContentElem = this.Content[this.CurPos];
-                //     // this.Correct_Content(true);
-
-                //     // var CurrentContent = new CParagraphContentPos();
-                //     // this.ParaMath.Get_ParaContentPos(false, false, CurrentContent);
-
-                //     // var LeftContentPos = new CParagraphSearchPos();
-                //     // this.ParaMath.Get_LeftPos(LeftContentPos, CurrentContent, 0, true);
-                //     // this.ParaMath.Set_ParaContentPos(LeftContentPos.ContPos, 0);
-
-                //     // this.CurPos++;
-                //     // oContentElem.CurPos = 2;
-                //     // oContentElem.Content[2].MoveCursorToStartPos();
-                // } 
-                // else {
-                //     this.CurPos++;
-                //     if (this.Content.length - 1 < this.CurPos) {
-                //         this.CurPos = this.Content.length - 1;
-                //     }
-                //     // Cursor++;
-                //     // this.Content[this.CurPos].MoveCursorToStartPos();
-                //     this.Content[this.CurPos].MoveCursorToEndPos();
-                // }
-
-                // if (true === bCursorStepRight) {
-                //     // TODO: Переделать через функцию в ране
-                //     if (this.Content[this.CurPos].Content.length >= 1) {
-                //         this.Content[this.CurPos].State.ContentPos = 1;
-                //     }
-                // }
+                }
+                if (AutoCorrectEngine.ReplaceContent[i].kind && i == AutoCorrectEngine.Remove.length - 1) {
+                    if (AutoCorrectEngine.ReplaceContent[i].kind == 4 || AutoCorrectEngine.ReplaceContent[i].kind == 7) {
+                        var oContentElem = this.Content[FirstEl.ElPos + 1];
+                        this.Correct_Content(true);
+                        for (var k = this.Content.length - 1; k >= 0 ; k--) {
+                            if (AutoCorrectEngine.ReplaceContent[i] === this.Content[k]) {
+                                this.CurPos = k;
+                                break;
+                            }
+                        }
+                        var index = (AutoCorrectEngine.ReplaceContent[i].kind == 4) ? 2 : 1;
+                        oContentElem.CurPos = index;
+                        oContentElem.Content[index].MoveCursorToEndPos();
+                    }
+                } 
             }
         }
-        
-        
-        // var ElCount = AutoCorrectEngine.Elements.length;
-        // var LastEl = null;
-        // var FirstEl = AutoCorrectEngine.Elements[ElCount - 1 - AutoCorrectEngine.Shift];
-        // var FirstElPos = FirstEl.ElPos;
-        // FirstEl.ContPos++;
-        // for (var nPos = 0, nCount = AutoCorrectEngine.Remove[0].Count; nPos < nCount; nPos++) {
-        //     LastEl = AutoCorrectEngine.Elements[ElCount - nPos - 1 - AutoCorrectEngine.Shift];
-        //     if (undefined !== LastEl.Element.Parent && !LastEl.Element.kind) {
-        //         if (FirstEl.Element.Parent === LastEl.Element.Parent) {
-        //             FirstEl.ContPos--;
-        //         }
-        //         LastEl.Element.Parent.Remove_FromContent(LastEl.ContPos, 1);
-        //     } else {
-        //         this.Remove_FromContent(LastEl.ElPos, 1);
-        //         FirstElPos--;
-        //     }
-        // }
-
-        // if (FirstEl.Element.Type != para_Math_Composition) {
-        //     var NewRun = FirstEl.Element.Parent.Split2(FirstEl.ContPos);
-        //     this.Internal_Content_Add(FirstElPos + 1, NewRun, false);
-        // }
-        // var NewElCount = AutoCorrectEngine.ReplaceContent.length;
-        // for (var nPos = 0; nPos < NewElCount; nPos++) {
-        //     this.Internal_Content_Add(nPos + FirstElPos + 1, AutoCorrectEngine.ReplaceContent[nPos], false);
-        // }
-        // this.CurPos = FirstElPos + NewElCount;
-        // if (CanMakeAutoCorrectEquation && AutoCorrectEngine.Type == MATH_NARY) {
-        //     // var oContentElem = this.Content[this.CurPos];
-        //     // this.Correct_Content(true);
-
-        //     // var CurrentContent = new CParagraphContentPos();
-        //     // this.ParaMath.Get_ParaContentPos(false, false, CurrentContent);
-
-        //     // var LeftContentPos = new CParagraphSearchPos();
-        //     // this.ParaMath.Get_LeftPos(LeftContentPos, CurrentContent, 0, true);
-        //     // this.ParaMath.Set_ParaContentPos(LeftContentPos.ContPos, 0);
-
-        //     // this.CurPos++;
-        //     // oContentElem.CurPos = 2;
-        //     // oContentElem.Content[2].MoveCursorToStartPos();
-        // } else {
-        //     this.CurPos++;
-        //     if (AutoCorrectEngine.Shift == 0) {
-        //         this.Content[this.CurPos].MoveCursorToStartPos();
-        //     } else {
-        //         this.Content[this.CurPos].MoveCursorToEndPos();
-        //     }
-        // }
-        // if (true === bCursorStepRight) {
-        //     // TODO: Переделать через функцию в ране
-        //     if (this.Content[this.CurPos].Content.length >= 1) {
-        //         this.Content[this.CurPos].State.ContentPos = 1;
-        //     }
-        // }
     } else {
         History.Remove_LastPoint();
     }
