@@ -358,13 +358,13 @@ CDocumentControllerBase.prototype.AddToParagraph = function(oItem, bRecalculate)
 /**
  * Производим удаление выделенной части документа или исходя из позиции курсора.
  * @param {number} nDirection направление удаления
- * @param {boolean} bOnlyText - удаляем только текст
+ * @param {boolean} isRemoveWholeElement {boolean} true: удаляем элементы целиком, false - Удаляем содержимое элементов (если нужно содержимое заменяется PlaceHolder)
  * @param {boolean} bRemoveOnlySelection - удаляем только по селекту
  * @param {boolean} bOnAddText - удаление происходит во время добавления текста (особый тип удаления)
  * @param {boolean} isWord - производить удаление по словам
  * @returns {boolean} Выполнилось ли удаление.
  */
-CDocumentControllerBase.prototype.Remove = function(nDirection, bOnlyText, bRemoveOnlySelection, bOnAddText, isWord){return true;};
+CDocumentControllerBase.prototype.Remove = function(nDirection, isRemoveWholeElement, bRemoveOnlySelection, bOnAddText, isWord){return true;};
 /**
  * Получаем физическую позицию курсора на странице.
  */
@@ -654,6 +654,10 @@ CDocumentControllerBase.prototype.MergeTableCells = function(){};
  */
 CDocumentControllerBase.prototype.SplitTableCells = function(Cols, Rows){};
 /**
+ * Удаляем ячейки таблицы
+ */
+CDocumentControllerBase.prototype.RemoveTableCells = function(){};
+/**
  * Удаляем таблицу.
  */
 CDocumentControllerBase.prototype.RemoveTable = function(){};
@@ -794,3 +798,8 @@ CDocumentControllerBase.prototype.GetPlaceHolderObject = function(){return null;
  * @returns {Array}
  */
 CDocumentControllerBase.prototype.GetAllFields = function(isUseSelection, arrFields){return arrFields ? arrFields : [];};
+/**
+ * Проверяем, происходит ли сейчас выделение по ячейкам таблицы
+ * @returns {boolean}
+ */
+CDocumentControllerBase.prototype.IsTableCellSelection = function(){return false;};

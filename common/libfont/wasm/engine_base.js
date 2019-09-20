@@ -37,12 +37,11 @@
     var FS = undefined;
     var print = undefined;
 
+    var fetch = window.fetch;
     var getBinaryPromise = null;
     if (window["AscDesktopEditor"] && document.currentScript && 0 == document.currentScript.src.indexOf("file:///"))
     {
-        // fetch not support file:/// scheme
-        window.fetch = undefined;
-
+        fetch = undefined; // fetch not support file:/// scheme
         getBinaryPromise = function() {
 
             var wasmPath = "ascdesktop://fonts/" + wasmBinaryFile.substr(8);
@@ -160,7 +159,8 @@
         if (!_bufferPtr)
             return;
 
-        var _buffer = new Int32Array(Module["HEAP8"].buffer, _bufferPtr, 250); //max 230 symbols on name & style
+        var _len_buffer = Math.min((Module["HEAP8"].length - _bufferPtr) >> 2, 250); //max 230 symbols on name & style
+        var _buffer = new Int32Array(Module["HEAP8"].buffer, _bufferPtr, _len_buffer);
         var _index = 0;
 
         this.units_per_EM 	= Math.abs(_buffer[_index++]);

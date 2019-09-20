@@ -115,6 +115,8 @@ CBlockLevelSdt.prototype.Reset = function(X, Y, XLimit, YLimit, PageAbs, ColumnA
 };
 CBlockLevelSdt.prototype.Recalculate_Page = function(CurPage)
 {
+	this.SetIsRecalculated(true);
+
 	this.Content.RecalcInfo = this.Parent.RecalcInfo;
 
 	var RecalcResult = this.Content.Recalculate_Page(CurPage, true);
@@ -330,7 +332,12 @@ CBlockLevelSdt.prototype.CanUpdateTarget = function(CurPage)
 CBlockLevelSdt.prototype.MoveCursorLeft = function(AddToSelect, Word)
 {
 	if (this.IsPlaceHolder())
+	{
+		if (AddToSelect)
+			this.SelectAll(-1);
+
 		return false;
+	}
 
 	var bResult = this.Content.MoveCursorLeft(AddToSelect, Word);
 	if (!bResult && this.LogicDocument.IsFillingFormMode())
@@ -345,7 +352,12 @@ CBlockLevelSdt.prototype.MoveCursorLeftWithSelectionFromEnd = function(Word)
 CBlockLevelSdt.prototype.MoveCursorRight = function(AddToSelect, Word)
 {
 	if (this.IsPlaceHolder())
+	{
+		if (AddToSelect)
+			this.SelectAll(1);
+
 		return false;
+	}
 
 	var bResult = this.Content.MoveCursorRight(AddToSelect, Word, false);
 	if (!bResult && this.LogicDocument.IsFillingFormMode())
@@ -484,7 +496,7 @@ CBlockLevelSdt.prototype.AddInlineTable = function(nCols, nRows)
 	this.private_ReplacePlaceHolderWithContent();
 	this.Content.AddInlineTable(nCols, nRows);
 };
-CBlockLevelSdt.prototype.Remove = function(nCount, bOnlyText, bRemoveOnlySelection, bOnAddText, isWord)
+CBlockLevelSdt.prototype.Remove = function(nCount, isRemoveWholeElement, bRemoveOnlySelection, bOnAddText, isWord)
 {
 	if (this.IsPlaceHolder())
 	{
@@ -495,10 +507,11 @@ CBlockLevelSdt.prototype.Remove = function(nCount, bOnlyText, bRemoveOnlySelecti
 		return true;
 	}
 
-	var bResult = this.Content.Remove(nCount, bOnlyText, bRemoveOnlySelection, bOnAddText, isWord);
+	var bResult = this.Content.Remove(nCount, isRemoveWholeElement, bRemoveOnlySelection, bOnAddText, isWord);
 
 	if (this.IsEmpty()
 		&& !bOnAddText
+		&& true !== isRemoveWholeElement
 		&& this.CanBeEdited())
 	{
 		this.private_ReplaceContentWithPlaceHolder();
@@ -680,6 +693,13 @@ CBlockLevelSdt.prototype.SplitTableCells = function(nColsCount, nRowsCount)
 
 	return this.Content.SplitTableCells(nColsCount, nRowsCount);
 };
+CBlockLevelSdt.prototype.RemoveTableCells = function()
+{
+	if (this.IsPlaceHolder())
+		return false;
+
+	return this.Content.RemoveTableCells();
+};
 CBlockLevelSdt.prototype.RemoveTable = function()
 {
 	if (this.IsPlaceHolder())
@@ -773,10 +793,13 @@ CBlockLevelSdt.prototype.GetSelectionAnchorPos = function()
 };
 CBlockLevelSdt.prototype.DrawContentControlsTrack = function(isHover)
 {
+	if (!this.IsRecalculated())
+		return;
+
 	var oDrawingDocument = this.LogicDocument.Get_DrawingDocument();
 	var arrRects = [];
 
-	if (Asc.c_oAscSdtAppearance.Hidden === this.GetAppearance())
+	if (Asc.c_oAscSdtAppearance.Hidden === this.GetAppearance() || (this.LogicDocument && this.LogicDocument.IsForceHideContentControlTrack()))
 	{
 		oDrawingDocument.OnDrawContentControl(null, isHover ? c_oContentControlTrack.Hover : c_oContentControlTrack.In);
 		return;
@@ -900,9 +923,9 @@ CBlockLevelSdt.prototype.FindNextFillingForm = function(isNext, isCurrent, isSta
 
 	return null;
 };
-CBlockLevelSdt.prototype.GetRevisionsChangeParagraph = function(SearchEngine)
+CBlockLevelSdt.prototype.GetRevisionsChangeElement = function(SearchEngine)
 {
-	return this.Content.GetRevisionsChangeParagraph(SearchEngine);
+	return this.Content.GetRevisionsChangeElement(SearchEngine);
 };
 CBlockLevelSdt.prototype.AcceptRevisionChanges = function(Type, bAll)
 {
@@ -967,7 +990,7 @@ CBlockLevelSdt.prototype.GetEndInfo = function()
 };
 CBlockLevelSdt.prototype.Is_UseInDocument = function(Id)
 {
-	if (Id === this.Content.GetId())
+	if (Id === this.Content.GetId() && this.Parent)
 		return this.Parent.Is_UseInDocument(this.GetId());
 
 	return false;
@@ -1011,13 +1034,14 @@ CBlockLevelSdt.prototype.Set_CurrentElement = function(bUpdateStates, PageAbs, o
 {
 	if (oDocContent === this.Content)
 	{
-		this.Parent.Update_ContentIndexing();
-		this.Parent.Set_CurrentElement(this.Index, bUpdateStates);
+		var nIndex = this.GetIndex();
+		if (-1 !== nIndex)
+			this.Parent.Set_CurrentElement(nIndex, bUpdateStates);
 	}
 };
 CBlockLevelSdt.prototype.Refresh_RecalcData2 = function(CurPage)
 {
-	this.Parent.Refresh_RecalcData2(this.Index, CurPage);
+	this.Parent.Refresh_RecalcData2(this.Index, this.private_GetRelativePageIndex(CurPage));
 };
 CBlockLevelSdt.prototype.Refresh_RecalcData = function(Data)
 {
@@ -1078,6 +1102,11 @@ CBlockLevelSdt.prototype.GetAllComments = function(AllComments)
 CBlockLevelSdt.prototype.GetAllMaths = function(AllMaths)
 {
 	return this.Content.GetAllMaths(AllMaths);
+};
+
+CBlockLevelSdt.prototype.GetAllSeqFieldsByType = function(sType, aFields)
+{
+	return this.Content.GetAllSeqFieldsByType(sType, aFields);
 };
 CBlockLevelSdt.prototype.Get_ParentTextTransform = function()
 {
@@ -1480,6 +1509,14 @@ CBlockLevelSdt.prototype.GetAllFields = function(isUseSelection, arrFields)
 CBlockLevelSdt.prototype.ReplacePlaceHolderWithContent = function()
 {
 	return this.private_ReplacePlaceHolderWithContent();
+};
+CBlockLevelSdt.prototype.CheckRunContent = function(fCheck)
+{
+	return this.Content.CheckRunContent(fCheck);
+};
+CBlockLevelSdt.prototype.IsTableCellSelection = function()
+{
+	return this.Content.IsTableCellSelection();
 };
 //--------------------------------------------------------export--------------------------------------------------------
 window['AscCommonWord'] = window['AscCommonWord'] || {};

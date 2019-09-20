@@ -1103,6 +1103,12 @@
 			case AscDFH.historydescription_Document_ChangeTableFormula:
 				sString = "Document_ChangeTableFormula";
 				break;
+			case AscDFH.historydescription_Document_SetParagraphOutlineLvl:
+				sString = "Document_SetParagraphOutlineLvl";
+				break;
+			case AscDFH.historydescription_Document_RemoveTableCells:
+				sString = "Document_RemoveTableCells";
+				break;
 		}
 		return sString;
 	}
@@ -1198,6 +1204,8 @@
 	window['AscDFH'].historyitem_type_ParaBookmark       = 62 << 16;
 	window['AscDFH'].historyitem_type_Num                = 63 << 16;
 	window['AscDFH'].historyitem_type_PresentationField  = 64 << 16;
+	window['AscDFH'].historyitem_type_ParaRevisionMove   = 65 << 16;
+	window['AscDFH'].historyitem_type_RunRevisionMove    = 66 << 16;
 
 	window['AscDFH'].historyitem_type_CommonShape            = 1000 << 16; // Этот класс добавлен для элементов, у которых нет конкретного класса
 
@@ -1336,6 +1344,8 @@
 	window['AscDFH'].historyitem_type_LockedCanvas           = 1133 << 16;
 	window['AscDFH'].historyitem_type_RelSizeAnchor          = 1134 << 16;
 	window['AscDFH'].historyitem_type_AbsSizeAnchor          = 1135 << 16;
+	window['AscDFH'].historyitem_type_Core                   = 1136 << 16;
+
 
 	window['AscDFH'].historyitem_type_DocumentMacros         = 2000 << 16;
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1486,6 +1496,8 @@
 	window['AscDFH'].historyitem_Table_TableLayout           = window['AscDFH'].historyitem_type_Table | 25;
 	window['AscDFH'].historyitem_Table_TableDescription      = window['AscDFH'].historyitem_type_Table | 26;
 	window['AscDFH'].historyitem_Table_TableCaption          = window['AscDFH'].historyitem_type_Table | 27;
+	window['AscDFH'].historyitem_Table_TableGridChange       = window['AscDFH'].historyitem_type_Table | 28;
+	window['AscDFH'].historyitem_Table_PrChange              = window['AscDFH'].historyitem_type_Table | 29;
 	//------------------------------------------------------------------------------------------------------------------
 	// Типы изменений в классе CTableRow
 	//------------------------------------------------------------------------------------------------------------------
@@ -1497,6 +1509,8 @@
 	window['AscDFH'].historyitem_TableRow_RemoveCell  = window['AscDFH'].historyitem_type_TableRow | 6;
 	window['AscDFH'].historyitem_TableRow_TableHeader = window['AscDFH'].historyitem_type_TableRow | 7;
 	window['AscDFH'].historyitem_TableRow_Pr          = window['AscDFH'].historyitem_type_TableRow | 8;
+	window['AscDFH'].historyitem_TableRow_PrChange    = window['AscDFH'].historyitem_type_TableRow | 9;
+	window['AscDFH'].historyitem_TableRow_ReviewType  = window['AscDFH'].historyitem_type_TableRow | 10;
 	//------------------------------------------------------------------------------------------------------------------
 	// Типы изменений в классе CTableCell
 	//------------------------------------------------------------------------------------------------------------------
@@ -1514,6 +1528,7 @@
 	window['AscDFH'].historyitem_TableCell_TextDirection = window['AscDFH'].historyitem_type_TableCell | 12;
 	window['AscDFH'].historyitem_TableCell_NoWrap        = window['AscDFH'].historyitem_type_TableCell | 13;
 	window['AscDFH'].historyitem_TableCell_HMerge        = window['AscDFH'].historyitem_type_TableCell | 14;
+	window['AscDFH'].historyitem_TableCell_PrChange      = window['AscDFH'].historyitem_type_TableCell | 15;
 	//------------------------------------------------------------------------------------------------------------------
 	// Типы изменений в классе CDocumentContent
 	//------------------------------------------------------------------------------------------------------------------
@@ -1616,6 +1631,7 @@
 	window['AscDFH'].historyitem_Styles_ChangeDefaultSubtitleId          = window['AscDFH'].historyitem_type_Styles | 20;
 	window['AscDFH'].historyitem_Styles_ChangeDefaultQuoteId             = window['AscDFH'].historyitem_type_Styles | 21;
 	window['AscDFH'].historyitem_Styles_ChangeDefaultIntenseQuoteId      = window['AscDFH'].historyitem_type_Styles | 22;
+	window['AscDFH'].historyitem_Styles_ChangeDefaultCaption             = window['AscDFH'].historyitem_type_Styles | 23;
 	//------------------------------------------------------------------------------------------------------------------
 	// Типы изменений в классе ParaMath
 	//------------------------------------------------------------------------------------------------------------------
@@ -1812,16 +1828,18 @@
 	//------------------------------------------------------------------------------------------------------------------
 	// Графические классы
 	//------------------------------------------------------------------------------------------------------------------
-	window['AscDFH'].historyitem_Presentation_AddSlide            = window['AscDFH'].historyitem_type_Presentation | 1;
-	window['AscDFH'].historyitem_Presentation_RemoveSlide         = window['AscDFH'].historyitem_type_Presentation | 2;
-	window['AscDFH'].historyitem_Presentation_SlideSize           = window['AscDFH'].historyitem_type_Presentation | 3;
-	window['AscDFH'].historyitem_Presentation_AddSlideMaster      = window['AscDFH'].historyitem_type_Presentation | 4;
-	window['AscDFH'].historyitem_Presentation_ChangeTheme         = window['AscDFH'].historyitem_type_Presentation | 5;
-	window['AscDFH'].historyitem_Presentation_ChangeColorScheme   = window['AscDFH'].historyitem_type_Presentation | 6;
-	window['AscDFH'].historyitem_Presentation_SetShowPr           = window['AscDFH'].historyitem_type_Presentation | 7;
-	window['AscDFH'].historyitem_Presentation_SetDefaultTextStyle = window['AscDFH'].historyitem_type_Presentation | 8;
-	window['AscDFH'].historyitem_Presentation_AddSection          = window['AscDFH'].historyitem_type_Presentation | 9;
-	window['AscDFH'].historyitem_Presentation_RemoveSection       = window['AscDFH'].historyitem_type_Presentation | 10;
+	window['AscDFH'].historyitem_Presentation_AddSlide                    = window['AscDFH'].historyitem_type_Presentation | 1;
+	window['AscDFH'].historyitem_Presentation_RemoveSlide                 = window['AscDFH'].historyitem_type_Presentation | 2;
+	window['AscDFH'].historyitem_Presentation_SlideSize                   = window['AscDFH'].historyitem_type_Presentation | 3;
+	window['AscDFH'].historyitem_Presentation_AddSlideMaster              = window['AscDFH'].historyitem_type_Presentation | 4;
+	window['AscDFH'].historyitem_Presentation_ChangeTheme                 = window['AscDFH'].historyitem_type_Presentation | 5;
+	window['AscDFH'].historyitem_Presentation_ChangeColorScheme           = window['AscDFH'].historyitem_type_Presentation | 6;
+	window['AscDFH'].historyitem_Presentation_SetShowPr                   = window['AscDFH'].historyitem_type_Presentation | 7;
+	window['AscDFH'].historyitem_Presentation_SetDefaultTextStyle         = window['AscDFH'].historyitem_type_Presentation | 8;
+	window['AscDFH'].historyitem_Presentation_AddSection                  = window['AscDFH'].historyitem_type_Presentation | 9;
+	window['AscDFH'].historyitem_Presentation_RemoveSection               = window['AscDFH'].historyitem_type_Presentation | 10;
+	window["AscDFH"].historyitem_Presentation_SetFirstSlideNum            = window["AscDFH"].historyitem_type_Presentation | 11;
+	window["AscDFH"].historyitem_Presentation_SetShowSpecialPlsOnTitleSld = window["AscDFH"].historyitem_type_Presentation | 12;
 
 	window['AscDFH'].historyitem_ColorMod_SetName = window['AscDFH'].historyitem_type_ColorMod | 1;
 	window['AscDFH'].historyitem_ColorMod_SetVal  = window['AscDFH'].historyitem_type_ColorMod | 2;
@@ -2372,6 +2390,7 @@
 	window['AscDFH'].historyitem_SpPr_SetFill     = window['AscDFH'].historyitem_type_SpPr | 4;
 	window['AscDFH'].historyitem_SpPr_SetLn       = window['AscDFH'].historyitem_type_SpPr | 5;
 	window['AscDFH'].historyitem_SpPr_SetParent   = window['AscDFH'].historyitem_type_SpPr | 6;
+	window['AscDFH'].historyitem_SpPr_SetEffectPr = window['AscDFH'].historyitem_type_SpPr | 7;
 
 	window['AscDFH'].historyitem_ClrScheme_AddClr  = window['AscDFH'].historyitem_type_ClrScheme | 1;
 	window['AscDFH'].historyitem_ClrScheme_SetName = window['AscDFH'].historyitem_type_ClrScheme | 2;
@@ -2737,6 +2756,13 @@
 	//------------------------------------------------------------------------------------------------------------------
 	window['AscDFH'].historyitem_DocumentMacros_Data = window['Asc'].historyitem_type_DocumentMacros | 1;
 
+
+
+	//------------------------------------------------------------------------------------------------------------------
+	// Типы изменений класса CCore
+	//------------------------------------------------------------------------------------------------------------------
+	window['AscDFH'].historyitem_CoreProperties = window['AscDFH'].historyitem_type_Core | 1;
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//
@@ -3099,6 +3125,12 @@
 	window['AscDFH'].historydescription_Document_AddBlankPage                       = 0x015d;
 	window['AscDFH'].historydescription_Document_AddTableFormula                    = 0x015e;
 	window['AscDFH'].historydescription_Document_ChangeTableFormula                 = 0x015e;
+	window['AscDFH'].historydescription_SetCoreproperties                           = 0x015f;
+	window['AscDFH'].historydescription_Document_AddWatermark                       = 0x0160;
+	window['AscDFH'].historydescription_Presentation_SetHF                          = 0x0161;
+	window['AscDFH'].historydescription_Presentation_AddSlideNumber                 = 0x0162;
+	window['AscDFH'].historydescription_Document_SetParagraphOutlineLvl             = 0x0163;
+	window['AscDFH'].historydescription_Document_RemoveTableCells                   = 0x0164;
 
 
 

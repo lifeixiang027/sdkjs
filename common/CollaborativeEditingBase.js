@@ -426,7 +426,6 @@ CCollaborativeEditingBase.prototype.SendImagesUrlsFromChanges = function (aImage
     if(!oApi){
         return;
     }
-    rData['id'] = oApi.documentId;
     rData['c'] = 'pathurls';
     rData['data'] = [];
     for(i = 0; i < aImages.length; ++i)
@@ -1225,7 +1224,7 @@ CCollaborativeEditingBase.prototype.UpdateDocumentPositionsByState = function(Do
 			{
 				var oRow = oTable.Get_Row(nCurRow);
 				if (oRow.Get_CellsCount() <= 0)
-					oTable.Internal_Remove_Row(nCurRow);
+					oTable.private_RemoveRow(nCurRow);
 			}
 
 			if (oTable.Parent instanceof AscCommonWord.CDocument || oTable.Parent instanceof AscCommonWord.CDocumentContent)

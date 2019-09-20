@@ -900,8 +900,18 @@ CTableCell.prototype =
 			}
 		}
 
-        if (true !== isRotated && true === this.Get_NoWrap())
-            Result.Min = Math.max(Result.Min, Result.Max);
+        if (true !== isRotated && true === this.GetNoWrap())
+		{
+			if (tblwidth_Mm !== this.GetW().Type)
+			{
+				Result.Min = Math.max(Result.Min, Result.Max);
+			}
+			else
+			{
+				var oMargins = this.GetMargins();
+				Result.Min = Math.max(Result.Min, this.GetW().W - oMargins.Left.W - oMargins.Right.W, 0);
+			}
+		}
 
         return Result;
     },
@@ -1006,6 +1016,7 @@ CTableCell.prototype =
 
 	Set_Pr : function(CellPr)
 	{
+		this.private_AddPrChange();
 		History.Add(new CChangesTableCellPr(this, this.Pr, CellPr));
 		this.Pr = CellPr;
 		this.Recalc_CompiledPr();
@@ -1139,7 +1150,7 @@ CTableCell.prototype =
         this.Set_TextDirection(OtherPr.TextDirection);
 
         // NoWrap
-        this.Set_NoWrap(OtherPr.NoWrap);
+        this.SetNoWrap(OtherPr.NoWrap);
     },
 
     Get_W : function()
@@ -1150,6 +1161,7 @@ CTableCell.prototype =
 
 	Set_W : function(CellW)
 	{
+		this.private_AddPrChange();
 		History.Add(new CChangesTableCellW(this, this.Pr.TableCellW, CellW));
 		this.Pr.TableCellW = CellW;
 		this.Recalc_CompiledPr();
@@ -1166,6 +1178,7 @@ CTableCell.prototype =
 		if (this.Pr.GridSpan === Value)
 			return;
 
+		this.private_AddPrChange();
 		History.Add(new CChangesTableCellGridSpan(this, this.Pr.GridSpan, Value));
 		this.Pr.GridSpan = Value;
 		this.Recalc_CompiledPr();
@@ -1212,6 +1225,7 @@ CTableCell.prototype =
 		{
 			if (Margin !== this.Pr.TableCellMar)
 			{
+				this.private_AddPrChange();
 				History.Add(new CChangesTableCellMargins(this, OldValue, Margin));
 				this.Pr.TableCellMar = undefined;
 				this.Recalc_CompiledPr();
@@ -1308,6 +1322,7 @@ CTableCell.prototype =
 
 		if (true === bNeedChange)
 		{
+			this.private_AddPrChange();
 			History.Add(new CChangesTableCellMargins(this, OldValue, Margins_new));
 			this.Pr.TableCellMar = Margins_new;
 			this.Recalc_CompiledPr();
@@ -1327,12 +1342,14 @@ CTableCell.prototype =
 
 		if (undefined === Shd)
 		{
+			this.private_AddPrChange();
 			History.Add(new CChangesTableCellShd(this, this.Pr.Shd, undefined));
 			this.Pr.Shd = undefined;
 			this.Recalc_CompiledPr();
 		}
 		else if (undefined === this.Pr.Shd || false === this.Pr.Shd.Compare(Shd))
 		{
+			this.private_AddPrChange();
 			var _Shd = new CDocumentShd();
 			_Shd.Set_FromObject(Shd);
 			History.Add(new CChangesTableCellShd(this, this.Pr.Shd, _Shd));
@@ -1352,20 +1369,22 @@ CTableCell.prototype =
 		if (Value === this.Pr.VAlign)
 			return;
 
+		this.private_AddPrChange();
 		History.Add(new CChangesTableCellVAlign(this, this.Pr.VAlign, Value));
 		this.Pr.VAlign = Value;
 		this.Recalc_CompiledPr();
 	},
 
-    Get_NoWrap : function()
+    GetNoWrap : function()
     {
         return this.Get_CompiledPr(false).NoWrap;
     },
 
-	Set_NoWrap : function(Value)
+	SetNoWrap : function(Value)
 	{
 		if (this.Pr.NoWrap !== Value)
 		{
+			this.private_AddPrChange();
 			History.Add(new CChangesTableCellNoWrap(this, this.Pr.NoWrap, Value));
 			this.Pr.NoWrap = Value;
 			this.Recalc_CompiledPr();
@@ -1390,6 +1409,7 @@ CTableCell.prototype =
 	{
 		if (Value !== this.Pr.TextDirection)
 		{
+			this.private_AddPrChange();
 			History.Add(new CChangesTableCellTextDirection(this, this.Pr.TextDirection, Value));
 			this.Pr.TextDirection = Value;
 			this.Recalc_CompiledPr();
@@ -1424,15 +1444,7 @@ CTableCell.prototype =
 
     Get_Borders : function()
     {
-        var CellBorders =
-            {
-                Top    : this.Get_Border( 0 ),
-                Right  : this.Get_Border( 1 ),
-                Bottom : this.Get_Border( 2 ),
-                Left   : this.Get_Border( 3 )
-            };
-
-        return CellBorders;
+    	return this.GetBorders();
     },
 
     // 0 - Top, 1 - Right, 2- Bottom, 3- Left
@@ -1529,6 +1541,7 @@ CTableCell.prototype =
 			if (Border === DstBorder)
 				return;
 
+			this.private_AddPrChange();
 			switch (Type)
 			{
 				case 0:
@@ -1570,6 +1583,7 @@ CTableCell.prototype =
 			NewBorder.Color.b = null != Border.Color ? Border.Color.b : NewBorder.Color.b;
 			NewBorder.Unifill = null != Border.Unifill ? Border.Unifill : NewBorder.Unifill;
 
+			this.private_AddPrChange();
 			switch (Type)
 			{
 				case 0:
@@ -1615,6 +1629,7 @@ CTableCell.prototype =
 			NewBorder.Color.b = null != Border.Color ? Border.Color.b : DefBorder.Color.b;
 			NewBorder.Unifill = null != Border.Unifill ? Border.Unifill : DefBorder.Unifill;
 
+			this.private_AddPrChange();
 			switch (Type)
 			{
 				case 0:
@@ -2007,6 +2022,7 @@ CTableCell.prototype.SetVMerge = function(nType)
 	if (nType === this.Pr.VMerge)
 		return;
 
+	this.private_AddPrChange();
 	History.Add(new CChangesTableCellVMerge(this, this.Pr.VMerge, nType));
 	this.Pr.VMerge = nType;
 	this.Recalc_CompiledPr();
@@ -2137,6 +2153,7 @@ CTableCell.prototype.SetHMerge = function(nType)
 	if (nType === this.Pr.HMerge)
 		return;
 
+	this.private_AddPrChange();
 	History.Add(new CChangesTableCellHMerge(this, this.Pr.HMerge, nType));
 	this.Pr.HMerge = nType;
 	this.Recalc_CompiledPr();
@@ -2191,12 +2208,15 @@ CTableCell.prototype.GetPageBounds = function(nCurPage)
 
 	var oCellInfo = oRow.GetCellInfo(this.GetIndex());
 
+	var nVMergeCountOnPage = oTable.private_GetVertMergeCountOnPage(nCurPage, oRow.GetIndex(), oCellInfo.StartGridCol, this.GetGridSpan());
+	if (nVMergeCountOnPage <= 0)
+		return new CDocumentBounds(0, 0, 0, 0);
 
 	var nL = oPage.X + oCellInfo.X_cell_start;
 	var nR = oPage.X + oCellInfo.X_cell_end;
 
 	var nT = oTable.RowsInfo[nCurRow].Y[nCurPage];
-	var nB = oTable.RowsInfo[nCurRow].Y[nCurPage] + oTable.RowsInfo[nCurRow].H[nCurPage];
+	var nB = oTable.RowsInfo[nCurRow + nVMergeCountOnPage - 1].Y[nCurPage] + oTable.RowsInfo[nCurRow + nVMergeCountOnPage - 1].H[nCurPage];
 
 	return new CDocumentBounds(nL, nT, nR, nB);
 };
@@ -2212,7 +2232,99 @@ CTableCell.prototype.GetColumn = function()
 
 	return oTable.GetColumn(this.GetIndex(), this.GetRow().GetIndex());
 };
+CTableCell.prototype.private_UpdateTrackRevisions = function()
+{
+	var oTable = this.GetTable();
+	if (oTable)
+		oTable.UpdateTrackRevisions();
+};
+CTableCell.prototype.HavePrChange = function()
+{
+	return this.Pr.HavePrChange();
+};
+CTableCell.prototype.AddPrChange = function()
+{
+	if (false === this.HavePrChange())
+	{
+		this.Pr.AddPrChange();
+		History.Add(new CChangesTableCellPrChange(this, {
+			PrChange   : undefined,
+			ReviewInfo : undefined
+		}, {
+			PrChange   : this.Pr.PrChange,
+			ReviewInfo : this.Pr.ReviewInfo
+		}));
+		this.private_UpdateTrackRevisions();
+	}
+};
+CTableCell.prototype.RemovePrChange = function()
+{
+	if (true === this.HavePrChange())
+	{
+		History.Add(new CChangesTableCellPrChange(this, {
+			PrChange   : this.Pr.PrChange,
+			ReviewInfo : this.Pr.ReviewInfo
+		}, {
+			PrChange   : undefined,
+			ReviewInfo : undefined
+		}));
+		this.Pr.RemovePrChange();
+		this.private_UpdateTrackRevisions();
+	}
+};
+CTableCell.prototype.private_AddPrChange = function()
+{
+	var oTable = this.GetTable();
+	var oRow   = this.GetRow();
+	if (oTable
+		&& oRow
+		&& oTable.LogicDocument
+		&& true === oTable.LogicDocument.IsTrackRevisions()
+		&& true !== this.HavePrChange()
+		&& reviewtype_Common === oRow.GetReviewType())
+	{
+		this.AddPrChange();
+		oTable.AddPrChange();
+	}
+};
+CTableCell.prototype.AcceptPrChange = function()
+{
+	this.RemovePrChange();
+};
+CTableCell.prototype.RejectPrChange = function()
+{
+	if (this.HavePrChange())
+	{
+		this.Set_Pr(this.Pr.PrChange);
+		this.RemovePrChange();
+	}
+};
+/**
+ * Проверяем является ли данная ячейка частью смерженной ячейки
+ * @returns {boolean}
+ */
+CTableCell.prototype.IsMergedCell = function()
+{
+	var oTable  = this.GetTable();
+	var nVMerge = this.GetVMerge();
+	if (nVMerge === vmerge_Continue && oTable)
+		return (oTable.GetStartMergedCell(this.GetIndex(), this.GetRow().GetIndex()) !== this);
 
+	return false;
+};
+/**
+ * Получаем границы данной ячейки
+ * @returns {{Top: *, Right: *, Bottom: *, Left: *}}
+ */
+CTableCell.prototype.GetBorders = function()
+{
+	return {
+		Top    : this.GetBorder(0),
+		Right  : this.GetBorder(1),
+		Bottom : this.GetBorder(2),
+		Left   : this.GetBorder(3)
+	};
+};
 
 function CTableCellRecalculateObject()
 {

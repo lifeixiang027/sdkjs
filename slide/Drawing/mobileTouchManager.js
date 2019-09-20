@@ -767,6 +767,7 @@
 		var isPreventDefault = false;
 		switch (this.Mode)
 		{
+            case AscCommon.MobileTouchMode.None:
 			case AscCommon.MobileTouchMode.Select:
 			case AscCommon.MobileTouchMode.Scroll:
 			case AscCommon.MobileTouchMode.InlineObj:
@@ -957,7 +958,10 @@
 		this.checkPointerMultiTouchRemove(e);
 
 		if (this.Api.isViewMode || isPreventDefault)
-			AscCommon.g_inputContext.preventVirtualKeyboard(e);
+            AscCommon.stopEvent(e);//AscCommon.g_inputContext.preventVirtualKeyboard(e);
+
+        if (AscCommon.g_inputContext.isHardCheckKeyboard)
+            isPreventDefault ? AscCommon.g_inputContext.preventVirtualKeyboard_Hard() : AscCommon.g_inputContext.enableVirtualKeyboard_Hard();
 
 		if (true !== this.iScroll.isAnimating)
 			this.CheckContextMenuTouchEnd(isCheckContextMenuMode, isCheckContextMenuSelect, isCheckContextMenuCursor, isCheckContextMenuTableRuler);
@@ -1270,7 +1274,11 @@
 			this.CheckContextMenuTouchEnd(isCheckContextMenuMode);
 
 		AscCommon.stopEvent(e);
-        AscCommon.g_inputContext.preventVirtualKeyboard(e);
+
+        if (!AscCommon.g_inputContext.isHardCheckKeyboard)
+        	AscCommon.g_inputContext.preventVirtualKeyboard(e);
+        else
+            AscCommon.g_inputContext.preventVirtualKeyboard_Hard();
 
 		return false;
 	};

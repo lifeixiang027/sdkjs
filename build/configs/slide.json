@@ -68,7 +68,6 @@
 			"../slide/Editor/Format/TextBodyPrototype.js",
 			"../common/Drawings/Format/GraphicFrame.js",
 			"../common/Charts/charts.js",
-			"../common/Charts/DrawingArea.js",
 			"../common/Charts/DrawingObjects.js",
 			"../common/Charts/3DTransformation.js",
 			"../common/Charts/ChartsDrawer.js",
@@ -90,14 +89,12 @@
 			"../common/Drawings/HatchPattern.js",
 
 			"../common/scroll.js",
-			"../common/Scrolls/iscroll.js",
+			"../vendor/iscroll.js",
 			"../common/Scrolls/mobileTouchManagerBase.js",
 			"../slide/Drawing/mobileTouchManager.js",
 
 			"../common/wordcopypaste.js",
 			"../common/intervalTree.js",
-
-			"../slide/themes/Themes.js",
 
 			"../cell/utils/utils.js",
 			"../cell/model/WorkbookElems.js",
@@ -157,6 +154,7 @@
 			"../word/Editor/Paragraph/ParaDrawingChanges.js",
 			"../word/Editor/Paragraph/ComplexFieldInstruction.js",
 			"../word/Editor/Paragraph/ComplexField.js",
+			"../word/Editor/Paragraph/ParaRevisionMove.js",
 			"../word/Editor/Hyperlink.js",
 			"../word/Editor/HyperlinkChanges.js",
 			"../word/Editor/Field.js",

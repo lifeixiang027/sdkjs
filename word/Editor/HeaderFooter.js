@@ -1065,6 +1065,11 @@ CHeaderFooter.prototype =
 		this.Content.SplitTableCells(Cols, Rows);
 	},
 
+	RemoveTableCells : function()
+	{
+		this.Content.RemoveTableCells();
+	},
+
 	RemoveTable : function()
 	{
 		this.Content.RemoveTable();
@@ -1247,9 +1252,9 @@ CHeaderFooter.prototype.SetParagraphFramePr = function(FramePr, bDelete)
 {
     return this.Content.SetParagraphFramePr(FramePr, bDelete);
 };
-CHeaderFooter.prototype.GetRevisionsChangeParagraph = function(SearchEngine)
+CHeaderFooter.prototype.GetRevisionsChangeElement = function(SearchEngine)
 {
-    return this.Content.GetRevisionsChangeParagraph(SearchEngine);
+    return this.Content.GetRevisionsChangeElement(SearchEngine);
 };
 CHeaderFooter.prototype.GetSelectionBounds = function()
 {
@@ -1302,6 +1307,31 @@ CHeaderFooter.prototype.GetAllContentControls = function(arrContentControls)
 CHeaderFooter.prototype.GetContent = function()
 {
 	return this.Content;
+};
+
+CHeaderFooter.prototype.FindWatermark = function()
+{
+    var aAllDrawings = this.Content.GetAllDrawingObjects();
+    var oCandidate = null, oDrawing;
+    for(var i = aAllDrawings.length - 1; i > -1; --i)
+    {
+        oDrawing = aAllDrawings[i];
+        if(oDrawing.IsWatermark())
+        {
+            if(null === oCandidate)
+            {
+                oCandidate = oDrawing;
+            }
+            else
+            {
+                if(oCandidate.getDrawingArrayType() < oDrawing.getDrawingArrayType() || ComparisonByZIndexSimple(oDrawing, oCandidate))
+                {
+                    oCandidate = oDrawing;
+                }
+            }
+        }
+    }
+    return oCandidate;
 };
 
 //-----------------------------------------------------------------------------------
@@ -1459,7 +1489,7 @@ CHeaderFooterController.prototype =
                 var bEven   = ( true === SectionPageInfo.bEven  && true === EvenAndOddHeaders      ? true : false );
                 var bHeader = ( hdrftr_Header === this.CurHdrFtr.Type ? true : false );
 
-                Pr.LinkToPrevious = ( null === SectPr.Get_HdrFtr( bHeader, bFirst, bEven ) ? true : false );
+                Pr.LinkToPrevious = ( null === SectPr.GetHdrFtr( bHeader, bFirst, bEven ) ? true : false );
             }
 
             Pr.Locked = this.Lock.Is_Locked();
@@ -1686,7 +1716,7 @@ CHeaderFooterController.prototype =
     },
 
     // Запрашиваем низ у верхнего колонтитула для данной страницы
-    Get_HdrFtrLines : function(PageIndex)
+    GetHdrFtrLines : function(PageIndex)
     {
         var Header = null;
         var Footer = null;
@@ -2205,7 +2235,7 @@ CHeaderFooterController.prototype =
                 {
                     // Меняем старый режим редактирования, чтобы при Undo/Redo возвращаться в режим редактирования документа
                     this.LogicDocument.SetDocPosType(docpostype_Content);
-                    History.Create_NewPoint(AscDFH.historydescription_Document_AddHeader);
+                    this.LogicDocument.StartAction(AscDFH.historydescription_Document_AddHeader);
                     this.LogicDocument.SetDocPosType(docpostype_HdrFtr);
                     HdrFtr = this.LogicDocument.Create_SectionHdrFtr( hdrftr_Header, PageIndex );
 
@@ -2215,6 +2245,7 @@ CHeaderFooterController.prototype =
                     this.CurHdrFtr = HdrFtr;
 
                     this.LogicDocument.Recalculate();
+                    this.LogicDocument.FinalizeAction();
                 }
                 else
                     return false;
@@ -2230,7 +2261,7 @@ CHeaderFooterController.prototype =
                 {
                     // Меняем старый режим редактирования, чтобы при Undo/Redo возвращаться в режим редактирования документа
                     this.LogicDocument.SetDocPosType(docpostype_Content);
-                    History.Create_NewPoint(AscDFH.historydescription_Document_AddFooter);
+                    this.LogicDocument.StartAction(AscDFH.historydescription_Document_AddFooter);
                     this.LogicDocument.SetDocPosType(docpostype_HdrFtr);
                     HdrFtr = this.LogicDocument.Create_SectionHdrFtr( hdrftr_Footer, PageIndex );
 
@@ -2240,6 +2271,7 @@ CHeaderFooterController.prototype =
 					this.CurHdrFtr = HdrFtr;
 
                     this.LogicDocument.Recalculate();
+                    this.LogicDocument.FinalizeAction();
                 }
                 else
                     return false;
@@ -2262,17 +2294,17 @@ CHeaderFooterController.prototype =
 
         // В зависимости от страницы и позиции на странице мы активируем(делаем текущим)
         // соответствующий колонтитул
+        var oPrevHdrFtr = this.CurHdrFtr;
 
-        var OldHdrFtr = this.CurHdrFtr;
-        this.CurHdrFtr = HdrFtr;
+		// Очищаем селект, если он был в предыдущем колонтитуле
+		if (oPrevHdrFtr && (oPrevHdrFtr !== HdrFtr || OldPage != this.CurPage))
+		{
+			oPrevHdrFtr.RemoveSelection();
+		}
 
-        if ( null != OldHdrFtr && (OldHdrFtr != this.CurHdrFtr || OldPage != this.CurPage) )
-        {
-            // Удаляем селект, если он был на предыдущем колонтитуле
-            OldHdrFtr.RemoveSelection();
-        }
+		this.CurHdrFtr = HdrFtr;
 
-        if ( null != this.CurHdrFtr )
+		if ( null != this.CurHdrFtr )
         {
             this.CurHdrFtr.Selection_SetStart( X, Y, PageIndex, MouseEvent );
             if ( true === bActivate )
@@ -2435,6 +2467,12 @@ CHeaderFooterController.prototype =
 			this.CurHdrFtr.SplitTableCells(Cols, Rows);
 	},
 
+	RemoveTableCells : function()
+	{
+		if (this.CurHdrFtr)
+			this.CurHdrFtr.RemoveTableCells();
+	},
+
 	RemoveTable : function()
 	{
 		if (null != this.CurHdrFtr)
@@ -2574,6 +2612,13 @@ CHeaderFooterController.prototype.GetSimilarNumbering = function(oEngine)
 	if (this.CurHdrFtr)
 		this.CurHdrFtr.Content.GetSimilarNumbering(oEngine)
 };
+CHeaderFooterController.prototype.GetPlaceHolderObject = function()
+{
+	if (this.CurHdrFtr)
+		return this.CurHdrFtr.Content.GetPlaceHolderObject();
+
+	return null;
+};
 CHeaderFooterController.prototype.SetParagraphFramePr = function(FramePr, bDelete)
 {
     if (null !== this.CurHdrFtr)
@@ -2661,6 +2706,14 @@ CHeaderFooterController.prototype.GetAllFields = function(isUseSelection, arrFie
 
 	return arrFields ? arrFields : [];
 };
+CHeaderFooterController.prototype.IsTableCellSelection = function()
+{
+	if (this.CurHdrFtr)
+		return this.CurHdrFtr.GetContent().IsTableCellSelection();
+
+	return false;
+};
+
 
 function CHdrFtrPage()
 {

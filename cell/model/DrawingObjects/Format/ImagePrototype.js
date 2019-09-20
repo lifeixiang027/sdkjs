@@ -123,7 +123,6 @@ CImageShape.prototype.handleUpdatePosition = function()
     this.recalcTransform();
 	this.recalcBounds();
     this.addToRecalculate();
-    //delete this.fromSerialize;
 };
 CImageShape.prototype.handleUpdateExtents = function()
 {
@@ -131,20 +130,17 @@ CImageShape.prototype.handleUpdateExtents = function()
     this.recalcBounds();
     this.recalcTransform();
     this.addToRecalculate();
-    //delete this.fromSerialize;
 };
 CImageShape.prototype.handleUpdateRot = function()
 {
     this.recalcTransform();
     this.recalcBounds();
     this.addToRecalculate();
-    //delete this.fromSerialize;
 };
 CImageShape.prototype.handleUpdateFlip = function()
 {
     this.recalcTransform();
     this.addToRecalculate();
-    //delete this.fromSerialize;
 };
 CImageShape.prototype.handleUpdateFill = function()
 {
@@ -167,6 +163,11 @@ CImageShape.prototype.recalculate = function ()
     if(this.bDeleted)
         return;
     AscFormat.ExecuteNoHistory(function(){
+        var bRecalcShadow = this.recalcInfo.recalculateBrush ||
+            this.recalcInfo.recalculatePen ||
+            this.recalcInfo.recalculateTransform ||
+            this.recalcInfo.recalculateGeometry ||
+            this.recalcInfo.recalculateBounds;
     if (this.recalcInfo.recalculateBrush) {
         this.recalculateBrush();
         this.recalcInfo.recalculateBrush = false;
@@ -190,6 +191,10 @@ CImageShape.prototype.recalculate = function ()
     {
         this.recalculateBounds();
         this.recalcInfo.recalculateBounds = false;
+    }
+    if(bRecalcShadow)
+    {
+        this.recalculateShdw();
     }
     this.clearCropObject();
     }, this, []);

@@ -562,6 +562,10 @@ CDocumentContentElementBase.prototype.SplitTableCells = function(nColsCount, nRo
 {
 	return false;
 };
+CDocumentContentElementBase.prototype.RemoveTableCells = function()
+{
+	return false;
+};
 CDocumentContentElementBase.prototype.RemoveTable = function()
 {
 	return false;
@@ -677,6 +681,10 @@ CDocumentContentElementBase.prototype.GetStyleFromFormatting = function()
 CDocumentContentElementBase.prototype.GetAllContentControls = function(arrContentControls)
 {
 };
+/**
+ * Проверяем выделен ли элемент целиком
+ * @returns {boolean}
+ */
 CDocumentContentElementBase.prototype.IsSelectedAll = function()
 {
 	return false;
@@ -699,7 +707,7 @@ CDocumentContentElementBase.prototype.FindNextFillingForm = function(isNext, isC
 {
 	return null;
 };
-CDocumentContentElementBase.prototype.GetRevisionsChangeParagraph = function(SearchEngine)
+CDocumentContentElementBase.prototype.GetRevisionsChangeElement = function(SearchEngine)
 {
 	return null;
 };
@@ -724,12 +732,7 @@ CDocumentContentElementBase.prototype.GetDocumentPositionFromObject = function(P
 };
 CDocumentContentElementBase.prototype.Get_Index = function()
 {
-	if (!this.Parent)
-		return -1;
-
-	this.Parent.Update_ContentIndexing();
-
-	return this.Index;
+	return this.GetIndex();
 };
 CDocumentContentElementBase.prototype.GetOutlineParagraphs = function(arrOutline, oPr)
 {
@@ -818,6 +821,14 @@ CDocumentContentElementBase.prototype.GetPagesCount = function()
 };
 CDocumentContentElementBase.prototype.GetIndex = function()
 {
+	if (!this.Parent)
+		return -1;
+
+	this.Parent.Update_ContentIndexing();
+
+	if (this !== this.Parent.GetElement(this.Index))
+		this.Index = -1;
+
 	return this.Index;
 };
 CDocumentContentElementBase.prototype.GetPageBounds = function(CurPage)
@@ -872,6 +883,16 @@ CDocumentContentElementBase.prototype.GetAllComments = function(AllComments)
 CDocumentContentElementBase.prototype.GetAllMaths = function(AllMaths)
 {
 };
+
+/**
+ * Find all SEQ complex fields with specified type
+ * @param {String} sType - field type
+ * @param {Array} aFields - array which accumulates complex fields
+ */
+CDocumentContentElementBase.prototype.GetAllSeqFieldsByType = function(sType, aFields)
+{
+};
+
 CDocumentContentElementBase.prototype.UpdateBookmarks = function(oManager)
 {
 };
@@ -1028,6 +1049,64 @@ CDocumentContentElementBase.prototype.GetTopElement = function()
 		return this;
 
 	return this.Parent.GetTopElement();
+};
+/**
+ * Получаем объект лока данного элемента
+ * @returns {AscCommon.CLock}
+ */
+CDocumentContentElementBase.prototype.GetLock = function()
+{
+	return this.Lock;
+};
+/**
+ * Если мы находимся в колонтитуле возвращаем его
+ * @returns {?CHdrFtr}
+ */
+CDocumentContentElementBase.prototype.GetHdrFtr = function()
+{
+	if (this.Parent)
+		return this.Parent.IsHdrFtr(true);
+
+	return null;
+};
+/**
+ * Используется ли данный элемент в содержимом документа
+ * @param {string} sId - идентификатор внутреннего класса
+ * @returns {boolean}
+ */
+CDocumentContentElementBase.prototype.IsUseInDocument = function(sId)
+{
+	return this.Is_UseInDocument(sId);
+};
+CDocumentContentElementBase.prototype.Is_UseInDocument = function(sId)
+{
+	return false;
+};
+/**
+ * Пробегаемся по все ранам с заданной функцией
+ * @param fCheck - функция проверки содержимого рана
+ * @returns {boolean}
+ */
+CDocumentContentElementBase.prototype.CheckRunContent = function(fCheck)
+{
+	return false;
+};
+/**
+ * По заданной странице получаем страницу, с которой нужно начинать расчет
+ * @param {number} nPageAbs
+ * @return {number}
+ */
+CDocumentContentElementBase.prototype.GetStartPageForRecalculate = function(nPageAbs)
+{
+	return nPageAbs;
+};
+/**
+ * Проверяем выделено ли сейчас какое-либо презентационное поле, если да, то возвращаем управляющий объект
+ * @returns {?Object}
+ */
+CDocumentContentElementBase.prototype.GetPresentationField = function()
+{
+	return null;
 };
 
 //--------------------------------------------------------export--------------------------------------------------------

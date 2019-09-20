@@ -657,13 +657,23 @@ function MathMenu(type)
 {
 	this.Type = para_Math;
 	this.Menu = type == undefined ? c_oAscMathType.Default_Text : type;
+	this.Text = null;
 }
-MathMenu.prototype =
+MathMenu.prototype.Get_Type = function()
 {
-	Get_Type : function()
-    {
-        return this.Type;
-    }
+	return this.Type;
+};
+MathMenu.prototype.GetType = function()
+{
+	return this.Type;
+};
+MathMenu.prototype.SetText = function(sText)
+{
+	this.Text = sText;
+};
+MathMenu.prototype.GetText = function()
+{
+	return this.Text;
 };
 
 function CMathLineState()
@@ -1127,7 +1137,7 @@ ParaMath.prototype.Is_CheckingNearestPos = function()
     return this.Root.Is_CheckingNearestPos();
 };
 
-ParaMath.prototype.Is_StartFromNewLine = function()
+ParaMath.prototype.IsStartFromNewLine = function()
 {
     return false;
 };
@@ -1177,12 +1187,12 @@ ParaMath.prototype.Add = function(Item)
             var CtrRunPr = oContent.Get_ParentCtrRunPr(false); // ctrPrp (не копия)
 
             if (true === TrackRevisions)
-                LogicDocument.Set_TrackRevisions(false);
+                LogicDocument.SetTrackRevisions(false);
 
             Run.Apply_TextPr(CtrRunPr, undefined, true);
 
             if (true === TrackRevisions)
-                LogicDocument.Set_TrackRevisions(true);
+                LogicDocument.SetTrackRevisions(true);
         }
 
         if(Item.Value == 38)
@@ -1224,7 +1234,7 @@ ParaMath.prototype.Add = function(Item)
         RightRun.MoveCursorToStartPos();
 
         var lng = oContent.Content.length;
-        oContent.Load_FromMenu(Item.Menu, this.Paragraph);
+        oContent.Load_FromMenu(Item.Menu, this.Paragraph, null, Item.GetText());
         oContent.Correct_ContentCurPos();
 
         var lng2 = oContent.Content.length;
@@ -1232,7 +1242,7 @@ ParaMath.prototype.Add = function(Item)
         TextPr.RFonts.Set_All("Cambria Math", -1);
 
         if (true === TrackRevisions)
-            LogicDocument.Set_TrackRevisions(false);
+            LogicDocument.SetTrackRevisions(false);
 
         if(bPlh)
             oContent.Apply_TextPr(TextPr, undefined, true);
@@ -1240,7 +1250,7 @@ ParaMath.prototype.Add = function(Item)
             oContent.Apply_TextPr(TextPr, undefined, false, StartPos + 1, StartPos + lng2 - lng);
 
         if (true === TrackRevisions)
-            LogicDocument.Set_TrackRevisions(true);
+            LogicDocument.SetTrackRevisions(true);
     }
 
     if ((para_Text === Type || para_Space === Type) && null !== NewElement)
@@ -1660,32 +1670,33 @@ ParaMath.prototype.GetSelectedElementsInfo = function(Info, ContentPos, Depth)
 
 ParaMath.prototype.GetSelectedText = function(bAll, bClearText, oPr)
 {
-	if (true === bAll || true === this.IsSelectionUse())
-	{
+	if (true === bAll || true === this.IsSelectionUse()) {
 		if (true === bClearText)
 			return null;
 
 		var res = "";
-
-		//TODO проверить!!! +  пересмотреть работу функции GetTextContent
-		//включаю эту ветку только для copy/paste
-		if(window['AscCommon'].g_clipboardBase && window['AscCommon'].g_clipboardBase.CopyPasteFocus)
-		{
-			var selectedContent = this.GetSelectContent();
-			if(selectedContent && selectedContent.Content && selectedContent.Content.GetTextContent)
-			{
-				var textContent = selectedContent.Content.GetTextContent(!bAll);
-				if(textContent && textContent.str)
-				{
-					res = textContent.str;
-				}
-			}
-		}
-
+        var selectedContent = this.GetSelectContent();
+        if (selectedContent && selectedContent.Content && selectedContent.Content.GetTextContent) {
+            var textContent = selectedContent.Content.GetTextContent(!bAll);
+            if (textContent && textContent.str) {
+                res = textContent.str;
+            }
+        }
 		return res;
 	}
-
 	return "";
+};
+
+ParaMath.prototype.GetText = function()
+{
+    var res = "";
+    if (this.Root && this.Root.GetTextContent) {
+        var textContent = this.Root.GetTextContent();
+        if (textContent && textContent.str) {
+            res = textContent.str;
+        }
+    }
+    return res;
 };
 
 ParaMath.prototype.GetSelectDirection = function()
@@ -2827,7 +2838,7 @@ ParaMath.prototype.Draw_Lines = function(PDSL)
 //-----------------------------------------------------------------------------------
 // Функции для работы с курсором
 //-----------------------------------------------------------------------------------
-ParaMath.prototype.Is_CursorPlaceable = function()
+ParaMath.prototype.IsCursorPlaceable = function()
 {
     return true;
 };
@@ -3353,9 +3364,9 @@ ParaMath.prototype.Correct_AfterConvertFromEquation = function()
     this.ParaMathRPI.bCorrect_ConvertFontSize = true;
 };
 
-ParaMath.prototype.Check_RevisionsChanges = function(Checker, ContentPos, Depth)
+ParaMath.prototype.CheckRevisionsChanges = function(Checker, ContentPos, Depth)
 {
-    return this.Root.Check_RevisionsChanges(Checker, ContentPos, Depth);
+    return this.Root.CheckRevisionsChanges(Checker, ContentPos, Depth);
 };
 ParaMath.prototype.AcceptRevisionChanges = function(Type, bAll)
 {

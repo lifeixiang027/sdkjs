@@ -47,7 +47,7 @@ function (window, undefined) {
   var parserHelp = AscCommon.parserHelp;
   var g_oFormatParser = AscCommon.g_oFormatParser;
   var CellAddress = AscCommon.CellAddress;
-
+	var cDate = Asc.cDate;
   var bIsSupportArrayFormula = true;
 
   var prot;
@@ -383,7 +383,9 @@ function (window, undefined) {
 						tokens.push(new ParsedThing(token, TOK_TYPE_OPERAND, null, offset, token.length));
 						token = "";
 					}
-					tokens.push(tokenStack.pop());
+					if(tokenStack.length) {
+						tokens.push(tokenStack.pop());
+					}
 					break;
 				}
 				default:
@@ -468,150 +470,16 @@ var cExcelMaxExponent = 308;
 var cExcelMinExponent = -308;
 var c_Date1904Const = 24107; //разница в днях между 01.01.1970 и 01.01.1904 годами
 var c_Date1900Const = 25568; //разница в днях между 01.01.1970 и 01.01.1900 годами
-var c_sPerDay = 86400;
-var c_msPerDay = c_sPerDay * 1000;
-  var rx_sFuncPref = /_xlfn\./i;
-  var rx_sDefNamePref = /_xlnm\./i;
-	var cNumFormatFirstCell = -1;
-	var cNumFormatNone = -2;
-	var cNumFormatNull = -3;
+var rx_sFuncPref = /_xlfn\./i;
+var rx_sDefNamePref = /_xlnm\./i;
+var cNumFormatFirstCell = -1;
+var cNumFormatNone = -2;
+var cNumFormatNull = -3;
+var g_nFormulaStringMaxLength = 255;
 
 
-function cDate() {
-	var bind = Function.bind;
-	var unbind = bind.bind(bind);
-	var date = new (unbind(Date, null).apply(null, arguments));
-	date.__proto__ = cDate.prototype;
-	return date;
-}
 
-cDate.prototype = Object.create(Date.prototype);
-cDate.prototype.constructor = cDate;
-cDate.prototype.excelNullDate1900 = Date.UTC( 1899, 11, 30, 0, 0, 0 );
-cDate.prototype.excelNullDate1904 = Date.UTC( 1904, 0, 1, 0, 0, 0 );
 
-cDate.prototype.getExcelNullDate = function () {
-	return AscCommon.bDate1904 ? cDate.prototype.excelNullDate1904 : cDate.prototype.excelNullDate1900;
-};
-
-cDate.prototype.isLeapYear = function () {
-	var y = this.getUTCFullYear();
-	return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
-};
-
-cDate.prototype.getDaysInMonth = function () {
-//    return arguments.callee[this.isLeapYear() ? 'L' : 'R'][this.getMonth()];
-	return this.isLeapYear() ? this.getDaysInMonth.L[this.getUTCMonth()] : this.getDaysInMonth.R[this.getUTCMonth()];
-};
-
-// durations of months for the regular year
-cDate.prototype.getDaysInMonth.R = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-// durations of months for the leap year
-cDate.prototype.getDaysInMonth.L = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-
-cDate.prototype.truncate = function () {
-	this.setUTCHours( 0, 0, 0, 0 );
-	return this;
-};
-
-cDate.prototype.getExcelDate = function () {
-	return Math.floor( this.getExcelDateWithTime() );
-};
-
-cDate.prototype.getExcelDateWithTime = function () {
-//    return Math.floor( ( this.getTime() / 1000 - this.getTimezoneOffset() * 60 ) / c_sPerDay + ( AscCommonExcel.c_DateCorrectConst + (bDate1904 ? 0 : 1) ) );
-	var year = this.getUTCFullYear(), month = this.getUTCMonth(), date = this.getUTCDate(), res;
-
-	if(1900 === year && 0 === month && 0 === date) {
-		res = 0;
-	} else if (1900 < year || (1900 == year && 1 < month)) {
-		res = (Date.UTC(year, month, date, this.getUTCHours(), this.getUTCMinutes(), this.getUTCSeconds()) - this.getExcelNullDate() ) / c_msPerDay;
-	} else if (1900 == year && 1 == month && 29 == date) {
-		res = 60;
-	} else {
-		res = (Date.UTC(year, month, date, this.getUTCHours(), this.getUTCMinutes(), this.getUTCSeconds()) - this.getExcelNullDate() ) / c_msPerDay - 1;
-	}
-
-	return res;
-};
-
-cDate.prototype.getDateFromExcel = function ( val ) {
-
-	val = Math.floor( val );
-
-	return this.getDateFromExcelWithTime(val);
-};
-
-cDate.prototype.getDateFromExcelWithTime = function ( val ) {
-	if (AscCommon.bDate1904) {
-		return new cDate( val * c_msPerDay + this.getExcelNullDate() );
-	} else {
-		if ( val < 60 ) {
-			return new cDate( val * c_msPerDay + this.getExcelNullDate() );
-		} else if (val === 60) {
-			return new cDate( Date.UTC( 1900, 1, 29 ) );
-		} else {
-			return new cDate( val * c_msPerDay + this.getExcelNullDate() );
-		}
-	}
-};
-
-cDate.prototype.addYears = function ( counts ) {
-	this.setUTCFullYear( this.getUTCFullYear() + Math.floor( counts ) );
-};
-
-cDate.prototype.addMonths = function ( counts ) {
-	if ( this.lastDayOfMonth() ) {
-		this.setUTCDate( 1 );
-		this.setUTCMonth( this.getUTCMonth() + Math.floor( counts ) );
-		this.setUTCDate( this.getDaysInMonth() );
-	} else {
-		this.setUTCMonth( this.getUTCMonth() + Math.floor( counts ) );
-	}
-};
-
-cDate.prototype.addDays = function ( counts ) {
-	this.setUTCDate( this.getUTCDate() + Math.floor( counts ) );
-};
-
-cDate.prototype.lastDayOfMonth = function () {
-	return this.getDaysInMonth() == this.getUTCDate();
-};
-cDate.prototype.getUTCDate = function () {
-	var year = Date.prototype.getUTCFullYear.call(this);
-	var month = Date.prototype.getUTCMonth.call(this);
-	var date = Date.prototype.getUTCDate.call(this);
-
-	if(1899 == year && 11 == month && 31 == date) {
-		return 0;
-	} else {
-		return date;
-	}
-};
-
-cDate.prototype.getUTCMonth = function () {
-	var year = Date.prototype.getUTCFullYear.call(this);
-	var month = Date.prototype.getUTCMonth.call(this);
-	var date = Date.prototype.getUTCDate.call(this);
-
-	if(1899 == year && 11 == month && (30 === date || 31 === date)) {
-		return 0;
-	} else {
-		return month;
-	}
-};
-
-cDate.prototype.getUTCFullYear = function () {
-	var year = Date.prototype.getUTCFullYear.call(this);
-	var month = Date.prototype.getUTCMonth.call(this);
-	var date = Date.prototype.getUTCDate.call(this);
-
-	if(1899 == year && 11 == month && (30 === date || 31 === date)) {
-		return 1900;
-	} else {
-		return year;
-	}
-};
 
 
 Math.sinh = function ( arg ) {
@@ -1198,6 +1066,17 @@ parserHelp.setDigitSeparator(AscCommon.g_oDefaultCultureInfo.NumberDecimalSepara
 		}
 		return res;
 	};
+	cArea.prototype.getValueByRowCol = function (i, j) {
+		var res, r;
+		r = this.getRange();
+		r.worksheet._getCellNoEmpty(r.bbox.r1 + i, r.bbox.c1 + j, function(cell) {
+			if(cell) {
+				res = checkTypeCell(cell);
+			}
+		});
+
+		return res;
+	};
 	cArea.prototype.getRange = function () {
 		if (!this.range) {
 			this.range = this.ws.getRange2(this.value);
@@ -1497,6 +1376,19 @@ parserHelp.setDigitSeparator(AscCommon.g_oDefaultCultureInfo.NumberDecimalSepara
 		}
 
 		return (null == _val[0]) ? new cEmpty() : _val[0];
+	};
+	cArea3D.prototype.getValueByRowCol = function (i, j) {
+		var r = this.getRanges(), res;
+
+		if(r[0]) {
+			r[0].worksheet._getCellNoEmpty(r[0].bbox.r1 + i, r[0].bbox.c1 + j, function(cell) {
+				if(cell) {
+					res = checkTypeCell(cell);
+				}
+			});
+		}
+
+		return res;
 	};
 	cArea3D.prototype.changeSheet = function (wsLast, wsNew) {
 		if (this.wsFrom === wsLast) {
@@ -2415,6 +2307,41 @@ parserHelp.setDigitSeparator(AscCommon.g_oDefaultCultureInfo.NumberDecimalSepara
 			}
 		}
 	};
+	cStrucTable.prototype.setOffset = function(offset) {
+		var t = this;
+
+		var tryDiffHdtcIndex = function(oIndex) {
+			var table = t.wb.getTableByName(t.tableName, oIndex.wsID);
+			if(table) {
+				var tableColumnsCount = table.TableColumns.length;
+				var index = oIndex.index + offset.col;
+				index = index - Math.floor(index / tableColumnsCount) * tableColumnsCount;
+				var columnName = t.wb.getTableNameColumnByIndex(t.tableName, index);
+				if(columnName) {
+					oIndex.index = index;
+					oIndex.name = columnName.columnName;
+				}
+			}
+		};
+
+		//TODO
+		if(this.oneColumnIndex) {
+			if(offset && offset.col) {
+				tryDiffHdtcIndex(this.oneColumnIndex);
+			}
+		} else if(this.colStartIndex && this.colEndIndex) {
+
+		} else if(this.hdtIndexes || this.hdtcstartIndex || this.hdtcendIndex) {
+			if(offset && offset.col) {
+				if(this.hdtcstartIndex) {
+					tryDiffHdtcIndex(this.hdtcstartIndex);
+				}
+				if(this.hdtcendIndex) {
+					tryDiffHdtcIndex(this.hdtcendIndex);
+				}
+			}
+		}
+	};
 
 	/**
 	 * @constructor
@@ -2440,6 +2367,9 @@ parserHelp.setDigitSeparator(AscCommon.g_oDefaultCultureInfo.NumberDecimalSepara
 	};
 	cName3D.prototype.toString = function () {
 		return parserHelp.getEscapeSheetName(this.ws.getName()) + "!" + cName.prototype.toString.call(this);
+	};
+	cName3D.prototype.toLocaleString = function () {
+		return parserHelp.getEscapeSheetName(this.ws.getName()) + "!" + cName.prototype.toLocaleString.call(this);
 	};
 
 	/**
@@ -2719,7 +2649,7 @@ parserHelp.setDigitSeparator(AscCommon.g_oDefaultCultureInfo.NumberDecimalSepara
 	};
 	cBaseOperator.prototype.Assemble2Locale = function (arg, start, count, locale, digitDelim) {
 		var str = "";
-		if (this.argumentsCurrent === 2) {
+		if (this.argumentsCurrent === 2 && arg[start + count - 2] && arg[start + count - 1]) {
 			str += arg[start + count - 2].toLocaleString(digitDelim) + this.name +
 				arg[start + count - 1].toLocaleString(digitDelim);
 		} else {
@@ -2803,8 +2733,14 @@ parserHelp.setDigitSeparator(AscCommon.g_oDefaultCultureInfo.NumberDecimalSepara
 		}
 		return new cString(localeName + "(" + str + ")");
 	};
-	cBaseFunction.prototype.toString = function () {
+	cBaseFunction.prototype.toString = function (/*locale*/) {
+		/*var name = this.toString();
+		var localeName = locale ? locale[name] : name;*/
 		return this.name.replace(rx_sFuncPref, "_xlfn.");
+	};
+	cBaseFunction.prototype.toLocaleString = function (/*locale*/) {
+		var name = this.toString();
+		return AscCommonExcel.cFormulaFunctionToLocale ? AscCommonExcel.cFormulaFunctionToLocale[name] : name;
 	};
 	cBaseFunction.prototype.setCalcValue = function (arg, numFormat) {
 		if (numFormat !== null && numFormat !== undefined) {
@@ -2879,6 +2815,8 @@ parserHelp.setDigitSeparator(AscCommon.g_oDefaultCultureInfo.NumberDecimalSepara
 					newArgs[i] = arg.getMatrix(this.excludeHiddenRows, this.excludeErrorsVal, this.excludeNestedStAg);
 				} else if (cElementType.cellsRange3D === arg.type) {
 					newArgs[i] = arg.getMatrix(this.excludeHiddenRows, this.excludeErrorsVal, this.excludeNestedStAg)[0];
+				} else if(cElementType.error === arg.type) {
+					newArgs[i] = arg;
 				} else {
 					newArgs[i] = new cError(cErrorType.division_by_zero);
 				}
@@ -3183,6 +3121,21 @@ parserHelp.setDigitSeparator(AscCommon.g_oDefaultCultureInfo.NumberDecimalSepara
 			return res;
 		};
 
+		var checkOneRowCol = function() {
+			var res = false;
+			for (var j = 0; j < argumentsCount; j++) {
+				if(cElementType.array === arg[j].type) {
+					if(1 === arg[j].getRowCount() || 1 === arg[j].getCountElementInRow()) {
+						res = true;
+					}
+				} else {
+					res = false;
+					break;
+				}
+			}
+			return res;
+		};
+
 		//bIsSpecialFunction - сделано только для для функции sumproduct
 		//необходимо, чтобы все внутренние функции возвращали массив, те обрабатывались как формулы массива
 
@@ -3257,7 +3210,9 @@ parserHelp.setDigitSeparator(AscCommon.g_oDefaultCultureInfo.NumberDecimalSepara
 
 			//для функций row/column с нулевым количеством аргументов необходимо рассчитывать
 			//значение для каждой ячейки массива, изменяя при этом opt_bbox
-			if ((replaceAreaByRefs && 0 === argumentsCount) || null !== changeArgByIndexArr) {
+			//TODO добавляю ещё одну проверку. в будущем стоит рассмотреть использование всегда parserFormula.ref
+			//TODO персмотреть проверку isOneCell/checkOneRowCol - возможно стоит смотреть по количеству данных и расширять диапазон в случае, если parserFormula.ref превышает диапазон аргументов
+			if ((replaceAreaByRefs && 0 === argumentsCount) || null !== changeArgByIndexArr || (!bIsSpecialFunction && firstArray && !parserFormula.ref.isOneCell() && checkOneRowCol())) {
 				firstArray = new cArray();
 				firstArray.fillEmptyFromRange(parserFormula.ref);
 			}
@@ -3503,8 +3458,10 @@ parserHelp.setDigitSeparator(AscCommon.g_oDefaultCultureInfo.NumberDecimalSepara
 	cUnarMinusOperator.prototype.Assemble2 = function (arg, start, count) {
 		return new cString("-" + arg[start + count - 1]);
 	};
-	cUnarMinusOperator.prototype.Assemble2Locale = function (arg, start, count) {
-		return new cString("-" + arg[start + count - 1]);
+	cUnarMinusOperator.prototype.Assemble2Locale = function (arg, start, count, locale, digitDelim) {
+		return arg[start + count - 1].toLocaleString ?
+			new cString("-" + arg[start + count - 1].toLocaleString(digitDelim)) :
+			new cString("-" + arg[start + count - 1]);
 	};
 
 	/**
@@ -3537,8 +3494,10 @@ parserHelp.setDigitSeparator(AscCommon.g_oDefaultCultureInfo.NumberDecimalSepara
 	cUnarPlusOperator.prototype.Assemble2 = function (arg, start, count) {
 		return new cString("+" + arg[start + count - 1]);
 	};
-	cUnarPlusOperator.prototype.Assemble2Locale = function (arg, start, count) {
-		return new cString("+" + arg[start + count - 1]);
+	cUnarPlusOperator.prototype.Assemble2Locale = function (arg, start, count, locale, digitDelim) {
+		return arg[start + count - 1].toLocaleString ?
+			new cString("+" + arg[start + count - 1].toLocaleString(digitDelim)) :
+			new cString("+" + arg[start + count - 1]);
 	};
 
 	/**
@@ -4802,52 +4761,109 @@ _func[cElementType.number][cElementType.array] = _func[cElementType.string][cEle
 
 
 _func.binarySearch = function ( sElem, arrTagert, regExp ) {
-    var first = 0, /* Номер первого элемента в массиве */
-        last = arrTagert.length - 1, /* Номер элемента в массиве, СЛЕДУЮЩЕГО ЗА последним */
-    /* Если просматриваемый участок непустой, first<last */
-        mid;
+	var first = 0, /* Номер первого элемента в массиве */
+		last = arrTagert.length - 1, /* Номер элемента в массиве, СЛЕДУЮЩЕГО ЗА последним */
+		/* Если просматриваемый участок непустой, first<last */
+		mid;
 
-    var arrTagertOneType = [], isString = false;
+	var arrTagertOneType = [], isString = false;
 
-    for ( var i = 0; i < arrTagert.length; i++ ) {
-        if ( (arrTagert[i] instanceof cString || sElem instanceof cString) && !isString ) {
-            i = 0;
-            isString = true;
-            sElem = new cString( sElem.toString().toLowerCase() );
-        }
-        if ( isString ) {
-            arrTagertOneType[i] = new cString( arrTagert[i].toString().toLowerCase() );
-    } else {
-            arrTagertOneType[i] = arrTagert[i].tocNumber();
-        }
-    }
+	for (var i = 0; i < arrTagert.length; i++) {
+		if ((arrTagert[i] instanceof cString || sElem instanceof cString) && !isString) {
+			i = 0;
+			isString = true;
+			sElem = new cString(sElem.toString().toLowerCase());
+		}
+		if (isString) {
+			arrTagertOneType[i] = new cString(arrTagert[i].toString().toLowerCase());
+		} else {
+			arrTagertOneType[i] = arrTagert[i].tocNumber();
+		}
+	}
 
-    if ( arrTagert.length === 0 ) {
-        return -1;
-        /* массив пуст */
-  } else if (arrTagert[0].value > sElem.value) {
-        return -2;
-  } else if (arrTagert[arrTagert.length - 1].value < sElem.value) {
-        return arrTagert.length - 1;
-    }
+	if (arrTagert.length === 0) {
+		return -1;
+		/* массив пуст */
+	} else if (arrTagert[0].value > sElem.value) {
+		return -2;
+	} else if (arrTagert[arrTagert.length - 1].value < sElem.value) {
+		return arrTagert.length - 1;
+	}
 
-    while ( first < last ) {
-        mid = Math.floor( first + (last - first) / 2 );
-        if ( sElem.value <= arrTagert[mid].value || ( regExp && regExp.test( arrTagert[mid].value ) ) ) {
-            last = mid;
-    } else {
-            first = mid + 1;
-        }
-    }
+	while (first < last) {
+		mid = Math.floor(first + (last - first) / 2);
+		if (sElem.value <= arrTagert[mid].value || ( regExp && regExp.test(arrTagert[mid].value) )) {
+			last = mid;
+		} else {
+			first = mid + 1;
+		}
+	}
 
-    /* Если условный оператор if(n==0) и т.д. в начале опущен - значит, тут раскомментировать!    */
-    if ( /* last<n &&*/ arrTagert[last].value === sElem.value ) {
-        return last;
-        /* Искомый элемент найден. last - искомый индекс */
-  } else {
-        return last - 1;
-        /* Искомый элемент не найден. Но если вам вдруг надо его вставить со сдвигом, то его место - last.    */
-    }
+	/* Если условный оператор if(n==0) и т.д. в начале опущен - значит, тут раскомментировать!    */
+	if (/* last<n &&*/ arrTagert[last].value === sElem.value) {
+		return last;
+		/* Искомый элемент найден. last - искомый индекс */
+	} else {
+		return last - 1;
+		/* Искомый элемент не найден. Но если вам вдруг надо его вставить со сдвигом, то его место - last.    */
+	}
+
+};
+
+_func.binarySearchByRange = function ( sElem, area, regExp ) {
+	var bbox;
+	if (cElementType.cellsRange3D === area.type) {
+		bbox = area.bbox;
+	} else if (cElementType.cellsRange === area.type) {
+		bbox = area.range.bbox;
+	}
+	var bVertical = bbox.r2 - bbox.r1 >= bbox.c2 - bbox.c1;//r>=c
+	var first = 0, /* Номер первого элемента в массиве */
+		last = bVertical ? bbox.r2 - bbox.r1 : bbox.c2 - bbox.c1, /* Номер элемента в массиве, СЛЕДУЮЩЕГО ЗА последним */
+		/* Если просматриваемый участок непустой, first<last */
+		mid;
+
+	var getValue = function(n) {
+		var r, c;
+		if(bVertical) {
+			r = n;
+			c = 0;
+		} else {
+			r = 0;
+			c = n;
+		}
+		var res = area.getValueByRowCol(r, c);
+		return res ? res : new cEmpty();
+	};
+
+	if (last === 0) {
+		return -1;
+		/* массив пуст */
+	} else if (getValue(0).value > sElem.value) {
+		return -2;
+	} else if (getValue(last).value < sElem.value) {
+		return last;
+	}
+
+	var tempValue;
+	while (first < last) {
+		mid = Math.floor(first + (last - first) / 2);
+		tempValue = getValue(mid);
+		if (sElem.value <= tempValue.value || ( regExp && regExp.test(tempValue.value) )) {
+			last = mid;
+		} else {
+			first = mid + 1;
+		}
+	}
+
+	/* Если условный оператор if(n==0) и т.д. в начале опущен - значит, тут раскомментировать!    */
+	if (/* last<n &&*/ getValue(last).value === sElem.value) {
+		return last;
+		/* Искомый элемент найден. last - искомый индекс */
+	} else {
+		return last - 1;
+		/* Искомый элемент не найден. Но если вам вдруг надо его вставить со сдвигом, то его место - last.    */
+	}
 
 };
 
@@ -5032,6 +5048,7 @@ _func[cElementType.cell3D] = _func[cElementType.cell];
 		this.elems = elems;
 		this.error = undefined;
 		this.operand_expected = undefined;
+		this.argPos = undefined;
 	}
 
 	ParseResult.prototype.addRefPos = function(start, end, index, oper, isName) {
@@ -5050,7 +5067,7 @@ _func[cElementType.cell3D] = _func[cElementType.cell];
 	ParseResult.prototype.getElementByPos = function(pos) {
 		var curPos = 0;
 		for (var i = 0; i < this.elems.length; ++i) {
-			curPos += this.elems[i].toString().length;
+			curPos += this.elems[i].toLocaleString(/*AscCommonExcel.cFormulaFunctionToLocale*/).length;
 			if (curPos >= pos) {
 				return this.elems[i];
 			}
@@ -5237,16 +5254,16 @@ parserFormula.prototype.clone = function(formula, parent, ws) {
 	parserFormula.prototype.setFormulaString = function(formula) {
 		this.Formula = formula;
 	};
-parserFormula.prototype.setFormula = function(formula) {
-  this.Formula = formula;
-  this.is3D = false;
-  this.value = null;
-  this.outStack = [];
-  this.isParsed = false;
-  this.ca = false;
-  //this.isTable = false;
-  this.isInDependencies = false;
-};
+	parserFormula.prototype.setFormula = function (formula) {
+		this.Formula = formula;
+		this.is3D = false;
+		this.value = null;
+		this.outStack = [];
+		this.isParsed = false;
+		this.ca = false;
+		//this.isTable = false;
+		this.isInDependencies = false;
+	};
 
 	parserFormula.prototype.parse = function (local, digitDelim, parseResult, ignoreErrors) {
 		var elemArr = [];
@@ -5291,9 +5308,16 @@ parserFormula.prototype.setFormula = function(formula) {
 				return false;
 			}
 
+			var notEndedFuncCount = 0;
 			var stack = [], val, valUp, tmp, elem, len, indentCount = -1, args = [], prev, next, arr = null,
 				bArrElemSign = false, wsF, wsT, arg_count;
 			for (var i = 0, nLength = aTokens.length; i < nLength; ++i) {
+				if(TOK_SUBTYPE_START === aTokens[i].subtype) {
+					notEndedFuncCount++;
+				} else if(TOK_SUBTYPE_STOP === aTokens[i].subtype) {
+					notEndedFuncCount--;
+				}
+
 				found_operand = null;
 				val = aTokens[i].value;
 				switch (aTokens[i].type) {
@@ -5329,10 +5353,10 @@ parserFormula.prototype.setFormula = function(formula) {
 									} else {
 										tmp = AscCommonExcel.g_oRangeCache.getAscRange(valUp);
 										if (tmp) {
-											elem =
-												tmp.isOneCell() ? new cRef(valUp, this.ws) : new cArea(valUp, this.ws);
-											parseResult.addRefPos(aTokens[i].pos - aTokens[i].length,
-												aTokens[i].pos, this.outStack.length, elem);
+											//если использовать isOneCell - тогда A1:A1 -> A1
+											var isOneCell = /*tmp.isOneCell()*/!valUp.split(":")[1];
+											elem = isOneCell ? new cRef(valUp, this.ws) : new cArea(valUp, this.ws);
+											parseResult.addRefPos(aTokens[i].pos - aTokens[i].length, aTokens[i].pos, this.outStack.length, elem);
 										} else if(TOK_SUBTYPE_ERROR === aTokens[i].subtype) {
 											elem = new cError(val);
 										} else {
@@ -5577,6 +5601,12 @@ parserFormula.prototype.setFormula = function(formula) {
 				this.outStack.push(stack.pop());
 			}
 
+			if(notEndedFuncCount) {
+				this.outStack = [];
+				parseResult.setError(c_oAscError.ID.FrmlOperandExpected);
+				return false;
+			}
+
 			if (this.outStack.length !== 0) {
 				return this.isParsed = true;
 			} else {
@@ -5628,10 +5658,14 @@ parserFormula.prototype.setFormula = function(formula) {
 					if (ph.operand_str in cFormulaOperators) {
 						found_operator = cFormulaOperators[ph.operand_str].prototype;
 						parseResult.operand_expected = true;
-					} else if(!ignoreErrors) {
-						parseResult.setError(c_oAscError.ID.FrmlWrongOperator);
-						t.outStack = [];
-						return false;
+					} else {
+						if(ignoreErrors) {
+							return true;
+						} else {
+							parseResult.setError(c_oAscError.ID.FrmlWrongOperator);
+							t.outStack = [];
+							return false;
+						}
 					}
 				}
 			}
@@ -5660,6 +5694,7 @@ parserFormula.prototype.setFormula = function(formula) {
 			elemArr.push(cFormulaOperators[ph.operand_str].prototype);
 			parseResult.addElem(cFormulaOperators[ph.operand_str].prototype);
 			leftParentArgumentsCurrentArr[elemArr.length - 1] = 1;
+			parseResult.argPos = 1;
 
 			if(startSumproduct){
 				counterSumproduct++;
@@ -5705,8 +5740,7 @@ parserFormula.prototype.setFormula = function(formula) {
 
 			var p = top_elem, func, bError = false;
 			elemArr.pop();
-			if (0 !== elemArr.length &&
-				( func = elemArr[elemArr.length - 1] ).type === cElementType.func) {
+			if (0 !== elemArr.length && ( func = elemArr[elemArr.length - 1] ).type === cElementType.func) {
 				p = elemArr.pop();
 				if (top_elem_arg_count > func.argumentsMax && !ignoreErrors) {
 					t.outStack = [];
@@ -5728,7 +5762,8 @@ parserFormula.prototype.setFormula = function(formula) {
 						return false;
 					}
 				}
-			} else if(wasLeftParentheses && 0 === top_elem_arg_count && elemArr[elemArr.length - 1] && " " === elemArr[elemArr.length - 1].name && !ignoreErrors) {
+				parseResult.argPos = leftParentArgumentsCurrentArr[elemArr.length - 1];
+			} else if(wasLeftParentheses && 0 === top_elem_arg_count && elemArr[elemArr.length - 1] /*&& " " === elemArr[elemArr.length - 1].name*/ && !ignoreErrors) {
 				//intersection with empty range
 				t.outStack = [];
 				parseResult.setError(c_oAscError.ID.FrmlAnotherParsingError);
@@ -5764,7 +5799,12 @@ parserFormula.prototype.setFormula = function(formula) {
 			wasRigthParentheses = false;
 			var stackLength = elemArr.length, top_elem = null, top_elem_arg_pos;
 
-			if (elemArr.length !== 0 && elemArr[stackLength - 1].name === "(" && parseResult.operand_expected) {
+			if (elemArr.length !== 0 && elemArr[stackLength - 1].name === "(" && ((!elemArr[stackLength - 2]) ||
+				(elemArr[stackLength - 2] && elemArr[stackLength - 2].type !== cElementType.func)) && !ignoreErrors) {
+				parseResult.setError(c_oAscError.ID.FrmlWrongOperator);
+				t.outStack = [];
+				return false;
+			} else if (elemArr.length !== 0 && elemArr[stackLength - 1].name === "(" && parseResult.operand_expected) {
 				t.outStack.push(new cEmpty());
 				top_elem = elemArr[stackLength - 1];
 				top_elem_arg_pos = stackLength - 1;
@@ -5797,6 +5837,7 @@ parserFormula.prototype.setFormula = function(formula) {
 				return false;
 			}
 			leftParentArgumentsCurrentArr[top_elem_arg_pos]++;
+			parseResult.argPos = leftParentArgumentsCurrentArr[top_elem_arg_pos];
 			parseResult.operand_expected = true;
 			return true;
 		};
@@ -5894,7 +5935,7 @@ parserFormula.prototype.setFormula = function(formula) {
 				parseResult.operand_expected = true;
 			}
 
-			if (!parseResult.operand_expected) {
+			if (!parseResult.operand_expected && !ignoreErrors) {
 				parseResult.setError(c_oAscError.ID.FrmlWrongOperator);
 				t.outStack = [];
 				return false;
@@ -5907,6 +5948,11 @@ parserFormula.prototype.setFormula = function(formula) {
 			}
 
 			/* Strings */ else if (parserHelp.isString.call(ph, t.Formula, ph.pCurrPos)) {
+				if (ph.operand_str.length > g_nFormulaStringMaxLength && !ignoreErrors) {
+					parseResult.setError(c_oAscError.ID.FrmlMaxTextLength);
+					t.outStack = [];
+					return false;
+				}
 				found_operand = new cString(ph.operand_str);
 			}
 
@@ -5927,10 +5973,20 @@ parserFormula.prototype.setFormula = function(formula) {
 					return false;
 				}
 				if (parserHelp.isArea.call(ph, t.Formula, ph.pCurrPos)) {
-					found_operand = new cArea3D(ph.real_str ? ph.real_str.toUpperCase() : ph.operand_str.toUpperCase(), wsF, wsT);
+					if(!(wsF && wsT)) {
+						//for edit formula mode
+						//found_operand = new cUnknownFunction(ph.real_str ? ph.real_str.toUpperCase() : ph.operand_str.toUpperCase());
+						found_operand = new cName(ph.real_str ? ph.real_str.toUpperCase() : ph.operand_str.toUpperCase(), t.ws);
+					} else {
+						found_operand = new cArea3D(ph.real_str ? ph.real_str.toUpperCase() : ph.operand_str.toUpperCase(), wsF, wsT);
+					}
 					parseResult.addRefPos(prevCurrPos, ph.pCurrPos, t.outStack.length, found_operand);
 				} else if (parserHelp.isRef.call(ph, t.Formula, ph.pCurrPos)) {
-					if (wsT !== wsF) {
+					if(!(wsF && wsT)) {
+						//for edit formula mode
+						//found_operand = new cUnknownFunction(ph.real_str ? ph.real_str.toUpperCase() : ph.operand_str.toUpperCase());
+						found_operand = new cName(ph.real_str ? ph.real_str.toUpperCase() : ph.operand_str.toUpperCase(), t.ws);
+					} else if (wsT !== wsF) {
 						found_operand = new cArea3D(ph.real_str ? ph.real_str.toUpperCase() : ph.operand_str.toUpperCase(), wsF, wsT);
 					} else {
 						found_operand = new cRef3D(ph.real_str ? ph.real_str.toUpperCase() : ph.operand_str.toUpperCase(), wsF);
@@ -5969,6 +6025,13 @@ parserFormula.prototype.setFormula = function(formula) {
 			}
 
 			/* Referens to DefinedNames */ else if (parserHelp.isName.call(ph, t.Formula, ph.pCurrPos, t.wb, t.ws)[0]) {
+
+				if (ph.operand_str.length > g_nFormulaStringMaxLength && !ignoreErrors) {
+					//TODO стоит добавить новую ошибку
+					parseResult.setError(c_oAscError.ID.FrmlWrongOperator);
+					t.outStack = [];
+					return false;
+				}
 
 				//проверяем вдруг это область печати
 				var defName;
@@ -6220,6 +6283,10 @@ parserFormula.prototype.setFormula = function(formula) {
 					elemArr.push(_tmp);
 				}
 			} else if (currentElement.type === cElementType.name || currentElement.type === cElementType.name3D) {
+				var defName = currentElement.getDefName();
+				if(defName && defName.parsedRef && this.ref) {
+					currentElement.getDefName().parsedRef.ref = this.ref;
+				}
 				defNameCalcArr = currentElement.Calculate(null, opt_bbox, true);
 				defNameArgCount = [];
 				if(defNameCalcArr && defNameCalcArr.length) {
@@ -6251,7 +6318,7 @@ parserFormula.prototype.setFormula = function(formula) {
 			//для обработки формулы массива
 			//передаётся последним параметром cell и временно подменяется parent у parserFormula для того, чтобы поменялось значение в элементе массива
 			var cell = arguments[3];
-			if(this.ref && cell && !(this.ref.r1 === cell.nRow && this.ref.c1 === cell.nCol)) {
+			if(this.ref && cell && undefined !== cell.nRow && !(this.ref.r1 === cell.nRow && this.ref.c1 === cell.nCol)) {
 				var oldParent = this.parent;
 				this.parent = new AscCommonExcel.CCellWithFormula(cell.ws, cell.nRow, cell.nCol);
 				this._endCalculate();
@@ -6280,13 +6347,13 @@ parserFormula.prototype.setFormula = function(formula) {
 	};
 
 	/* Для обратной сборки функции иногда необходимо поменять ссылки на ячейки */
-	parserFormula.prototype.changeOffset = function (offset, canResize) {//offset = AscCommon.CellBase
+	parserFormula.prototype.changeOffset = function (offset, canResize, nChangeTable) {//offset = AscCommon.CellBase
 		for (var i = 0; i < this.outStack.length; i++) {
-			this._changeOffsetElem(this.outStack[i], this.outStack, i, offset, canResize);
+			this._changeOffsetElem(this.outStack[i], this.outStack, i, offset, canResize, nChangeTable);
 		}
 		return this;
 	};
-	parserFormula.prototype._changeOffsetElem = function(elem, container, index, offset, canResize) {//offset =
+	parserFormula.prototype._changeOffsetElem = function(elem, container, index, offset, canResize, nChangeTable) {//offset =
 		// AscCommon.CellBase
 		var range, bbox = null, ws, isErr = false;
 		if (cElementType.cell === elem.type || cElementType.cell3D === elem.type ||
@@ -6300,7 +6367,12 @@ parserFormula.prototype.setFormula = function(formula) {
 		} else if (cElementType.cellsRange3D === elem.type) {
 			isErr = true;
 			bbox = elem.getBBox0NoCheck();
+		} else if(cElementType.table === elem.type && !nChangeTable) {
+			//когда клонируем диапазон, диапазон таблиц не изменяется
+			elem.setOffset(offset);
+			elem._updateArea(null, false);
 		}
+
 		if (bbox) {
 			bbox = bbox.clone();
 			if (bbox.setOffsetWithAbs(offset, canResize)) {
@@ -6371,7 +6443,7 @@ parserFormula.prototype.setFormula = function(formula) {
 
 		for (i = 0; i < this.outStack.length; i++) {
 			elem = this.outStack[i];
-			if (elem.type == cElementType.table && elem.tableName == defName.name) {
+			if (elem.type == cElementType.table && elem.tableName.toLowerCase() == defName.name.toLowerCase()) {
 				if(bConvertTableFormulaToRef)
 				{
 					this.outStack[i] = this.outStack[i].toRef(bbox, bConvertTableFormulaToRef);
@@ -6387,7 +6459,7 @@ parserFormula.prototype.setFormula = function(formula) {
 		var i, elem;
 		for (i = 0; i < this.outStack.length; i++) {
 			elem = this.outStack[i];
-			if (elem.type == cElementType.table && elem.tableName == tableName) {
+			if (elem.type == cElementType.table && tableName && elem.tableName.toLowerCase() == tableName.toLowerCase()) {
 				if (elem.removeTableColumn(deleted)) {
 					this.outStack[i] = new cError(cErrorType.bad_reference);
 				}
@@ -6398,7 +6470,7 @@ parserFormula.prototype.setFormula = function(formula) {
 		var i, elem;
 		for (i = 0; i < this.outStack.length; i++) {
 			elem = this.outStack[i];
-			if (elem.type == cElementType.table && elem.tableName == tableName) {
+			if (elem.type == cElementType.table && tableName && elem.tableName.toLowerCase() == tableName.toLowerCase()) {
 				if (!elem.renameTableColumn()) {
 					this.outStack[i] = new cError(cErrorType.bad_reference);
 				}
@@ -6409,7 +6481,7 @@ parserFormula.prototype.setFormula = function(formula) {
 		var i, elem;
 		for (i = 0; i < this.outStack.length; i++) {
 			elem = this.outStack[i];
-			if (elem.type == cElementType.table && elem.tableName == tableName) {
+			if (elem.type == cElementType.table && tableName && elem.tableName.toLowerCase() == tableName.toLowerCase()) {
 				elem.changeTableRef();
 			}
 		}
@@ -6752,6 +6824,14 @@ parserFormula.prototype.setFormula = function(formula) {
 		var currentElement = null, _count = this.outStack.length, elemArr = new Array(_count), res = undefined,
 			_count_arg, _numberPrevArg, _argDiff, onlyRangesElements = true, rangesStr;
 
+		//для получаения грамотного дипапазона, устанавливаем для формул массива g_activeCell главную ячейку
+		var formulaArray = this.getArrayFormulaRef();
+		var oldActiveCell;
+		if(AscCommonExcel.g_R1C1Mode && bLocale && formulaArray){
+			AscCommonExcel.g_ActiveCell = new Asc.Range(formulaArray.c1, formulaArray.r1, formulaArray.c1, formulaArray.r1);
+			oldActiveCell = AscCommonExcel.g_ActiveCell;
+		}
+
 		for (var i = 0, j = 0; i < _count; i++) {
 			currentElement = this.outStack[i];
 
@@ -6815,13 +6895,18 @@ parserFormula.prototype.setFormula = function(formula) {
 				//используется в областях печати
 				//формулы вида "Sheet1!$B$3:$C$4,Sheet1!$D$3:$E$5,Sheet1!$G$3:$G$6,Sheet1!$J$2"
 				//TODO рассмотреть вписание в общую схему
-				return rangesStr;
+				res = rangesStr;
 			} else {
-				return bLocale ? res.toLocaleString(digitDelim) : res.toString();
+				res = bLocale ? res.toLocaleString(digitDelim) : res.toString();
 			}
 		} else {
-			return this.Formula;
+			res = this.Formula;
 		}
+
+		if(oldActiveCell) {
+			AscCommonExcel.g_ActiveCell = oldActiveCell;
+		}
+		return res;
 	};
 
 	parserFormula.prototype.buildDependencies = function() {
@@ -7054,6 +7139,8 @@ parserFormula.prototype.setFormula = function(formula) {
 		return false;
 	};
 	parserFormula.prototype.simplifyRefType = function(val, opt_cell) {
+		var ref = this.getArrayFormulaRef(), row, col;
+
 		if (cElementType.cell === val.type || cElementType.cell3D === val.type) {
 			val = val.getValue();
 			if (cElementType.empty === val.type && opt_cell) {
@@ -7061,10 +7148,9 @@ parserFormula.prototype.setFormula = function(formula) {
 				val = new cNumber(0);
 			}
 		} else if (cElementType.array === val.type) {
-			var ref = this.getArrayFormulaRef();
 			if(ref && opt_cell) {
-				var row = 1 === val.array.length ? 0 : opt_cell.nRow - ref.r1;
-				var col = 1 === val.array[0].length ? 0 : opt_cell.nCol - ref.c1;
+				row = 1 === val.array.length ? 0 : opt_cell.nRow - ref.r1;
+				col = 1 === val.array[0].length ? 0 : opt_cell.nCol - ref.c1;
 				if(val.array[row] && val.array[row][col]) {
 					val = val.getElementRowCol(row, col);
 				} else {
@@ -7081,8 +7167,26 @@ parserFormula.prototype.setFormula = function(formula) {
 			}
 		} else if (cElementType.cellsRange === val.type || cElementType.cellsRange3D === val.type) {
 			if (opt_cell) {
-				var range = new Asc.Range(opt_cell.nCol, opt_cell.nRow, opt_cell.nCol, opt_cell.nRow);
-				val = val.cross(range, opt_cell.ws.getId());
+				var range;
+				if(ref) {
+					range = val.getRange();
+					if(range) {
+						var bbox = range.bbox;
+						var rowCount = bbox.r2 - bbox.r1 + 1;
+						var colCount = bbox.c2 - bbox.c1 + 1;
+						row = 1 === rowCount ? 0 : opt_cell.nRow - ref.r1;
+						col = 1 === colCount ? 0 : opt_cell.nCol - ref.c1;
+						val = val.getValueByRowCol(row, col);
+						if(!val) {
+							val = new window['AscCommonExcel'].cError(window['AscCommonExcel'].cErrorType.not_available);
+						}
+					} else {
+						val = new window['AscCommonExcel'].cError(window['AscCommonExcel'].cErrorType.not_available);
+					}
+				} else {
+					range = new Asc.Range(opt_cell.nCol, opt_cell.nRow, opt_cell.nCol, opt_cell.nRow);
+					val = val.cross(range, opt_cell.ws.getId());
+				}
 			} else if (cElementType.cellsRange === val.type) {
 				val = val.getValue2(0, 0);
 			} else {
@@ -7133,7 +7237,8 @@ parserFormula.prototype.setFormula = function(formula) {
 		this.isProcessRecursion = false;
 	}
 	//for chrome63(real maximum call stack size is 12575) MAXRECURSION that cause excaption is 783
-	CalcRecursion.prototype.MAXRECURSION = 400;
+	//by measurement: stack size in doctrenderer is one fourth smaller than chrome
+	CalcRecursion.prototype.MAXRECURSION = 300;
 	CalcRecursion.prototype.incLevel = function() {
 		if (this.getIsForceBacktracking()) {
 			return false;
@@ -7184,13 +7289,13 @@ parserFormula.prototype.setFormula = function(formula) {
 	};
 	var g_cCalcRecursion =  new CalcRecursion();
 
-function parseNum( str ) {
-    if ( str.indexOf( "x" ) > -1 || str == "" || str.match( /\s+/ ) )//исключаем запись числа в 16-ричной форме из числа.
-  {
-        return false;
-  }
-    return !isNaN( str );
-}
+	function parseNum(str) {
+		if (str.indexOf("x") > -1 || str == "" || str.match(/\s+/))//исключаем запись числа в 16-ричной форме из числа.
+		{
+			return false;
+		}
+		return !isNaN(str);
+	}
 
 	var matchingOperators = new RegExp("^(=|<>|<=|>=|<|>).*");
 
@@ -7287,220 +7392,220 @@ function parseNum( str ) {
 		return res;
 	}
 
-function GetDiffDate360( nDay1, nMonth1, nYear1, nDay2, nMonth2, nYear2, bUSAMethod ) {
-    var nDayDiff;
-  var startTime = new Date(nYear1, nMonth1 - 1, nDay1), endTime = new Date(nYear2, nMonth2 - 1, nDay2), nY, nM, nD;
+	function GetDiffDate360(nDay1, nMonth1, nYear1, nDay2, nMonth2, nYear2, bUSAMethod) {
+		var nDayDiff;
+		var startTime = new Date(nYear1, nMonth1 - 1, nDay1), endTime = new Date(nYear2, nMonth2 -
+			1, nDay2), nY, nM, nD;
 
-    if ( startTime > endTime ) {
-        nY = nYear1;
-        nYear1 = nYear2;
-        nYear2 = nY;
-        nM = nMonth1;
-        nMonth1 = nMonth2;
-        nMonth2 = nM;
-        nD = nDay1;
-        nDay1 = nDay2;
-        nDay2 = nD;
-    }
+		if (startTime > endTime) {
+			nY = nYear1;
+			nYear1 = nYear2;
+			nYear2 = nY;
+			nM = nMonth1;
+			nMonth1 = nMonth2;
+			nMonth2 = nM;
+			nD = nDay1;
+			nDay1 = nDay2;
+			nDay2 = nD;
+		}
 
-    if ( bUSAMethod ) {
-        if ( nDay1 == 31 ) {
-            nDay1--;
-        }
-        if ( nDay1 == 30 && nDay2 == 31 ) {
-            nDay2--;
-    } else {
-            if ( nMonth1 == 2 && nDay1 == ( new cDate( nYear1, 0, 1 ).isLeapYear() ? 29 : 28 ) ) {
-                nDay1 = 30;
-                if ( nMonth2 == 2 && nDay2 == ( new cDate( nYear2, 0, 1 ).isLeapYear() ? 29 : 28 ) ) {
-                    nDay2 = 30;
-                }
-            }
-        }
-//        nDayDiff = ( nYear2 - nYear1 ) * 360 + ( nMonth2 - nMonth1 ) * 30 + ( nDay2 - nDay1 );
-  } else {
-        if ( nDay1 == 31 ) {
-            nDay1--;
-        }
-        if ( nDay2 == 31 ) {
-            nDay2--;
-        }
-    }
-    nDayDiff = ( nYear2 - nYear1 ) * 360 + ( nMonth2 - nMonth1 ) * 30 + ( nDay2 - nDay1 );
-    return nDayDiff;
-}
+		if (bUSAMethod) {
+			if (nDay1 == 31) {
+				nDay1--;
+			}
+			if (nDay1 == 30 && nDay2 == 31) {
+				nDay2--;
+			} else {
+				if (nMonth1 == 2 && nDay1 == ( new cDate(nYear1, 0, 1).isLeapYear() ? 29 : 28 )) {
+					nDay1 = 30;
+					if (nMonth2 == 2 && nDay2 == ( new cDate(nYear2, 0, 1).isLeapYear() ? 29 : 28 )) {
+						nDay2 = 30;
+					}
+				}
+			}
+		//nDayDiff = ( nYear2 - nYear1 ) * 360 + ( nMonth2 - nMonth1 ) * 30 + ( nDay2 - nDay1 );
+		} else {
+			if (nDay1 == 31) {
+				nDay1--;
+			}
+			if (nDay2 == 31) {
+				nDay2--;
+			}
+		}
+		nDayDiff = ( nYear2 - nYear1 ) * 360 + ( nMonth2 - nMonth1 ) * 30 + ( nDay2 - nDay1 );
+		return nDayDiff;
+	}
 
-function searchRegExp2( s, mask ) {
-    //todo протестировать
-    var bRes = true;
-    s = s.toString().toLowerCase();
-    mask = mask.toString().toLowerCase();
-	var cCurMask;
-    var nSIndex = 0;
-    var nMaskIndex = 0;
-    var nSLastIndex = 0;
-    var nMaskLastIndex = 0;
-    var nSLength = s.length;
-    var nMaskLength = mask.length;
-    var t = false;
-    for ( ; nSIndex < nSLength; nMaskIndex++, nSIndex++, t = false ) {
-        cCurMask = mask[nMaskIndex];
-        if ( '~' === cCurMask ) {
-            nMaskIndex++;
-            cCurMask = mask[nMaskIndex];
-            t = true;
-    } else if ('*' === cCurMask) {
-      break;
-        }
-        if ( ( cCurMask !== s[nSIndex] && '?' !== cCurMask ) || ( cCurMask !== s[nSIndex] && t) ) {
-            bRes = false;
-            break;
-        }
-    }
-    if ( bRes ) {
-        while ( 1 ) {
-            cCurMask = mask[nMaskIndex];
-            if ( nSIndex >= nSLength ) {
-                while ( '*' === cCurMask && nMaskIndex < nMaskLength ) {
-                    nMaskIndex++;
-                    cCurMask = mask[nMaskIndex];
-                }
-                bRes = nMaskIndex >= nMaskLength;
-                break;
-      } else if ('*' === cCurMask) {
-                nMaskIndex++;
-                if ( nMaskIndex >= nMaskLength ) {
-                    bRes = true;
-                    break;
-                }
-                nSLastIndex = nSIndex + 1;
-                nMaskLastIndex = nMaskIndex;
-      } else if (cCurMask !== s[nSIndex] && '?' !== cCurMask) {
-                nMaskIndex = nMaskLastIndex;
-                nSIndex = nSLastIndex++;
-      } else {
-                nSIndex++;
-                nMaskIndex++;
-            }
-        }
-    }
-    return bRes;
-}
+	function searchRegExp2(s, mask) {
+		//todo протестировать
+		var bRes = true;
+		s = s.toString().toLowerCase();
+		mask = mask.toString().toLowerCase();
+		var cCurMask;
+		var nSIndex = 0;
+		var nMaskIndex = 0;
+		var nSLastIndex = 0;
+		var nMaskLastIndex = 0;
+		var nSLength = s.length;
+		var nMaskLength = mask.length;
+		var t = false;
+		for (; nSIndex < nSLength; nMaskIndex++, nSIndex++, t = false) {
+			cCurMask = mask[nMaskIndex];
+			if ('~' === cCurMask) {
+				nMaskIndex++;
+				cCurMask = mask[nMaskIndex];
+				t = true;
+			} else if ('*' === cCurMask) {
+				break;
+			}
+			if (( cCurMask !== s[nSIndex] && '?' !== cCurMask ) || ( cCurMask !== s[nSIndex] && t)) {
+				bRes = false;
+				break;
+			}
+		}
+		if (bRes) {
+			while (1) {
+				cCurMask = mask[nMaskIndex];
+				if (nSIndex >= nSLength) {
+					while ('*' === cCurMask && nMaskIndex < nMaskLength) {
+						nMaskIndex++;
+						cCurMask = mask[nMaskIndex];
+					}
+					bRes = nMaskIndex >= nMaskLength;
+					break;
+				} else if ('*' === cCurMask) {
+					nMaskIndex++;
+					if (nMaskIndex >= nMaskLength) {
+						bRes = true;
+						break;
+					}
+					nSLastIndex = nSIndex + 1;
+					nMaskLastIndex = nMaskIndex;
+				} else if (cCurMask !== s[nSIndex] && '?' !== cCurMask) {
+					nMaskIndex = nMaskLastIndex;
+					nSIndex = nSLastIndex++;
+				} else {
+					nSIndex++;
+					nMaskIndex++;
+				}
+			}
+		}
+		return bRes;
+	}
 
-/*
- * Code below has been taken from OpenOffice Source.
- */
+	/*
+	 * Code below has been taken from OpenOffice Source.
+	 */
 
-function lcl_Erf0065( x ) {
-  var pn = [1.12837916709551256, 1.35894887627277916E-1, 4.03259488531795274E-2, 1.20339380863079457E-3,
-    6.49254556481904354E-5], qn = [1.00000000000000000, 4.53767041780002545E-1, 8.69936222615385890E-2,
-    8.49717371168693357E-3, 3.64915280629351082E-4];
-    var pSum = 0.0, qSum = 0.0, xPow = 1.0;
-    for ( var i = 0; i <= 4; ++i ) {
-        pSum += pn[i] * xPow;
-        qSum += qn[i] * xPow;
-        xPow *= x * x;
-    }
-    return x * pSum / qSum;
-}
+	function lcl_Erf0065(x) {
+		var pn = [1.12837916709551256, 1.35894887627277916E-1, 4.03259488531795274E-2, 1.20339380863079457E-3,
+			6.49254556481904354E-5], qn = [1.00000000000000000, 4.53767041780002545E-1, 8.69936222615385890E-2,
+			8.49717371168693357E-3, 3.64915280629351082E-4];
+		var pSum = 0.0, qSum = 0.0, xPow = 1.0;
+		for (var i = 0; i <= 4; ++i) {
+			pSum += pn[i] * xPow;
+			qSum += qn[i] * xPow;
+			xPow *= x * x;
+		}
+		return x * pSum / qSum;
+	}
 
-/** Approximation algorithm for erfc for 0.65 < x < 6.0. */
-function lcl_Erfc0600( x ) {
-  var pSum = 0, qSum = 0, xPow = 1, pn, qn;
+	/** Approximation algorithm for erfc for 0.65 < x < 6.0. */
+	function lcl_Erfc0600(x) {
+		var pSum = 0, qSum = 0, xPow = 1, pn, qn;
 
-    if ( x < 2.2 ) {
-    pn = [9.99999992049799098E-1, 1.33154163936765307, 8.78115804155881782E-1, 3.31899559578213215E-1,
-      7.14193832506776067E-2, 7.06940843763253131E-3];
-    qn = [1.00000000000000000, 2.45992070144245533, 2.65383972869775752, 1.61876655543871376, 5.94651311286481502E-1,
-      1.26579413030177940E-1, 1.25304936549413393E-2];
-  } else {
-    pn =
-      [9.99921140009714409E-1, 1.62356584489366647, 1.26739901455873222, 5.81528574177741135E-1, 1.57289620742838702E-1,
-        2.25716982919217555E-2];
-    qn = [1.00000000000000000, 2.75143870676376208, 3.37367334657284535, 2.38574194785344389, 1.05074004614827206,
-      2.78788439273628983E-1, 4.00072964526861362E-2];
-    }
+		if (x < 2.2) {
+			pn = [9.99999992049799098E-1, 1.33154163936765307, 8.78115804155881782E-1, 3.31899559578213215E-1,
+				7.14193832506776067E-2, 7.06940843763253131E-3];
+			qn = [1.00000000000000000, 2.45992070144245533, 2.65383972869775752, 1.61876655543871376,
+				5.94651311286481502E-1, 1.26579413030177940E-1, 1.25304936549413393E-2];
+		} else {
+			pn = [9.99921140009714409E-1, 1.62356584489366647, 1.26739901455873222, 5.81528574177741135E-1,
+				1.57289620742838702E-1, 2.25716982919217555E-2];
+			qn = [1.00000000000000000, 2.75143870676376208, 3.37367334657284535, 2.38574194785344389,
+				1.05074004614827206, 2.78788439273628983E-1, 4.00072964526861362E-2];
+		}
 
-    for ( var i = 0; i < 6; ++i ) {
-        pSum += pn[i] * xPow;
-        qSum += qn[i] * xPow;
-        xPow *= x;
-    }
-    qSum += qn[6] * xPow;
-    return Math.exp( -1 * x * x ) * pSum / qSum;
-}
+		for (var i = 0; i < 6; ++i) {
+			pSum += pn[i] * xPow;
+			qSum += qn[i] * xPow;
+			xPow *= x;
+		}
+		qSum += qn[6] * xPow;
+		return Math.exp(-1 * x * x) * pSum / qSum;
+	}
 
-/** Approximation algorithm for erfc for 6.0 < x < 26.54 (but used for all x > 6.0). */
-function lcl_Erfc2654( x ) {
-  var pn = [5.64189583547756078E-1, 8.80253746105525775, 3.84683103716117320E1, 4.77209965874436377E1,
-    8.08040729052301677], qn = [1.00000000000000000, 1.61020914205869003E1, 7.54843505665954743E1,
-    1.12123870801026015E2, 3.73997570145040850E1];
+	/** Approximation algorithm for erfc for 6.0 < x < 26.54 (but used for all x > 6.0). */
+	function lcl_Erfc2654(x) {
+		var pn = [5.64189583547756078E-1, 8.80253746105525775, 3.84683103716117320E1, 4.77209965874436377E1,
+			8.08040729052301677], qn = [1.00000000000000000, 1.61020914205869003E1, 7.54843505665954743E1,
+			1.12123870801026015E2, 3.73997570145040850E1];
 
-    var pSum = 0, qSum = 0, xPow = 1;
+		var pSum = 0, qSum = 0, xPow = 1;
 
-    for ( var i = 0; i <= 4; ++i ) {
-        pSum += pn[i] * xPow;
-        qSum += qn[i] * xPow;
-        xPow /= x * x;
-    }
-    return Math.exp( -1 * x * x ) * pSum / (x * qSum);
-}
+		for (var i = 0; i <= 4; ++i) {
+			pSum += pn[i] * xPow;
+			qSum += qn[i] * xPow;
+			xPow /= x * x;
+		}
+		return Math.exp(-1 * x * x) * pSum / (x * qSum);
+	}
 
-function rtl_math_erf( x ) {
-  if (x == 0) {
-        return 0;
-  }
+	function rtl_math_erf(x) {
+		if (x == 0) {
+			return 0;
+		}
 
-    var bNegative = false;
-    if ( x < 0 ) {
-        x = Math.abs( x );
-        bNegative = true;
-    }
+		var bNegative = false;
+		if (x < 0) {
+			x = Math.abs(x);
+			bNegative = true;
+		}
 
-    var res = 1;
-  if (x < 1.0e-10) {
-        res = parseFloat( x * 1.1283791670955125738961589031215452 );
-  } else if (x < 0.65) {
-        res = lcl_Erf0065( x );
-  } else {
-        res = 1 - rtl_math_erfc( x );
-  }
+		var res = 1;
+		if (x < 1.0e-10) {
+			res = parseFloat(x * 1.1283791670955125738961589031215452);
+		} else if (x < 0.65) {
+			res = lcl_Erf0065(x);
+		} else {
+			res = 1 - rtl_math_erfc(x);
+		}
 
-  if (bNegative) {
-        res *= -1;
-  }
+		if (bNegative) {
+			res *= -1;
+		}
 
-    return res;
-}
+		return res;
+	}
 
-function rtl_math_erfc( x ) {
-  if (x == 0) {
-        return 1;
-  }
+	function rtl_math_erfc(x) {
+		if (x == 0) {
+			return 1;
+		}
 
-    var bNegative = false;
-    if ( x < 0 ) {
-        x = Math.abs( x );
-        bNegative = true;
-    }
+		var bNegative = false;
+		if (x < 0) {
+			x = Math.abs(x);
+			bNegative = true;
+		}
 
-    var fErfc = 0;
-    if ( x >= 0.65 ) {
-    if (x < 6) {
-            fErfc = lcl_Erfc0600( x );
-    } else {
-            fErfc = lcl_Erfc2654( x );
-    }
-  } else {
-        fErfc = 1 - rtl_math_erf( x );
-  }
+		var fErfc = 0;
+		if (x >= 0.65) {
+			if (x < 6) {
+				fErfc = lcl_Erfc0600(x);
+			} else {
+				fErfc = lcl_Erfc2654(x);
+			}
+		} else {
+			fErfc = 1 - rtl_math_erf(x);
+		}
 
-  if (bNegative) {
-        fErfc = 2 - fErfc;
-  }
+		if (bNegative) {
+			fErfc = 2 - fErfc;
+		}
 
-    return fErfc;
-}
+		return fErfc;
+	}
 
 	// ToDo use Array.prototype.max, but some like to use for..in without hasOwnProperty
 	function getArrayMax (array) {
@@ -7703,8 +7808,6 @@ function rtl_math_erfc( x ) {
 	window['AscCommonExcel'].c_Date1904Const = c_Date1904Const;
 	window['AscCommonExcel'].c_Date1900Const = c_Date1900Const;
 	window['AscCommonExcel'].c_DateCorrectConst = c_Date1900Const;
-	window['AscCommonExcel'].c_sPerDay = c_sPerDay;
-	window['AscCommonExcel'].c_msPerDay = c_msPerDay;
 	window['AscCommonExcel'].cNumFormatFirstCell = cNumFormatFirstCell;
 	window['AscCommonExcel'].cNumFormatNone = cNumFormatNone;
 	window['AscCommonExcel'].g_cCalcRecursion = g_cCalcRecursion;
@@ -7753,13 +7856,8 @@ function rtl_math_erfc( x ) {
 	window['AscCommonExcel'].getArrayMax = getArrayMax;
 	window['AscCommonExcel'].getArrayMin = getArrayMin;
 	window['AscCommonExcel'].compareFormula = compareFormula;
-	window['AscCommonExcel'].cDate = cDate;
-
 	window['AscCommonExcel'].convertRefToRowCol = convertRefToRowCol;
 	window['AscCommonExcel'].convertAreaToArray = convertAreaToArray;
 	window['AscCommonExcel'].convertAreaToArrayRefs = convertAreaToArrayRefs;
 
-	window["Asc"]["cDate"] = window["Asc"].cDate = cDate;
-	prot									     = cDate.prototype;
-	prot["getExcelDateWithTime"]	             = prot.getExcelDateWithTime;
 })(window);

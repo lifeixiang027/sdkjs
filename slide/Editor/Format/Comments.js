@@ -200,7 +200,7 @@ ParaComment.prototype =
     {
     },
 
-    Check_RevisionsChanges : function(Checker, ContentPos, Depth)
+    CheckRevisionsChanges : function(Checker, ContentPos, Depth)
     {
     },
 
@@ -311,7 +311,7 @@ ParaComment.prototype =
 //-----------------------------------------------------------------------------------
 // Функции для работы с курсором
 //-----------------------------------------------------------------------------------
-    Is_CursorPlaceable : function()
+    IsCursorPlaceable : function()
     {
         return false;
     },
@@ -500,7 +500,7 @@ ParaComment.prototype.Get_TextPr = function(ContentPos, Depth)
 //----------------------------------------------------------------------------------------------------------------------
 ParaComment.prototype.SetReviewType = function(ReviewType, RemovePrChange){};
 ParaComment.prototype.SetReviewTypeWithInfo = function(ReviewType, ReviewInfo){};
-ParaComment.prototype.Check_RevisionsChanges = function(Checker, ContentPos, Depth){};
+ParaComment.prototype.CheckRevisionsChanges = function(Checker, ContentPos, Depth){};
 ParaComment.prototype.AcceptRevisionChanges = function(Type, bAll){};
 ParaComment.prototype.RejectRevisionChanges = function(Type, bAll){};
 
@@ -516,61 +516,29 @@ function CWriteCommentData()
     this.WriteText = "";
 
     this.AdditionalData = "";
+    this.timeZoneBias = null;
 
     this.x = 0;
     this.y = 0;
 }
 CWriteCommentData.prototype =
 {
-    DateToISO8601 : function(d)
-    {
-        function pad(n){return n < 10 ? '0' + n : n;}
-        return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' +
-            pad(d.getUTCDate()) + 'T' + pad(d.getUTCHours()) + ':' +
-            pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds())+'Z';
-    },
-
-    Iso8601ToDate : function(sDate)
-    {
-        var numericKeys = [ 1, 4, 5, 6, 7, 10, 11 ];
-        var minutesOffset = 0;
-		var struct;
-        if ((struct = /^(\d{4}|[+\-]\d{6})(?:-(\d{2})(?:-(\d{2}))?)?(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{3}))?)?(?:(Z)|([+\-])(\d{2})(?::(\d{2}))?)?)?$/.exec(sDate))) {
-            // avoid NaN timestamps caused by “undefined” values being passed to Date.UTC
-            for (var i = 0, k; (k = numericKeys[i]); ++i) {
-                struct[k] = +struct[k] || 0;
-            }
-
-            // allow undefined days and months
-            struct[2] = (+struct[2] || 1) - 1;
-            struct[3] = +struct[3] || 1;
-
-            if (struct[8] !== 'Z' && struct[9] !== undefined) {
-                minutesOffset = struct[10] * 60 + struct[11];
-
-                if (struct[9] === '+') {
-                    minutesOffset = 0 - minutesOffset;
-                }
-            }
-
-            var _ret = new Date(Date.UTC(struct[1], struct[2], struct[3], struct[4], struct[5] + minutesOffset, struct[6], struct[7]));
-            return "" + _ret.getTime();
-        }
-        return "1";
-    },
-
     Calculate : function()
     {
-        var d = new Date(this.Data.m_sTime - 0);
-        this.WriteTime = this.DateToISO8601(d);
+        this.WriteTime = new Date(this.Data.m_sTime - 0).toISOString().slice(0, 19) + 'Z';
+        this.timeZoneBias = this.Data.m_nTimeZoneBias;
 
         this.CalculateAdditionalData();
     },
 
     Calculate2 : function()
     {
-        var _time = this.Iso8601ToDate(this.WriteTime);
-        this.WriteTime = _time;
+        var dateMs = AscCommon.getTimeISO8601(this.WriteTime);
+        if(!isNaN(dateMs)){
+            this.WriteTime = dateMs + "";
+        } else {
+            this.WriteTime = "1";
+        }
     },
 
     CalculateAdditionalData : function()
@@ -580,12 +548,17 @@ CWriteCommentData.prototype =
         else
         {
             this.AdditionalData = "teamlab_data:";
+            this.AdditionalData += ("0;" + this.Data.m_sUserId.length + ";" + this.Data.m_sUserId + ";" );
+            this.AdditionalData += ("1;" + this.Data.m_sUserName.length + ";" + this.Data.m_sUserName + ";" );
             this.AdditionalData += ("2;1;" + (this.Data.m_bSolved ? "1;" : "0;"));
             if (this.Data.m_sOOTime)
             {
-                var d = new Date(this.Data.m_sOOTime - 0);
-                var WriteOOTime = this.DateToISO8601(d);
-                this.AdditionalData += ("3;" + WriteOOTime.length + ";" + WriteOOTime);
+                var WriteOOTime = new Date(this.Data.m_sOOTime - 0).toISOString().slice(0, 19) + 'Z';
+                this.AdditionalData += ("3;" + WriteOOTime.length + ";" + WriteOOTime + ";");
+            }
+            if (this.Data.m_sGuid)
+            {
+                this.AdditionalData += "4;" + this.Data.m_sGuid.length + ";" + this.Data.m_sGuid + ";";
             }
         }
     },
@@ -636,13 +609,20 @@ CWriteCommentData.prototype =
             var _value = _parsed.data.substr(_parsed.pos, _len);
             _parsed.pos += (_len + 1);
 
-            if (2 == _attr)
+            if (0 == _attr)
+                _comment_data.m_sUserId = _value;
+            else if (1 == _attr)
+                _comment_data.m_sUserName = _value;
+            else if (2 == _attr)
                 _comment_data.m_bSolved = ("1" == _value) ? true : false;
             else if (3 == _attr)
             {
-                var _time = this.Iso8601ToDate(_value);
-                _comment_data.m_sOOTime = _time;
+                var dateMs = AscCommon.getTimeISO8601(_value);
+                if(!isNaN(dateMs))
+                    _comment_data.m_sOOTime = dateMs + "";
 			}
+            else if (4 == _attr)
+                _comment_data.m_sGuid = _value;
         }
     }
 };
@@ -676,8 +656,10 @@ function CCommentData()
     this.m_sOOTime      = "";
     this.m_sUserId    = "";
     this.m_sUserName  = "";
+    this.m_sGuid  = "";
     this.m_sQuoteText = null;
     this.m_bSolved    = false;
+    this.m_nTimeZoneBias = null;
     this.m_aReplies   = [];
 }
 
@@ -691,8 +673,10 @@ CCommentData.prototype =
         ret.m_sOOTime = this.m_sOOTime;
         ret.m_sUserId = this.m_sUserId;
         ret.m_sUserName = this.m_sUserName;
+        ret.m_sGuid = this.m_sGuid;
         ret.m_sQuoteText = this.m_sQuoteText;
         ret.m_bSolved = this.m_bSolved;
+        ret.m_nTimeZoneBias = this.m_nTimeZoneBias;
         for(var i = 0; i < this.m_aReplies.length; ++i){
             ret.m_aReplies.push(this.m_aReplies[i].createDuplicate());
         }
@@ -744,6 +728,26 @@ CCommentData.prototype =
         return this.m_sUserName;
     },
 
+    Set_Guid: function(Guid)
+    {
+        this.m_sGuid = Guid;
+    },
+
+    Get_Guid: function()
+    {
+        return this.m_sGuid;
+    },
+
+    Set_TimeZoneBias: function(timeZoneBias)
+    {
+        this.m_nTimeZoneBias = timeZoneBias;
+    },
+
+    Get_TimeZoneBias: function()
+    {
+        return this.m_nTimeZoneBias;
+    },
+
     Get_RepliesCount: function()
     {
         return this.m_aReplies.length;
@@ -766,6 +770,8 @@ CCommentData.prototype =
         this.m_sQuoteText = AscCommentData.asc_getQuoteText();
         this.m_bSolved    = AscCommentData.asc_getSolved();
         this.m_sUserName  = AscCommentData.asc_getUserName();
+        this.m_sGuid      = AscCommentData.asc_getGuid();
+        this.m_nTimeZoneBias= AscCommentData.asc_getTimeZoneBias();
 
         var RepliesCount  = AscCommentData.asc_getRepliesCount();
         for ( var Index = 0; Index < RepliesCount; Index++ )
@@ -783,6 +789,9 @@ CCommentData.prototype =
         // String            : m_sOOTime
         // String            : m_sUserId
         // String            : m_sUserName
+        // String            : m_sGuid
+        // Bool              : Null ли TimeZoneBias
+        // Long              : TimeZoneBias
         // Bool              : Null ли QuoteText
         // String            : (Если предыдущий параметр false) QuoteText
         // Bool              : Solved
@@ -795,7 +804,15 @@ CCommentData.prototype =
         Writer.WriteString2( this.m_sOOTime );
         Writer.WriteString2( this.m_sUserId );
         Writer.WriteString2( this.m_sUserName );
+        Writer.WriteString2( this.m_sGuid );
 
+        if ( null === this.m_nTimeZoneBias )
+            Writer.WriteBool( true );
+        else
+        {
+            Writer.WriteBool( false );
+            Writer.WriteLong( this.m_nTimeZoneBias );
+        }
         if ( null === this.m_sQuoteText )
             Writer.WriteBool( true );
         else
@@ -818,6 +835,9 @@ CCommentData.prototype =
         // String            : m_sTime
         // String            : m_sOOTime
         // String            : m_sUserId
+        // String            : m_sGuid
+        // Bool              : Null ли TimeZoneBias
+        // Long              : TimeZoneBias
         // Bool              : Null ли QuoteText
         // String            : (Если предыдущий параметр false) QuoteText
         // Bool              : Solved
@@ -829,7 +849,12 @@ CCommentData.prototype =
         this.m_sOOTime   = Reader.GetString2();
         this.m_sUserId   = Reader.GetString2();
         this.m_sUserName = Reader.GetString2();
+        this.m_sGuid     = Reader.GetString2();
 
+        if ( true != Reader.GetBool()  )
+            this.m_nTimeZoneBias = Reader.GetLong();
+        else
+            this.m_nTimeZoneBias = null;
         var bNullQuote = Reader.GetBool();
         if ( true != bNullQuote  )
             this.m_sQuoteText = Reader.GetString2();

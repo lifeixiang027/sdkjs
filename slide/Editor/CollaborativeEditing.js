@@ -127,6 +127,10 @@ CCollaborativeEditing.prototype.Send_Changes = function(IsUserSave, AdditionalIn
 					editor.WordControl.m_oLogicDocument.DrawingDocument.UnLockSlide(Class2.num);
 				}
 			}
+            if(Class instanceof AscCommon.CCore)
+            {
+                editor.sendEvent("asc_onLockCore", false);
+            }
 
 			var check_obj = null;
 			if(Class.getObjectType)
@@ -172,14 +176,16 @@ CCollaborativeEditing.prototype.Send_Changes = function(IsUserSave, AdditionalIn
 							};
 						}
 						else {
-							check_obj =
-							{
-								"type": c_oAscLockTypeElemPresentation.Object,
-								"slideId": Class.Parent.slide.deleteLock.Get_Id(),
-								"objId": Class.Get_Id(),
-								"guid": Class.Get_Id()
-							};
-							map[Class.Parent.slide.num] = true;
+                            if(Class.Parent.slide.deleteLock){
+                                check_obj =
+                                {
+                                    "type": c_oAscLockTypeElemPresentation.Object,
+                                    "slideId": Class.Parent.slide.deleteLock.Get_Id(),
+                                    "objId": Class.Get_Id(),
+                                    "guid": Class.Get_Id()
+                                };
+                                map[Class.Parent.slide.num] = true;
+                            }
 						}
 					}
 				}
@@ -308,6 +314,10 @@ CCollaborativeEditing.prototype.Release_Locks = function()
                 {
                     map_redraw[Class.Parent.slide.num] = true;
                 }
+            }
+            if(Class instanceof AscCommon.CCore)
+            {
+                editor.sendEvent("asc_onLockCore", false);
             }
         }
         else if ( AscCommon.locktype_Other3 === CurLockType )

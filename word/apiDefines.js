@@ -166,7 +166,13 @@ var c_oAscRevisionsChangeType = {
 	ParaAdd : 0x03,
 	ParaRem : 0x04,
 	TextPr  : 0x05,
-	ParaPr  : 0x06
+	ParaPr  : 0x06,
+	TablePr : 0x07,
+	RowsAdd : 0x08,
+	RowsRem : 0x09,
+
+	MoveMark       : 0xFE, // специальный внутренний тип, для обозначения меток переноса
+	MoveMarkRemove : 0xFF  // внутреннний тип, для удаления отметок переноса внутри параграфов и таблиц
 };
 
 /** @enum {number} */
@@ -227,6 +233,13 @@ var c_oAscStyleType = {
 var c_oAscHyperlinkAnchor = {
 	Heading       : 1,
 	Bookmark      : 2
+};
+
+
+var c_oAscWatermarkType = {
+	None       : 0,
+	Text       : 1,
+	Image      : 2
 };
 
 window["flat_desine"] = false;
@@ -298,13 +311,17 @@ prot['Column']     = c_oAscSectionBreakType.Column;
 
 
 prot = window['Asc']['c_oAscRevisionsChangeType'] = c_oAscRevisionsChangeType;
-prot['Unknown'] = c_oAscRevisionsChangeType.Unknown;
-prot['TextAdd'] = c_oAscRevisionsChangeType.TextAdd;
-prot['TextRem'] = c_oAscRevisionsChangeType.TextRem;
-prot['ParaAdd'] = c_oAscRevisionsChangeType.ParaAdd;
-prot['ParaRem'] = c_oAscRevisionsChangeType.ParaRem;
-prot['TextPr']  = c_oAscRevisionsChangeType.TextPr;
-prot['ParaPr']  = c_oAscRevisionsChangeType.ParaPr;
+prot['Unknown']  = c_oAscRevisionsChangeType.Unknown;
+prot['TextAdd']  = c_oAscRevisionsChangeType.TextAdd;
+prot['TextRem']  = c_oAscRevisionsChangeType.TextRem;
+prot['ParaAdd']  = c_oAscRevisionsChangeType.ParaAdd;
+prot['ParaRem']  = c_oAscRevisionsChangeType.ParaRem;
+prot['TextPr']   = c_oAscRevisionsChangeType.TextPr;
+prot['ParaPr']   = c_oAscRevisionsChangeType.ParaPr;
+prot['TablePr']  = c_oAscRevisionsChangeType.TablePr;
+prot['RowsAdd']  = c_oAscRevisionsChangeType.RowsAdd;
+prot['RowsRem']  = c_oAscRevisionsChangeType.RowsRem;
+prot['MoveMark'] = c_oAscRevisionsChangeType.MoveMark;
 
 prot = window['Asc']['c_oAscFootnotePos'] = c_oAscFootnotePos;
 prot['BeneathText'] = c_oAscFootnotePos.BeneathText;
@@ -347,8 +364,12 @@ prot = window['Asc']['c_oAscHyperlinkAnchor'] = window['Asc'].c_oAscHyperlinkAnc
 prot['Heading']       = c_oAscHyperlinkAnchor.Heading;
 prot['Bookmark']      = c_oAscHyperlinkAnchor.Bookmark;
 
-
-
 window['AscCommon']                = window['AscCommon'] || {};
 window['AscCommon'].c_oSerFormat   = c_oSerFormat;
 window['AscCommon'].CurFileVersion = c_oSerFormat.Version;
+
+
+prot = window['Asc']['c_oAscWatermarkType'] = window['Asc'].c_oAscWatermarkType = c_oAscWatermarkType;
+prot['None'] = prot.None;
+prot['Text'] = prot.Text;
+prot['Image'] = prot.Image;

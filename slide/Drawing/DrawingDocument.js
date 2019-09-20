@@ -1207,7 +1207,7 @@ function CDrawingDocument()
 		this.m_oWordControl.m_oApi.ShowParaMarks = old_marks;
 		return ret;
 	}
-	this.ToRendererPart = function(noBase64)
+	this.ToRendererPart = function(noBase64, isSelection)
 	{
 		var watermark = this.m_oWordControl.m_oApi.watermarkDraw;
 
@@ -1236,6 +1236,11 @@ function CDrawingDocument()
 
 		for (var i = start; i <= end; i++)
 		{
+			if (true === isSelection)
+			{
+				if (!this.m_oWordControl.Thumbnails.isSelectedPage(i))
+					continue;
+			}
 			renderer.BeginPage(this.m_oLogicDocument.Width, this.m_oLogicDocument.Height);
 			this.m_oLogicDocument.DrawPage(i, renderer);
 			renderer.EndPage();
@@ -1993,7 +1998,7 @@ function CDrawingDocument()
 			this.m_oWordControl.m_oApi.checkLastWork();
 
 		this.m_oWordControl.m_oLogicDocument.Set_TargetPos(x, y, pageIndex);
-		if (pageIndex != this.SlideCurrent)
+		if (pageIndex != this.SlideCurrent && !this.m_oWordControl.DemonstrationManager.Mode)
 		{
 			// сначала выставим страницу
 			this.m_oWordControl.GoToPage(pageIndex);
@@ -2432,7 +2437,7 @@ function CDrawingDocument()
 		if (this.m_oWordControl.MobileTouchManager)
 		{
 			this.m_oWordControl.MobileTouchManager.TableStartTrack_Check = true;
-			markup.Table.Start_TrackTable();
+			markup.Table.StartTrackTable();
 			this.m_oWordControl.MobileTouchManager.TableStartTrack_Check = false;
 		}
 	}
@@ -2551,16 +2556,12 @@ function CDrawingDocument()
 
 		for (var i = 0; i < _len; i++)
 		{
-			if (__tabs[i].Value == tab_Left)
-				_ar[i] = new CTab(__tabs[i].Pos, AscCommon.g_tabtype_left);
-			else if (__tabs[i].Value == tab_Center)
-				_ar[i] = new CTab(__tabs[i].Pos, AscCommon.g_tabtype_center);
-			else if (__tabs[i].Value == tab_Right)
-				_ar[i] = new CTab(__tabs[i].Pos, AscCommon.g_tabtype_right);
+			if (__tabs[i].Value == tab_Left || __tabs[i].Value == tab_Center || __tabs[i].Value == tab_Right)
+				_ar[i] = new CTab(__tabs[i].Pos, __tabs[i].Value);
 			else
 			{
 				// не должно такого быть. но приходит
-				_ar[i] = new CTab(__tabs[i].Pos, AscCommon.g_tabtype_left);
+				_ar[i] = new CTab(__tabs[i].Pos, tab_Left);
 			}
 		}
 
@@ -3216,9 +3217,10 @@ function CDrawingDocument()
 		_canvas.width   = TABLE_STYLE_WIDTH_PIX;
 		_canvas.height  = TABLE_STYLE_HEIGHT_PIX;
 		var ctx         = _canvas.getContext('2d');
-
+		var oTable;
 		for (var i = 0; i < logicDoc.TablesForInterface.length; i++)
 		{
+			oTable = logicDoc.TablesForInterface[i].graphicObject;
 			ctx.fillStyle = "#FFFFFF";
 			ctx.fillRect(0, 0, _canvas.width, _canvas.height);
 
@@ -3226,12 +3228,24 @@ function CDrawingDocument()
 			graphics.init(ctx, _canvas.width, _canvas.height, _pageW, _pageH);
 			graphics.m_oFontManager = AscCommon.g_fontManager;
 			graphics.transform(1, 0, 0, 1, 0, 0);
-			logicDoc.TablesForInterface[i].graphicObject.Draw(0, graphics);
+			oTable.Draw(0, graphics);
 
-			var _styleD   = new Asc.CAscTableStyle();
-			_styleD.Type  = 0;
-			_styleD.Image = _canvas.toDataURL("image/png");
-			_styleD.Id    = logicDoc.TablesForInterface[i].graphicObject.TableStyle;
+			var _styleD   = new AscCommon.CStyleImage();
+			_styleD.type  = AscCommon.c_oAscStyleImage.Default;
+			_styleD.image = _canvas.toDataURL("image/png");
+			var oStyleObject = AscCommon.g_oTableId.Get_ById(oTable.TableStyle);
+			if(oStyleObject)
+			{
+				_styleD.name = oTable.TableStyle;
+				_styleD.displayName = oStyleObject.Name;
+			}
+			else
+			{
+
+				_styleD.name = oTable.TableStyle;
+				_styleD.displayName = "";
+
+			}
 			_dst_styles.push(_styleD);
 		}
 		this.m_oWordControl.m_oApi.sync_InitEditorTableStyles(_dst_styles);
@@ -3953,6 +3967,13 @@ function CThumbnailsManager()
 		}
 	};
 
+	this.isSelectedPage = function(pageNum)
+	{
+		if (this.m_arrPages[pageNum] && this.m_arrPages[pageNum].IsSelected)
+			return true;
+		return false;
+	};
+
 	this.SelectPage = function(pageNum)
 	{
 		if (!this.SelectPageEnabled)
@@ -4289,6 +4310,8 @@ function CThumbnailsManager()
 			e.preventDefault();
 		else
 			e.returnValue = false;
+
+		AscCommon.stopEvent(e);
 		return false;
 	};
 
@@ -4953,7 +4976,10 @@ function CThumbnailsManager()
 					return;
 
 				this.FocusObjType = FOCUS_OBJECT_THUMBNAILS;
-				this.m_oWordControl.m_oLogicDocument.resetStateCurSlide(true);
+				if(this.m_oWordControl.m_oLogicDocument)
+				{
+					this.m_oWordControl.m_oLogicDocument.resetStateCurSlide(true);
+				}
 				break;
 			}
 			case FOCUS_OBJECT_NOTES:

@@ -3110,7 +3110,7 @@ function CDrawingDocument(drawingObjects)
 //        if (this.m_oWordControl.MobileTouchManager)
 //        {
 //            this.m_oWordControl.MobileTouchManager.TableStartTrack_Check = true;
-//            markup.Table.Start_TrackTable();
+//            markup.Table.StartTrackTable();
 //            this.m_oWordControl.MobileTouchManager.TableStartTrack_Check = false;
 //        }
     }
@@ -3242,11 +3242,11 @@ function CDrawingDocument(drawingObjects)
 //        for (var i = 0; i < _len; i++)
 //        {
 //            if (__tabs[i].Value == tab_Left)
-//                _ar[i] = new CTab(__tabs[i].Pos, g_tabtype_left);
+//                _ar[i] = new CTab(__tabs[i].Pos, tab_Left);
 //            else if (__tabs[i].Value == tab_Center)
-//                _ar[i] = new CTab(__tabs[i].Pos, g_tabtype_center);
+//                _ar[i] = new CTab(__tabs[i].Pos, tab_Center);
 //            else if (__tabs[i].Value == tab_Right)
-//                _ar[i] = new CTab(__tabs[i].Pos, g_tabtype_right);
+//                _ar[i] = new CTab(__tabs[i].Pos, tab_Right);
 //        }
 //
 //        hor_ruler.CorrectTabs();
@@ -3593,10 +3593,11 @@ function CDrawingDocument(drawingObjects)
             table.Recalculate_Page(0);
             table.Draw(0, graphics);
 
-            var _styleD = new Asc.CAscTableStyle();
-            _styleD.Type = 0;
-            _styleD.Image = _canvas.toDataURL("image/png");
-            _styleD.Id = i;
+            var _styleD = new AscCommon.CStyleImage();
+            _styleD.type = AscCommon.c_oAscStyleImage.Default;
+            _styleD.image = _canvas.toDataURL("image/png");
+            _styleD.name = i;
+            _styleD.displayName = _style.Name;
             _dst_styles.push(_styleD);
         }
         AscCommon.History.TurnOn();

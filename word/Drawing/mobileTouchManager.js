@@ -278,7 +278,7 @@
 			}
 		}
 
-		if (AscCommon.AscBrowser.isAndroid)
+		if (AscCommon.AscBrowser.isAndroid && !AscCommon.AscBrowser.isSailfish)
 			isPreventDefault = false;
 
 		if (this.Api.isViewMode || isPreventDefault)
@@ -465,6 +465,7 @@
 		var isPreventDefault = false;
 		switch (this.Mode)
 		{
+            case AscCommon.MobileTouchMode.None:
 			case AscCommon.MobileTouchMode.Scroll:
 			case AscCommon.MobileTouchMode.InlineObj:
 			case AscCommon.MobileTouchMode.FlowObj:
@@ -612,9 +613,10 @@
 
 					if ( false === HtmlPage.m_oLogicDocument.Document_Is_SelectionLocked(AscCommon.changestype_Table_Properties) )
 					{
-						HtmlPage.m_oLogicDocument.Create_NewHistoryPoint(AscDFH.historydescription_Document_SetTableMarkup_Hor);
+						HtmlPage.m_oLogicDocument.StartAction(AscDFH.historydescription_Document_SetTableMarkup_Hor);
 						_markup.Table.Update_TableMarkupFromRuler(_markup, true, this.TableCurrentMovePos + 1);
-						HtmlPage.m_oLogicDocument.Document_UpdateInterfaceState();
+						HtmlPage.m_oLogicDocument.UpdateInterface();
+						HtmlPage.m_oLogicDocument.FinalizeAction();
 					}
 				}
 				else
@@ -637,9 +639,10 @@
 
 					if ( false === this.delegate.HtmlPage.m_oLogicDocument.Document_Is_SelectionLocked(AscCommon.changestype_Table_Properties) )
 					{
-						HtmlPage.m_oLogicDocument.Create_NewHistoryPoint(AscDFH.historydescription_Document_SetTableMarkup_Hor);
+						HtmlPage.m_oLogicDocument.StartAction(AscDFH.historydescription_Document_SetTableMarkup_Hor);
 						_markup.Table.Update_TableMarkupFromRuler(_markup, false, this.TableCurrentMovePos + 1);
-						HtmlPage.m_oLogicDocument.Document_UpdateInterfaceState();
+						HtmlPage.m_oLogicDocument.UpdateInterface();
+						HtmlPage.m_oLogicDocument.FinalizeAction();
 					}
 				}
 
@@ -655,10 +658,13 @@
 		this.checkPointerMultiTouchRemove(e);
 
 		if (this.Api.isViewMode || isPreventDefault)
-			AscCommon.g_inputContext.preventVirtualKeyboard(e);
+			AscCommon.stopEvent(e);//AscCommon.g_inputContext.preventVirtualKeyboard(e);
 
 		if (true !== this.iScroll.isAnimating)
 			this.CheckContextMenuTouchEnd(isCheckContextMenuMode, isCheckContextMenuSelect, isCheckContextMenuCursor, isCheckContextMenuTableRuler);
+
+		if (AscCommon.g_inputContext.isHardCheckKeyboard)
+			isPreventDefault ? AscCommon.g_inputContext.preventVirtualKeyboard_Hard() : AscCommon.g_inputContext.enableVirtualKeyboard_Hard();
 
 		return false;
 	};

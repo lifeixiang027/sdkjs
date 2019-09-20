@@ -268,6 +268,7 @@ function CShapeDrawer()
     this.bIsTexture = false;
     this.bIsNoFillAttack = false;
     this.bIsNoStrokeAttack = false;
+    this.bDrawSmartAttack = false;
     this.FillUniColor = null;
     this.StrokeUniColor = null;
     this.StrokeWidth = 0;
@@ -445,7 +446,13 @@ CShapeDrawer.prototype =
         }
 
         if (this.Ln == null || this.Ln.Fill == null || this.Ln.Fill.fill == null)
+        {
             this.bIsNoStrokeAttack = true;
+            if (true === graphics.IsTrack)
+                graphics.Graphics.ArrayPoints = null;
+            else
+                graphics.ArrayPoints = null;
+        }
         else
         {
             var _fill = this.Ln.Fill.fill;
@@ -521,18 +528,14 @@ CShapeDrawer.prototype =
             if (graphics.IsSlideBoundsCheckerType && !this.bIsNoStrokeAttack)
                 graphics.LineWidth = this.StrokeWidth;
 
+            var isUseArrayPoints = false;
             if ((this.Ln.headEnd != null && this.Ln.headEnd.type != null) || (this.Ln.tailEnd != null && this.Ln.tailEnd.type != null))
-            {
-                if (true === graphics.IsTrack)
-                {
-                    if(graphics.Graphics)
-                    {
-                        graphics.Graphics.ArrayPoints = [];
-                    }
-                }
-                else
-                    graphics.ArrayPoints = [];
-            }
+                isUseArrayPoints = true;
+
+            if (true === graphics.IsTrack && graphics.Graphics != undefined && graphics.Graphics != null)
+                graphics.Graphics.ArrayPoints = isUseArrayPoints ? [] : null;
+            else
+                graphics.ArrayPoints = isUseArrayPoints ? [] : null;
 
             if (this.Graphics.m_oContext != null && this.Ln.Join != null && this.Ln.Join.type != null)
                 this.OldLineJoin = this.Graphics.m_oContext.lineJoin;
@@ -724,8 +727,6 @@ CShapeDrawer.prototype =
             {
                 if (this.IsRectShape)
                 {
-                    this.Graphics._s();
-
                     if ((null == this.UniFill.transparent) || (this.UniFill.transparent == 255))
                     {
                         this.Graphics.drawImage(getFullImageSrc2(this.UniFill.fill.RasterImageId), this.min_x, this.min_y, (this.max_x - this.min_x), (this.max_y - this.min_y), undefined, this.UniFill.fill.srcRect, this.UniFill.fill.canvas);
@@ -793,7 +794,8 @@ CShapeDrawer.prototype =
                         _is_ctx = true;
                     }
 
-                    var _ctx = (this.Graphics.IsTrack === true) ? this.Graphics.Graphics.m_oContext : this.Graphics.m_oContext;
+                    var _gr = (this.Graphics.IsTrack === true) ? this.Graphics.Graphics : this.Graphics;
+                    var _ctx = _gr.m_oContext;
 
                     var patt = !_img_native ? _ctx.createPattern(_img.Image, "repeat") : _ctx.createPattern(_img_native, "repeat");
 
@@ -837,6 +839,9 @@ CShapeDrawer.prototype =
                     }
 
                     _ctx.restore();
+
+                    _gr.m_bPenColorInit = false;
+                    _gr.m_bBrushColorInit = false;
                 }
             }
 
@@ -868,7 +873,8 @@ CShapeDrawer.prototype =
                     _is_ctx = true;
                 }
 
-                var _ctx = (this.Graphics.IsTrack === true) ? this.Graphics.Graphics.m_oContext : this.Graphics.m_oContext;
+                var _gr = (this.Graphics.IsTrack === true) ? this.Graphics.Graphics : this.Graphics;
+                var _ctx = _gr.m_oContext;
 
                 var _patt_name = AscCommon.global_hatch_names[_fill.ftype];
                 if (undefined == _patt_name)
@@ -924,6 +930,9 @@ CShapeDrawer.prototype =
 
                 _ctx.restore();
 
+                _gr.m_bPenColorInit = false;
+                _gr.m_bBrushColorInit = false;
+
                 if (bIsIntegerGridTRUE)
                 {
                     this.Graphics.SetIntegerGrid(true);
@@ -948,7 +957,8 @@ CShapeDrawer.prototype =
                     _is_ctx = true;
                 }
 
-                var _ctx = (this.Graphics.IsTrack === true) ? this.Graphics.Graphics.m_oContext : this.Graphics.m_oContext;
+                var _gr = (this.Graphics.IsTrack === true) ? this.Graphics.Graphics : this.Graphics;
+                var _ctx = _gr.m_oContext;
 
                 var gradObj = null;
                 if (_fill.lin)
@@ -999,6 +1009,9 @@ CShapeDrawer.prototype =
                 {
                     _ctx.fill();
                 }
+
+                _gr.m_bPenColorInit = false;
+                _gr.m_bBrushColorInit = false;
 
                 if (bIsIntegerGridTRUE)
                 {
@@ -1129,6 +1142,8 @@ CShapeDrawer.prototype =
 
             var _max_delta_eps2 = 0.001;
 
+            var arrKoef = this.isArrPix ? (1 / AscCommon.g_dKoef_mm_to_pix) : 1;
+
             if (this.Ln.headEnd != null)
             {
                 var _x1 = trans.TransformPointX(arr[0].x, arr[0].y);
@@ -1151,7 +1166,7 @@ CShapeDrawer.prototype =
                 if (_max_delta > _max_delta_eps2)
                 {
 					_graphicsCtx.ArrayPoints = null;
-					DrawLineEnd(_x1, _y1, _x2, _y2, this.Ln.headEnd.type, this.Ln.headEnd.GetWidth(_pen_w, _max_w), this.Ln.headEnd.GetLen(_pen_w, _max_w), this, trans1);
+					DrawLineEnd(_x1, _y1, _x2, _y2, this.Ln.headEnd.type, arrKoef * this.Ln.headEnd.GetWidth(_pen_w, _max_w), arrKoef * this.Ln.headEnd.GetLen(_pen_w, _max_w), this, trans1);
 					_graphicsCtx.ArrayPoints = arr;
                 }
             }
@@ -1179,7 +1194,7 @@ CShapeDrawer.prototype =
                 if (_max_delta > _max_delta_eps2)
                 {
 					_graphicsCtx.ArrayPoints = null;
-					DrawLineEnd(_x1, _y1, _x2, _y2, this.Ln.tailEnd.type, this.Ln.tailEnd.GetWidth(_pen_w, _max_w), this.Ln.tailEnd.GetLen(_pen_w, _max_w), this, trans1);
+					DrawLineEnd(_x1, _y1, _x2, _y2, this.Ln.tailEnd.type, arrKoef * this.Ln.tailEnd.GetWidth(_pen_w, _max_w), arrKoef * this.Ln.tailEnd.GetLen(_pen_w, _max_w), this, trans1);
 					_graphicsCtx.ArrayPoints = arr;
                 }
             }
@@ -1255,8 +1270,16 @@ CShapeDrawer.prototype =
                         }
                         else
                         {
-                            this.Graphics.drawImage(getFullImageSrc2(this.UniFill.fill.RasterImageId), this.min_x, this.min_y, (this.max_x - this.min_x), (this.max_y - this.min_y), undefined, this.UniFill.fill.srcRect);
-                            bIsFill = false;
+                            if (this.IsRectShape)
+                            {
+                                this.Graphics.drawImage(getFullImageSrc2(this.UniFill.fill.RasterImageId), this.min_x, this.min_y, (this.max_x - this.min_x), (this.max_y - this.min_y), undefined, this.UniFill.fill.srcRect);
+                                bIsFill = false;
+                            }
+                            else
+                            {
+                                // TODO: support srcRect
+                                this.Graphics.put_brushTexture(getFullImageSrc2(this.UniFill.fill.RasterImageId), 0);
+                            }
                         }
                     }
                     else
@@ -1394,7 +1417,7 @@ CShapeDrawer.prototype =
             {
                 this.Graphics.drawpath(1);
             }
-            else
+            else if (false)
             {
                 // такого быть не должно по идее
                 this.Graphics.b_color1(0, 0, 0, 0);

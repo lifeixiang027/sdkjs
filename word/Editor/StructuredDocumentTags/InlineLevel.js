@@ -125,6 +125,17 @@ CInlineLevelSdt.prototype.Copy = function(isUseSelection, oPr)
 
 	return oContentControl;
 };
+CInlineLevelSdt.prototype.GetSelectedContent = function(oSelectedContent)
+{
+	if (this.IsPlaceHolder())
+	{
+		return new CInlineLevelSdt();
+	}
+	else
+	{
+		return CParagraphContentWithParagraphLikeContent.prototype.GetSelectedContent.apply(this, arguments);
+	}
+};
 CInlineLevelSdt.prototype.GetSelectedElementsInfo = function(Info)
 {
 	Info.SetInlineLevelSdt(this);
@@ -337,7 +348,7 @@ CInlineLevelSdt.prototype.DrawContentControlsTrack = function(isHover)
 
 	var oDrawingDocument = this.Paragraph.LogicDocument.GetDrawingDocument();
 
-	if (Asc.c_oAscSdtAppearance.Hidden === this.GetAppearance())
+	if (Asc.c_oAscSdtAppearance.Hidden === this.GetAppearance() || this.Paragraph.LogicDocument.IsForceHideContentControlTrack())
 	{
 		oDrawingDocument.OnDrawContentControl(null, isHover ? c_oContentControlTrack.Hover : c_oContentControlTrack.In);
 		return;
@@ -456,7 +467,7 @@ CInlineLevelSdt.prototype.IsPlaceHolder = function()
 {
 	return (this.Content.length === 1 && this.Content[0] === this.PlaceHolder);
 };
-CInlineLevelSdt.prototype.private_ReplacePlaceHolderWithContent = function()
+CInlineLevelSdt.prototype.private_ReplacePlaceHolderWithContent = function(bMathRun)
 {
 	if (!this.IsPlaceHolder())
 		return;
@@ -467,7 +478,7 @@ CInlineLevelSdt.prototype.private_ReplacePlaceHolderWithContent = function()
 
 	this.RemoveFromContent(0, this.GetElementsCount());
 
-	var oRun = new ParaRun();
+	var oRun = new ParaRun(undefined, bMathRun);
 	if (oTextPr)
 		oRun.SetPr(oTextPr.Copy());
 
@@ -498,9 +509,9 @@ CInlineLevelSdt.prototype.Set_SelectionContentPos = function(StartContentPos, En
 		CParagraphContentWithParagraphLikeContent.prototype.Set_SelectionContentPos.apply(this, arguments);
 	}
 };
-CInlineLevelSdt.prototype.ReplacePlaceHolderWithContent = function()
+CInlineLevelSdt.prototype.ReplacePlaceHolderWithContent = function(bMathRun)
 {
-	this.private_ReplacePlaceHolderWithContent();
+	this.private_ReplacePlaceHolderWithContent(bMathRun);
 };
 CInlineLevelSdt.prototype.ReplaceContentWithPlaceHolder = function()
 {

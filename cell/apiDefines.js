@@ -86,6 +86,14 @@ var c_oAscCleanOptions = {
   SparklineGroups: 8
 };
 
+// ToDo Add including cells not marked as needing to be calculated
+var c_oAscCalculateType = {
+  WorkbookOnlyChanged: 1,
+  ActiveSheet: 2,
+  Workbook: 3,
+  All: 4
+};
+
 var c_oAscDrawDepOptions = {
   Master: 0,
   Slave: 1,
@@ -144,13 +152,6 @@ var c_oAscLockTypeElemSubType = {
 var c_oAscRecalcIndexTypes = {
   RecalcIndexAdd: 1,
   RecalcIndexRemove: 2
-};
-
-// Тип печати
-var c_oAscPrintType = {
-  ActiveSheets: 0,	// Активные листы
-  EntireWorkbook: 1,	// Всю книгу
-  Selection: 2		// Выделенный фрагмент
 };
 
 /** @enum */
@@ -263,8 +264,8 @@ var c_oAscCanChangeColWidth = {
 // Merge cell type
 var c_oAscMergeType = {
   none: 0,
-  columns: 1, // Замержены ли колонки (если да, то автоподбор ширины не должен работать)
-  rows: 2     // Замержены ли строки (если да, то автоподбор высоты не должен работать)
+  cols: 1, // Замержены ли колонки (если да, то автоподбор ширины не должен работать)
+  rows: 2  // Замержены ли строки (если да, то автоподбор высоты не должен работать)
 };
 
 var c_oAscPaneState = {
@@ -294,7 +295,9 @@ var c_oTargetType = {
   Cells: 11,
   Shape: 12,
   FrozenAnchorH: 14,
-  FrozenAnchorV: 15
+  FrozenAnchorV: 15,
+  GroupRow: 16,
+  GroupCol: 17
 };
 
 var c_oAscAutoFilterTypes = {
@@ -328,13 +331,16 @@ var c_oAscFormulaRangeBorderColor = [
     ActiveCell  : 2,
     Resize      : 4,
     Promote     : 8,
-    Dash        : 16
+    Dash        : 16,
+    DashThick   : 32
   };
 
   var c_oAscLockNameFrozenPane = "frozenPane";
   var c_oAscLockNameTabColor = "tabColor";
   var c_oAscLockAddSheet = "addSheet";
   var c_oAscLockLayoutOptions = "layoutOptions";
+  var c_oAscHeaderFooterEdit = "headerFooterEdit";
+  var c_oAscLockPrintScaleOptions = "printScaleOptions";
 
 var c_oAscGetDefinedNamesList = {
   Worksheet: 0,
@@ -390,6 +396,55 @@ var c_oAscPopUpSelectorType = {
       add: 2
   };
 
+  //поля header/footer
+  var c_oAscHeaderFooterField = {
+      pageNumber: 0,
+      pageCount: 1,
+      sheetName: 2,
+      fileName: 3,
+      filePath: 4,
+      date: 5,
+      time: 6,
+      lineBreak: 7
+  };
+
+  var c_oAscPageHFType = {
+      firstHeader: 0,
+      oddHeader: 1,
+      evenHeader: 2,
+      firstFooter: 3,
+      oddFooter: 4,
+      evenFooter: 5
+  };
+
+  var c_oAscHeaderFooterType = {
+      first: 0,
+      odd: 1,
+      even: 2
+  };
+
+  var c_oAscHeaderFooterPresets = {
+      none: 0,
+      page: 1,
+      pageOfQuestion: 2,
+      sheet: 3,
+      confidential: 4,
+      bookName: 5,
+      //bookPath: 5
+      sheetPage: 6,
+      sheetConfidentialPage: 7,
+      bookNamePage: 8,
+      pageSheet: 9,
+      pageBook: 10,
+      //bookPathPage: 11;
+      pageBookName: 11,
+      userPageDate: 12,
+      //bookPathPagePathFile: 12;
+      preparedUserDatePage: 13,
+      custom: 14
+  };
+
+
   var c_kMaxPrintPages = 1500;
 
   //----------------------------------------------------------export----------------------------------------------------
@@ -415,6 +470,10 @@ var c_oAscPopUpSelectorType = {
   window['AscCommonExcel'].c_oAscLockNameTabColor = c_oAscLockNameTabColor;
   window['AscCommonExcel'].c_oAscLockAddSheet = c_oAscLockAddSheet;
   window['AscCommonExcel'].c_oAscLockLayoutOptions = c_oAscLockLayoutOptions;
+  window['AscCommonExcel'].c_oAscHeaderFooterEdit = c_oAscHeaderFooterEdit;
+  window['AscCommonExcel'].c_oAscLockPrintScaleOptions = c_oAscLockPrintScaleOptions;
+
+
   window['AscCommonExcel'].c_kMaxPrintPages = c_kMaxPrintPages;
   window['AscCommonExcel'].filteringMode = true;
 
@@ -461,6 +520,12 @@ var c_oAscPopUpSelectorType = {
   prot['Hyperlinks'] = prot.Hyperlinks;
   prot['Sparklines'] = prot.Sparklines;
   prot['SparklineGroups'] = prot.SparklineGroups;
+  window['Asc']['c_oAscCalculateType'] = window['Asc'].c_oAscCalculateType = c_oAscCalculateType;
+  prot = c_oAscCalculateType;
+  prot['WorkbookOnlyChanged'] = prot.WorkbookOnlyChanged;
+  prot['ActiveSheet'] = prot.ActiveSheet;
+  prot['Workbook'] = prot.Workbook;
+  prot['All'] = prot.All;
   window['Asc']['c_oAscSelectionDialogType'] = window['Asc'].c_oAscSelectionDialogType = c_oAscSelectionDialogType;
   prot = c_oAscSelectionDialogType;
   prot['None'] = prot.None;
@@ -486,11 +551,6 @@ var c_oAscPopUpSelectorType = {
   prot['Range'] = prot.Range;
   prot['TableProperties'] = prot.TableProperties;
   prot['Sheet'] = prot.Sheet;
-  window['Asc']['c_oAscPrintType'] = window['Asc'].c_oAscPrintType = c_oAscPrintType;
-  prot = c_oAscPrintType;
-  prot['ActiveSheets'] = prot.ActiveSheets;
-  prot['EntireWorkbook'] = prot.EntireWorkbook;
-  prot['Selection'] = prot.Selection;
   window['Asc']['c_oAscCustomAutoFilter'] = window['Asc'].c_oAscCustomAutoFilter = c_oAscCustomAutoFilter;
   prot = c_oAscCustomAutoFilter;
   prot['equals'] = prot.equals;
@@ -598,5 +658,47 @@ var c_oAscPopUpSelectorType = {
   prot['set'] = prot.set;
   prot['clear'] = prot.clear;
   prot['add'] = prot.add;
+  window['Asc']['c_oAscHeaderFooterField'] = window['Asc'].c_oAscHeaderFooterField = c_oAscHeaderFooterField;
+  prot = c_oAscHeaderFooterField;
+  prot['pageNumber'] = prot.pageNumber;
+  prot['pageCount'] = prot.pageCount;
+  prot['sheetName'] = prot.sheetName;
+  prot['fileName'] = prot.fileName;
+  prot['filePath'] = prot.filePath;
+  prot['date'] = prot.date;
+  prot['time'] = prot.time;
+  prot['lineBreak'] = prot.lineBreak;
+  window['Asc']['c_oAscPageHFType'] = window['Asc'].c_oAscPageHFType = c_oAscPageHFType;
+  prot = c_oAscHeaderFooterField;
+  prot['firstHeader'] = prot.firstHeader;
+  prot['oddHeader'] = prot.oddHeader;
+  prot['evenHeader'] = prot.evenHeader;
+  prot['firstFooter'] = prot.firstFooter;
+  prot['oddFooter'] = prot.oddFooter;
+  prot['evenFooter'] = prot.evenFooter;
+
+  window['Asc']['c_oAscHeaderFooterType'] = window['Asc'].c_oAscHeaderFooterType = c_oAscHeaderFooterType;
+  prot = c_oAscHeaderFooterType;
+  prot['first'] = prot.first;
+  prot['odd'] = prot.odd;
+  prot['even'] = prot.even;
+
+  window['Asc']['c_oAscHeaderFooterPresets'] = window['Asc'].c_oAscHeaderFooterPresets = c_oAscHeaderFooterPresets;
+  prot = c_oAscHeaderFooterPresets;
+  prot['none'] = prot.none;
+  prot['page'] = prot.page;
+  prot['pageOfQuestion'] = prot.pageOfQuestion;
+  prot['sheet'] = prot.sheet;
+  prot['confidential'] = prot.confidential;
+  prot['bookName'] = prot.bookName;
+  prot['sheetPage'] = prot.sheetPage;
+  prot['sheetConfidentialPage'] = prot.sheetConfidentialPage;
+  prot['bookNamePage'] = prot.bookNamePage;
+  prot['pageSheet'] = prot.pageSheet;
+  prot['pageBook'] = prot.pageBook;
+  prot['pageBookName'] = prot.pageBookName;
+  prot['userPageDate'] = prot.userPageDate;
+  prot['preparedUserDatePage'] = prot.preparedUserDatePage;
+  prot['custom'] = prot.custom;
 
 })(window);

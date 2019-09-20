@@ -296,8 +296,8 @@ CChangesRunAddItem.prototype.Redo = function()
 
 	for (var nIndex = 0, nCount = this.Items.length; nIndex < nCount; ++nIndex)
 	{
-		if (this.Items.SetParent)
-			this.Items.SetParent(oRun);
+		if (this.Items[nIndex].SetParent)
+			this.Items[nIndex].SetParent(oRun);
 	}
 };
 CChangesRunAddItem.prototype.private_WriteItem = function(Writer, Item)
@@ -337,6 +337,7 @@ CChangesRunAddItem.prototype.Load = function(Color)
 	oRun.RecalcInfo.Measure = true;
 	oRun.private_UpdateSpellChecking();
 	oRun.private_UpdateTrackRevisionOnChangeContent(false);
+	oRun.private_UpdateDocumentOutline();
 };
 CChangesRunAddItem.prototype.IsRelated = function(oChanges)
 {
@@ -375,8 +376,8 @@ CChangesRunRemoveItem.prototype.Undo = function()
 
 	for (var nIndex = 0, nCount = this.Items.length; nIndex < nCount; ++nIndex)
 	{
-		if (this.Items.SetParent)
-			this.Items.SetParent(oRun);
+		if (this.Items[nIndex].SetParent)
+			this.Items[nIndex].SetParent(oRun);
 	}
 };
 CChangesRunRemoveItem.prototype.Redo = function()
@@ -446,6 +447,7 @@ CChangesRunRemoveItem.prototype.Load = function()
 	oRun.RecalcInfo.Measure = true;
 	oRun.private_UpdateSpellChecking();
 	oRun.private_UpdateTrackRevisionOnChangeContent(false);
+	oRun.private_UpdateDocumentOutline();
 };
 CChangesRunRemoveItem.prototype.IsRelated = function(oChanges)
 {
@@ -2520,5 +2522,3 @@ CChangesRunMathForcedBreak.prototype.Merge = function(oChange)
 
 	return true;
 };
-
-

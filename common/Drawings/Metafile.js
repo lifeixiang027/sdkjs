@@ -615,6 +615,16 @@
 				val += 256;
 			this.data[this.pos++] = val;
 		}
+		this.WriteShort          = function(val)
+		{
+			this.CheckSize(2);
+			this.data[this.pos++] = (val) & 0xFF;
+			this.data[this.pos++] = (val >>> 8) & 0xFF;
+		}
+		this.WriteUShort          = function(val)
+		{
+			this.WriteShort(AscFonts.FT_Common.UShort_To_Short(val));
+		}
 		this.WriteLong          = function(val)
 		{
 			this.CheckSize(4);
@@ -780,6 +790,21 @@
 			var count      = text.length & 0x7FFFFFFF;
 			var countWrite = 2 * count;
 			this.CheckSize(countWrite);
+			for (var i = 0; i < count; i++)
+			{
+				var c                 = text.charCodeAt(i) & 0xFFFF;
+				this.data[this.pos++] = c & 0xFF;
+				this.data[this.pos++] = (c >>> 8) & 0xFF;
+			}
+		}
+		this.WriteString4       = function(text)
+		{
+			if ("string" != typeof text)
+				text = text + "";
+
+			var count      = text.length & 0x7FFFFFFF;
+			this.WriteLong(count);
+			this.CheckSize(2 * count);
 			for (var i = 0; i < count; i++)
 			{
 				var c                 = text.charCodeAt(i) & 0xFFFF;
@@ -982,6 +1007,30 @@
 		this.WriteXmlAttributeNumber = function(name, val)
 		{
 			this.WriteXmlAttributeString(name, val.toString());
+		};
+		this.XlsbStartRecord = function(type, len) {
+			//Type
+			if (type < 0x80) {
+				this.WriteByte(type);
+			}
+			else {
+				this.WriteByte((type & 0x7F) | 0x80);
+				this.WriteByte(type >> 7);
+			}
+			//Len
+			for (var i = 0; i < 4; ++i) {
+				var part = len & 0x7F;
+				len = len >> 7;
+				if (len === 0) {
+					this.WriteByte(part);
+					break;
+				}
+				else {
+					this.WriteByte(part | 0x80);
+				}
+			}
+		};
+		this.XlsbEndRecord = function() {
 		};
 	}
 
@@ -2094,6 +2143,7 @@
 					 }
 					 */
 
+					/*
 					var _img = undefined;
 					if (window.editor)
 						_img = window.editor.ImageLoader.map_image_index[img];
@@ -2113,6 +2163,7 @@
 						this.m_arrayPages[this.m_lPagesCount - 1].drawImage(img, x, y, w, h);
 						return;
 					}
+					*/
 
 					var bIsClip = false;
 					if (srcRect.l > 0 || srcRect.t > 0 || srcRect.r < 100 || srcRect.b < 100)

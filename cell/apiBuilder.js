@@ -107,6 +107,7 @@
 	ApiChart.prototype.constructor = ApiChart;
 
 	/**
+     * The available preset color names.
 	 * @typedef {("aliceBlue" | "antiqueWhite" | "aqua" | "aquamarine" | "azure" | "beige" | "bisque" | "black" |
 	 *     "blanchedAlmond" | "blue" | "blueViolet" | "brown" | "burlyWood" | "cadetBlue" | "chartreuse" | "chocolate"
 	 *     | "coral" | "cornflowerBlue" | "cornsilk" | "crimson" | "cyan" | "darkBlue" | "darkCyan" | "darkGoldenrod" |
@@ -137,6 +138,11 @@
 	 * */
 
 	/**
+     * Possible values for the position of chart tick labels (either horizontal or vertical).
+     * * **"none"** - not display the selected tick labels.
+     * * **"nextTo"** - set the position of the selected tick labels next to the main label.
+     * * **"low"** - set the position of the selected tick labels in the part of the chart with lower values.
+     * * **"high"** - set the position of the selected tick labels in the part of the chart with higher values.
 	 * @typedef {("none" | "nextTo" | "low" | "high")} TickLabelPosition
 	 * **/
 	
@@ -281,16 +287,8 @@
 	 */
 	Api.prototype.SetThemeColors = function (theme) {
 		if ('string' === typeof theme) {
-			if (!AscCommon.g_oUserColorScheme.some(function (item, i) {
-					if (theme === item.get_name()) {
-						theme = i;
-						return true;
-					}
-				})) {
-				return;
-			}
+			this.wbModel.changeColorScheme(theme);
 		}
-		this.wbModel.changeColorScheme(theme);
 	};
 
 	Api.prototype.CreateNewHistoryPoint = function(){
@@ -912,10 +910,10 @@
 
 	/**
 	 * Create a chart of the set type from the selected data range of the current sheet.
-	 * @memberof ApiWorksheet
-	 * @typeofeditors ["CSE"]
 	 * <note>Please note, that the horizontal nColOffset and vertical nRowOffset offsets are calculated within the limits of the specified nFromCol column and nFromRow
 	 * row cell only. If this value exceeds the cell width or height, another vertical/horizontal position will be set.</note>
+	 * @memberof ApiWorksheet
+	 * @typeofeditors ["CSE"]
 	 * @param {string} sDataRange - The selected cell range which will be used to get the data for the chart, formed specifically and including the sheet name.
 	 * @param {bool} bInRows - Specifies whether to take the data from the rows or from the columns. If true the data from the rows will be used.
 	 * @param {ChartType} sType - The chart type used for the chart display.
@@ -1065,7 +1063,6 @@
 			if(arguments.length === 8){//support old variant
 				oChart.setBDeleted(false);
 				oChart.setWorksheet(this.worksheet);
-				oChart.setBFromSerialize(true);
 				oChart.addToDrawingObjects();
 				oChart.setDrawingBaseCoords(arguments[4], 0, arguments[5], 0, arguments[6], 0, arguments[7], 0, 0, 0, 0, 0);
 			}
@@ -1188,7 +1185,6 @@
 								_object.deleteDrawingBase();
 								oImage.setBDeleted(false);
 								oImage.setWorksheet(oWorksheet.model);
-								oImage.setBFromSerialize(true);
 								oImage.addToDrawingObjects(i);
 								oImage.setDrawingBaseType(AscCommon.c_oAscCellAnchorType.cellanchorAbsolute);
 								oImage.setDrawingBaseCoords(0, 0, 0, 0, 0, 0, 0, 0, _object.x, _object.y, oImage.spPr.xfrm.extX, oImage.spPr.xfrm.extY);
@@ -1210,12 +1206,12 @@
 	};
 
 	/**
-	 * Specifies the border to be retrieved.
+	 * Specifies the cell border position.
 	 * @typedef {("DiagonalDown" | "DiagonalUp" | "Bottom" | "Left" | "Right" | "Top" | "InsideHorizontal" | "InsideVertical")} BordersIndex
 	 */
 
 	/**
-	 * Specifies the line style for the border.
+	 * Specifies the line style used to form the cell border.
 	 * @typedef {("None" | "Double" | "Hair" | "DashDotDot" | "DashDot" | "Dotted" | "Dashed" | "Thin" | "MediumDashDotDot" | "SlantDashDot" | "MediumDashDot" | "MediumDashed" | "Medium" | "Thick")} LineStyle
 	 */
 
@@ -1498,7 +1494,7 @@
 	/**
 	 * Get rows height value
 	 * @memberof ApiRange
-	 * @returns {number}
+	 * @returns {pt} The height the row in the range specified, measured in points.
 	 */
 	ApiRange.prototype.GetRowHeight = function () {
 		return this.range.worksheet.getRowHeight(this.range.bbox.r1);
@@ -1506,7 +1502,7 @@
 	/**
 	* Set rows height value
 	* @memberof ApiRange
-	* @param {number} height
+	* @param {pt} height The height the row in the range specified, measured in points.
 	 */
 	ApiRange.prototype.SetRowHeight = function (height) {
 		this.range.worksheet.setRowHeight(height, this.range.bbox.r1, this.range.bbox.r2, false);
@@ -1564,7 +1560,7 @@
 	 * Set the vertical alignment of the text in the current cell range.
 	 * @typeofeditors ["CSE"]
 	 * @memberof ApiRange
-	 * @param {'center' | 'bottom' | 'top'} value - The parameters will define the vertical alignment that will be applied to the cell contents.
+	 * @param {'center' | 'bottom' | 'top' | 'distributed' | 'justify'} value - The parameters will define the vertical alignment that will be applied to the cell contents.
 	 */
 	ApiRange.prototype.SetAlignVertical = function (value) {
 		switch(value)
@@ -1582,6 +1578,16 @@
 			case "top":
 			{
 				this.range.setAlignVertical(Asc.c_oAscVAlign.Top);
+				break;
+			}
+			case "distributed":
+			{
+				this.range.setAlignVertical(Asc.c_oAscVAlign.Dist);
+				break;
+			}
+			case "justify":
+			{
+				this.range.setAlignVertical(Asc.c_oAscVAlign.Just);
 				break;
 			}
 		}
@@ -1924,7 +1930,7 @@
 		if (!this.range.isOneCell()) {
 			return null;
 		}
-		return new ApiComment(this.range.worksheet.workbook.oApi.wb.getWorksheet(this.range.worksheet.getIndex()).cellCommentator.getComment(this.range.bbox.c1, this.range.bbox.r1));
+		return new ApiComment(this.range.worksheet.workbook.oApi.wb.getWorksheet(this.range.worksheet.getIndex()).cellCommentator.getComment(this.range.bbox.c1, this.range.bbox.r1, false));
 	};
 	Object.defineProperty(ApiRange.prototype, "Comments", {
 		get: function () {
@@ -2046,7 +2052,7 @@
 
 
 	/**
-	 * Get content of this shape.
+	 * Get the shape inner contents where a paragraph or text runs can be inserted. 
 	 * @returns {?ApiDocumentContent}
 	 */
 	ApiShape.prototype.GetDocContent = function()
@@ -2060,8 +2066,8 @@
 	};
 
 	/**
-	 * Set shape's content vertical align
-	 * @param {VerticalTextAlign} VerticalAlign
+	 * Set the vertical alignment for the shape content where a paragraph or text runs can be inserted.
+	 * @param {VerticalTextAlign} VerticalAlign - The type of the vertical alignment for the shape inner contents.
 	 */
 	ApiShape.prototype.SetVerticalTextAlign = function(VerticalAlign)
 	{
@@ -2104,11 +2110,11 @@
 	};
 
 	/**
-	 *  Specifies a chart title
+	 *  Specify the chart title.
 	 *  @typeofeditors ["CSE"]
 	 *  @param {string} sTitle - The title which will be displayed for the current chart.
-	 *  @param {hps} nFontSize - The text size value measured in points.
-	 *  @param {?bool} bIsBold
+	 *  @param {pt} nFontSize - The text size value measured in points.
+	 *  @param {?bool} bIsBold - Specifies if the chart title is written in bold font or not.
 	 */
 	ApiChart.prototype.SetTitle = function (sTitle, nFontSize, bIsBold)
 	{
@@ -2116,11 +2122,11 @@
 	};
 
 	/**
-	 *  Specify the horizontal axis chart title.
+	 *  Specify the chart horizontal axis title.
 	 *  @typeofeditors ["CSE"]
 	 *  @param {string} sTitle - The title which will be displayed for the horizontal axis of the current chart.
-	 *  @param {hps} nFontSize - The text size value measured in points.
-	 *  @param {?bool} bIsBold
+	 *  @param {pt} nFontSize - The text size value measured in points.
+	 *  @param {?bool} bIsBold - Specifies if the horizontal axis title is written in bold font or not.
 	 * */
 	ApiChart.prototype.SetHorAxisTitle = function (sTitle, nFontSize, bIsBold)
 	{
@@ -2128,11 +2134,11 @@
 	};
 
 	/**
-	 *  Specify the vertical axis chart title.
+	 *  Specify the chart vertical axis title.
 	 *  @typeofeditors ["CSE"]
 	 *  @param {string} sTitle - The title which will be displayed for the vertical axis of the current chart.
-	 *  @param {hps} nFontSize - The text size value measured in points.
-	 *  @param {?bool} bIsBold
+	 *  @param {pt} nFontSize - The text size value measured in points.
+	 *  @param {?bool} bIsBold - Specifies if the vertical axis title is written in bold font or not.
 	 * */
 	ApiChart.prototype.SetVerAxisTitle = function (sTitle, nFontSize, bIsBold)
 	{
@@ -2195,7 +2201,7 @@
 	};
 
 	/**
-	 * Specifies a legend position
+	 * Specify the chart legend position.
 	 * @typeofeditors ["CSE"]
 	 * @param {"left" | "top" | "right" | "bottom" | "none"} sLegendPos - The position of the chart legend inside the chart window.
 	 * */
@@ -2617,7 +2623,6 @@
 		oDrawing.spPr.xfrm.setExtY(nExtY/36000.0);
 		oDrawing.setBDeleted(false);
 		oDrawing.setWorksheet(oWorksheet);
-		oDrawing.setBFromSerialize(true);
 		oDrawing.addToDrawingObjects(pos);
 		oDrawing.setDrawingBaseType(AscCommon.c_oAscCellAnchorType.cellanchorOneCell);
 		oDrawing.setDrawingBaseCoords(nFromCol, nColOffset/36000.0, nFromRow, nRowOffset/36000.0, 0, 0, 0, 0, 0, 0, 0, 0);

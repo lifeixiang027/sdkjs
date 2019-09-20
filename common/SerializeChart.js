@@ -5487,9 +5487,9 @@ BinaryChartReader.prototype.ReadCT_ChartSpace = function (type, length, val, cur
             return oThis.ReadCT_Chart(t, l, oNewVal);
         });
         val.setChart(oNewVal);
-        if(null === oNewVal.autoTitleDeleted){
-            oNewVal.setAutoTitleDeleted(false);
-        }
+        // if(null === oNewVal.autoTitleDeleted){
+        //     oNewVal.setAutoTitleDeleted(false);
+        // }
         if(null === oNewVal.showDLblsOverMax){
             oNewVal.setShowDLblsOverMax(false);
         }
@@ -9857,7 +9857,7 @@ BinaryChartReader.prototype.ReadCT_ScatterChart = function (type, length, val, a
         });
         val.addSer(oNewVal);
         if(oNewVal.smooth === null){
-           // oNewVal.setSmooth(false);
+           oNewVal.setSmooth(false);
         }
     }
     else if (c_oserct_scatterchartDLBLS === type) {
@@ -10275,7 +10275,7 @@ BinaryChartReader.prototype.ReadCT_Line3DChart = function (type, length, val, aC
             return oThis.ReadCT_LineSer(t, l, oNewVal);
         });
         if(oNewVal.smooth === null){
-            //oNewVal.setSmooth(false);
+            oNewVal.setSmooth(false);
         }
         val.addSer(oNewVal);
     }
@@ -10364,7 +10364,7 @@ BinaryChartReader.prototype.ReadCT_LineChart = function (type, length, val, aCha
         });
         val.addSer(oNewVal);
         if(oNewVal.smooth === null){
-           // oNewVal.setSmooth(false);
+           oNewVal.setSmooth(false);
         }
     }
     else if (c_oserct_linechartDLBLS === type) {
@@ -10751,7 +10751,7 @@ BinaryChartReader.prototype.ReadCT_PlotArea = function (type, length, val, oIdTo
         });
         val.addChart(oNewVal);
         if(oNewVal.smooth === null){
-            //oNewVal.setSmooth(false);
+            oNewVal.setSmooth(false);
         }
     }
     else if (c_oserct_plotareaOFPIECHART === type) {
@@ -11328,7 +11328,7 @@ BinaryChartReader.prototype.ReadCT_Chart = function (type, length, val) {
                             for(var _c = 0; _c < axis_by_types.valAx.length; ++_c)
                             {
                                 var val_ax = axis_by_types.valAx[_c];
-                                if(val_ax.axPos !== AscFormat.AX_POS_B || val_ax.axPos !== AscFormat.AX_POS_T )
+                                if(val_ax.axPos !== AscFormat.AX_POS_B && val_ax.axPos !== AscFormat.AX_POS_T )
                                 {
                                     val_ax.setAxPos(AscFormat.AX_POS_B);
                                 }
@@ -11336,7 +11336,7 @@ BinaryChartReader.prototype.ReadCT_Chart = function (type, length, val) {
                             for(var _c = 0; _c < axis_by_types.catAx.length; ++_c)
                             {
                                 var cat_ax = axis_by_types.catAx[_c];
-                                if(cat_ax.axPos !== AscFormat.AX_POS_L || cat_ax.axPos !== AscFormat.AX_POS_R )
+                                if(cat_ax.axPos !== AscFormat.AX_POS_L && cat_ax.axPos !== AscFormat.AX_POS_R )
                                 {
                                     cat_ax.setAxPos(AscFormat.AX_POS_L);
                                 }

@@ -109,6 +109,7 @@ var para_InlineLevelSdt            = 0x0044; // Внутристроковый �
 var para_FieldChar                 = 0x0045;
 var para_InstrText                 = 0x0046;
 var para_Bookmark                  = 0x0047;
+var para_RevisionMove              = 0x0048;
 
 var break_Line   = 0x01;
 var break_Page   = 0x02;
@@ -245,6 +246,14 @@ CRunElementBase.prototype.CanStartAutoCorrect = function()
  * @returns {boolean}
  */
 CRunElementBase.prototype.IsPunctuation = function()
+{
+	return false;
+};
+/**
+ * Проверяем является ли элемент символом точки
+ * @returns {boolean}
+ */
+CRunElementBase.prototype.IsDot = function()
 {
 	return false;
 };
@@ -485,6 +494,10 @@ ParaText.prototype.CanStartAutoCorrect = function()
 ParaText.prototype.IsDiacriticalSymbol = function()
 {
 	return !!(0x0300 <= this.Value && this.Value <= 0x036F);
+};
+ParaText.prototype.IsDot = function()
+{
+	return !!(this.Value === 0x002E);
 };
 
 /**
@@ -1040,7 +1053,7 @@ ParaNewLine.prototype.Update_String = function(_W)
 
 	if (break_Page === this.BreakType || break_Column === this.BreakType)
 	{
-		var W = ( false === this.Flags.NewLine ? 50 : _W );
+		var W = false === this.Flags.NewLine ? 50 : Math.max(_W, 50);
 
 		g_oTextMeasurer.SetFont({
 			FontFamily : {Name : "Courier New", Index : -1},
@@ -1364,11 +1377,14 @@ ParaNumbering.prototype.GetSourceWidth = function()
 	return this.Internal.SourceWidth;
 };
 
-// TODO: Реализовать табы по точке и с чертой.
-var tab_Clear  = 0x00;
-var tab_Left   = 0x01;
-var tab_Right  = 0x02;
-var tab_Center = 0x03;
+// TODO: Реализовать табы по точке и с чертой (tab_Bar tab_Decimal)
+var tab_Bar     = 0x00;
+var tab_Center  = 0x01;
+var tab_Clear   = 0x02;
+var tab_Decimal = 0x03;
+var tab_Num     = 0x05;
+var tab_Right   = 0x07;
+var tab_Left    = 0x08;
 
 var tab_Symbol = 0x0022;//0x2192;
 
@@ -2251,6 +2267,7 @@ function ParagraphContent_Read_FromBinary(Reader)
 		case para_PageCount             : Element = new ParaPageCount(); break;
 		case para_FieldChar             : Element = new ParaFieldChar(); break;
 		case para_InstrText             : Element = new ParaInstrText(); break;
+		case para_RevisionMove          : Element = new CRunRevisionMove(); break;
 	}
 
 	if (null != Element)
@@ -2267,5 +2284,6 @@ window['AscCommonWord'].ParaSpace     = ParaSpace;
 window['AscCommonWord'].ParaPageNum   = ParaPageNum;
 window['AscCommonWord'].ParaPageCount = ParaPageCount;
 
+window['AscCommonWord'].break_Line = break_Line;
 window['AscCommonWord'].break_Page = break_Page;
 window['AscCommonWord'].break_Column = break_Column;

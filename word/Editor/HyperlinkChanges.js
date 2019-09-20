@@ -139,10 +139,14 @@ CChangesHyperlinkAddItem.prototype.Load = function(Color)
 		{
 			oHyperlink.Content.splice(Pos, 0, Element);
 			AscCommon.CollaborativeEditing.Update_DocumentPositionsOnAdd(oHyperlink, Pos);
+
+			if (Element.SetParagraph && oHyperlink.GetParagraph())
+				Element.SetParagraph(oHyperlink.GetParagraph());
 		}
 	}
 
 	oHyperlink.private_UpdateTrackRevisions();
+	oHyperlink.private_CheckUpdateBookmarks(this.Items);
 	oHyperlink.private_UpdateSpellChecking();
 };
 CChangesHyperlinkAddItem.prototype.IsRelated = function(oChanges)
@@ -208,6 +212,7 @@ CChangesHyperlinkRemoveItem.prototype.Load = function(Color)
 		AscCommon.CollaborativeEditing.Update_DocumentPositionsOnRemove(oHyperlink, ChangesPos, 1);
 	}
 	oHyperlink.private_UpdateTrackRevisions();
+	oHyperlink.private_CheckUpdateBookmarks(this.Items);
 	oHyperlink.private_UpdateSpellChecking();
 };
 CChangesHyperlinkRemoveItem.prototype.IsRelated = function(oChanges)

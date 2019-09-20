@@ -5,6 +5,7 @@
 			"../common/commonDefines.js",
 			"../common/docscoapicommon.js",
 			"../common/docscoapi.js",
+			"../common/spellcheckapi.js",
 			"../common/apiCommon.js",
 			"../common/SerializeCommonWordExcel.js",
 			"../common/editorscommon.js",
@@ -89,17 +90,17 @@
 			"../common/Drawings/HatchPattern.js",
 
 			"../common/scroll.js",
-			"../common/Scrolls/iscroll.js",
+			"../vendor/iscroll.js",
 			"../common/Scrolls/mobileTouchManagerBase.js",
 
 			"../common/wordcopypaste.js",
 
-			"../common/easysax.js",
+			"../vendor/easysax.js",
 			"../common/openxml.js",
 
 			"../common/intervalTree.js",
 
-			"../cell/document/empty-workbook.js",
+			"../cell/document/empty.js",
 			"../cell/model/UndoRedo.js",
 			"../cell/model/clipboard.js",
 			"../cell/model/autofilters.js",
@@ -123,6 +124,7 @@
 			"../cell/model/Workbook.js",
 			"../cell/model/Serialize.js",
 			"../cell/model/ConditionalFormatting.js",
+			"../cell/model/DataValidation.js",
 			"../cell/model/CellInfo.js",
 			"../cell/view/mobileTouch.js",
 			"../cell/view/StringRender.js",
@@ -159,6 +161,7 @@
 			"../word/Editor/Paragraph/ParaDrawingChanges.js",
 			"../word/Editor/Paragraph/ComplexFieldInstruction.js",
 			"../word/Editor/Paragraph/ComplexField.js",
+			"../word/Editor/Paragraph/ParaRevisionMove.js",
 			"../word/Editor/Hyperlink.js",
 			"../word/Editor/HyperlinkChanges.js",
 			"../word/Editor/Field.js",
@@ -274,7 +277,7 @@
 			"../common/libfont/manager.js",
 			"../common/libfont/textmeasurer.js",
 			"../cell/model/DrawingObjects/Graphics.js",
-			"../common/Scrolls/iscroll.js",
+			"../vendor/iscroll.js",
 			"../common/Scrolls/mobileTouchManagerBase.js",
 			"../cell/view/mobileTouch.js"
 		],

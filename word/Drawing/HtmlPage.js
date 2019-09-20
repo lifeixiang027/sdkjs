@@ -1200,22 +1200,30 @@ function CEditorPage(api)
 		this.OnUpdateOverlay();
 	};
 
-	this.ScrollToPosition = function(x, y, PageNum)
+	this.ScrollToPosition = function(x, y, PageNum, height)
 	{
 		if (PageNum < 0 || PageNum >= this.m_oDrawingDocument.m_lCountCalculatePages)
 			return;
 
-		var _h       = 5;
-		var rectSize = (_h * g_dKoef_mm_to_pix / 100);
+		var _h       = (undefined === height) ? 5 : height;
+		var rectSize = (_h * this.m_nZoomValue * g_dKoef_mm_to_pix / 100);
 		var pos      = this.m_oDrawingDocument.ConvertCoordsToCursor2(x, y, PageNum);
 
 		if (true === pos.Error)
 			return;
 
-		var boxX = 0;
-		var boxY = 0;
-		var boxR = this.m_oEditor.HtmlElement.width - 2;
-		var boxB = this.m_oEditor.HtmlElement.height - rectSize;
+        var _ww = this.m_oEditor.HtmlElement.width;
+        var _hh = this.m_oEditor.HtmlElement.height;
+        if (this.bIsRetinaSupport)
+        {
+            _ww /= AscCommon.AscBrowser.retinaPixelRatio;
+            _hh /= AscCommon.AscBrowser.retinaPixelRatio;
+        }
+
+        var boxX = 0;
+        var boxY = 0;
+        var boxR = _ww - 2;
+        var boxB = _hh - rectSize;
 
 		var nValueScrollHor = 0;
 		if (pos.X < boxX)
@@ -1224,7 +1232,7 @@ function CEditorPage(api)
 		}
 		if (pos.X > boxR)
 		{
-			var _mem        = x - g_dKoef_pix_to_mm * this.m_oEditor.HtmlElement.width * 100 / this.m_nZoomValue;
+			var _mem        = x - g_dKoef_pix_to_mm * _ww * 100 / this.m_nZoomValue;
 			nValueScrollHor = this.GetHorizontalScrollTo(_mem, PageNum);
 		}
 
@@ -1235,7 +1243,7 @@ function CEditorPage(api)
 		}
 		if (pos.Y > boxB)
 		{
-			var _mem        = y + _h + 10 - g_dKoef_pix_to_mm * this.m_oEditor.HtmlElement.height * 100 / this.m_nZoomValue;
+			var _mem        = y + _h + 10 - g_dKoef_pix_to_mm * _hh * 100 / this.m_nZoomValue;
 			nValueScrollVer = this.GetVerticalScrollTo(_mem, PageNum);
 		}
 
@@ -1244,14 +1252,14 @@ function CEditorPage(api)
 		{
 			isNeedScroll                   = true;
 			this.m_bIsUpdateTargetNoAttack = true;
-			var temp                       = nValueScrollHor * this.m_dScrollX_max / (this.m_dDocumentWidth - this.m_oEditor.HtmlElement.width);
+			var temp                       = nValueScrollHor * this.m_dScrollX_max / (this.m_dDocumentWidth - _ww);
 			this.m_oScrollHorApi.scrollToX(parseInt(temp), false);
 		}
 		if (0 != nValueScrollVer)
 		{
 			isNeedScroll                   = true;
 			this.m_bIsUpdateTargetNoAttack = true;
-			var temp                       = nValueScrollVer * this.m_dScrollY_max / (this.m_dDocumentHeight - this.m_oEditor.HtmlElement.height);
+			var temp                       = nValueScrollVer * this.m_dScrollY_max / (this.m_dDocumentHeight - _hh);
 			this.m_oScrollVerApi.scrollToY(parseInt(temp), false);
 		}
 
@@ -1265,19 +1273,19 @@ function CEditorPage(api)
 	this.onButtonTabsClick = function()
 	{
 		var oWordControl = oThis;
-		if (oWordControl.m_nTabsType == AscCommon.g_tabtype_left)
+		if (oWordControl.m_nTabsType == tab_Left)
 		{
-			oWordControl.m_nTabsType = AscCommon.g_tabtype_center;
+			oWordControl.m_nTabsType = tab_Center;
 			oWordControl.onButtonTabsDraw();
 		}
-		else if (oWordControl.m_nTabsType == AscCommon.g_tabtype_center)
+		else if (oWordControl.m_nTabsType == tab_Center)
 		{
-			oWordControl.m_nTabsType = AscCommon.g_tabtype_right;
+			oWordControl.m_nTabsType = tab_Right;
 			oWordControl.onButtonTabsDraw();
 		}
 		else
 		{
-			oWordControl.m_nTabsType = AscCommon.g_tabtype_left;
+			oWordControl.m_nTabsType = tab_Left;
 			oWordControl
 				.onButtonTabsDraw();
 		}
@@ -1308,13 +1316,13 @@ function CEditorPage(api)
 		_ctx.strokeStyle = "#3E3E3E";
 
 		_ctx.lineWidth = 2;
-		if (this.m_nTabsType == AscCommon.g_tabtype_left)
+		if (this.m_nTabsType == tab_Left)
 		{
 			_ctx.moveTo(8, 9);
 			_ctx.lineTo(8, 14);
 			_ctx.lineTo(13, 14);
 		}
-		else if (this.m_nTabsType == AscCommon.g_tabtype_center)
+		else if (this.m_nTabsType == tab_Center)
 		{
 			_ctx.moveTo(6, 14);
 			_ctx.lineTo(14, 14);
@@ -3274,7 +3282,11 @@ function CEditorPage(api)
 
 	this.OnPaint = function()
 	{
-		if (this.m_oApi.isLongAction())
+		var isNoPaint = this.m_oApi.isLongAction();
+		if (isNoPaint && this.m_oDrawingDocument && this.m_oDrawingDocument.isDisableEditBeforeCalculateLA)
+			isNoPaint = false;
+
+		if (isNoPaint)
 			return;
 
 		if (this.DrawingFreeze || true === window["DisableVisibleComponents"])
@@ -3293,6 +3305,9 @@ function CEditorPage(api)
 
 		var context       = canvas.getContext("2d");
 		context.fillStyle = GlobalSkin.BackgroundColor;
+
+        if (AscCommon.AscBrowser.isSailfish)
+            context.fillRect(0, 0, canvas.width, canvas.height);
 
 		if (this.m_oDrawingDocument.m_lDrawingFirst < 0 || this.m_oDrawingDocument.m_lDrawingEnd < 0)
 			return;
@@ -3643,7 +3658,7 @@ function CEditorPage(api)
 	this.AnimationFrame = function()
 	{
 		var now = Date.now();
-		if (-1 == oThis.RequestAnimationOldTime || (now >= (oThis.RequestAnimationOldTime + 40)))
+		if (-1 == oThis.RequestAnimationOldTime || (now >= (oThis.RequestAnimationOldTime + 40)) || (now < oThis.RequestAnimationOldTime))
 		{
 			oThis.RequestAnimationOldTime = now;
 			oThis.onTimerScroll2(true);
@@ -3691,10 +3706,14 @@ function CEditorPage(api)
 		if (!oWordControl.m_oApi.bInit_word_control)
 			return;
 
-        if (oWordControl.m_oApi.isLongAction())
+        var isLongAction = oWordControl.m_oApi.isLongAction();
+        if (isLongAction && oWordControl.m_oDrawingDocument && oWordControl.m_oDrawingDocument.isDisableEditBeforeCalculateLA)
+            isLongAction = false;
+
+        if (isLongAction)
             return;
 
-		var isRepaint                   = oWordControl.m_bIsScroll;
+		var isRepaint = oWordControl.m_bIsScroll;
 		if (null != oWordControl.m_oLogicDocument && !oWordControl.m_oApi.isLockTargetUpdate)
 		{
 			oWordControl.m_oDrawingDocument.UpdateTargetFromPaint = true;

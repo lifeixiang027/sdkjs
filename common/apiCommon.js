@@ -111,6 +111,10 @@
 		val = val.toUpperCase();
 		return val;
 	}
+	function CreateUInt32()
+	{
+		return Math.floor(Math.random() * 0x100000000);
+	}
 
 	var c_oLicenseResult = {
 		Error         : 1,
@@ -231,6 +235,7 @@
 		this.canCoAuthoring = true;
 		this.canReaderMode = true;
 		this.canBranding = false;
+		this.customization = false;
 		this.isAutosaveEnable = true;
 		this.AutosaveMinInterval = 300;
 		this.isAnalyticsEnable = false;
@@ -250,6 +255,9 @@
 	};
 	asc_CAscEditorPermissions.prototype.asc_getCanBranding = function () {
 		return this.canBranding;
+	};
+	asc_CAscEditorPermissions.prototype.asc_getCustomization = function () {
+		return this.customization;
 	};
 	asc_CAscEditorPermissions.prototype.asc_getIsAutosaveEnable = function () {
 		return this.isAutosaveEnable;
@@ -281,6 +289,9 @@
 	};
 	asc_CAscEditorPermissions.prototype.setCanBranding = function (v) {
 		this.canBranding = v;
+	};
+	asc_CAscEditorPermissions.prototype.setCustomization = function (v) {
+		this.customization = v;
 	};
 	asc_CAscEditorPermissions.prototype.setIsLight = function (v) {
 		this.isLight = v;
@@ -1490,6 +1501,11 @@
 			return this.Name;
 		}, asc_getIndex: function () {
 			return this.Index;
+		},
+		asc_putName: function (v) {
+			this.Name = v;
+		}, asc_putIndex: function (v) {
+			this.Index = v;
 		}
 	};
 
@@ -1824,6 +1840,8 @@
 			this.Position = (undefined != obj.Position) ? obj.Position : undefined;
 			this.Jc = (undefined != obj.Jc) ? obj.Jc : undefined;
 			this.ListType = (undefined != obj.ListType) ? obj.ListType : undefined;
+			this.OutlineLvl = (undefined != obj.OutlineLvl) ? obj.OutlineLvl : undefined;
+			this.OutlineLvlStyle = (undefined != obj.OutlineLvlStyle) ? obj.OutlineLvlStyle : false;
 		} else {
 			//ContextualSpacing : false,            // Удалять ли интервал между параграфами одинакового стиля
 			//
@@ -1865,6 +1883,8 @@
 			this.Position = undefined;
 			this.Jc = undefined;
 			this.ListType = undefined;
+			this.OutlineLvl = undefined;
+			this.OutlineLvlStyle = false;
 		}
 	}
 
@@ -1964,6 +1984,12 @@
 			return this.CanAddDropCap;
 		}, asc_getCanAddImage: function () {
 			return this.CanAddImage;
+		}, asc_getOutlineLvl: function() {
+			return this.OutlineLvl;
+		}, asc_putOutLineLvl: function(nLvl) {
+			this.OutlineLvl = nLvl;
+		}, asc_getOutlineLvlStyle: function() {
+			return this.OutlineLvlStyle;
 		}
 	};
 
@@ -2064,6 +2090,7 @@
 		this.flipV = null;
 		this.flipHInvert = null;
 		this.flipVInvert = null;
+		this.shadow = undefined;
 	}
 
 	asc_CShapeProperty.prototype = {
@@ -2213,6 +2240,13 @@
 
 		asc_putFlipVInvert: function(v){
 			this.flipVInvert = v;
+		},
+		asc_getShadow: function(){
+			return this.shadow;
+		},
+
+		asc_putShadow: function(v){
+			this.shadow = v;
 		}
 	};
 
@@ -2422,10 +2456,12 @@
 
             this.columnNumber =  obj.columnNumber != undefined ? obj.columnNumber : undefined;
             this.columnSpace =  obj.columnSpace != undefined ? obj.columnSpace : undefined;
+            this.shadow =  obj.shadow != undefined ? obj.shadow : undefined;
 
 			this.rot = obj.rot != undefined ? obj.rot : undefined;
 			this.flipH = obj.flipH != undefined ? obj.flipH : undefined;
 			this.flipV = obj.flipV != undefined ? obj.flipV : undefined;
+			this.resetCrop =  obj.resetCrop != undefined ? obj.resetCrop : undefined;
 
 		} else {
 			this.CanBeFlow = true;
@@ -2446,7 +2482,6 @@
 
 			this.ChartProperties = null;
 			this.ShapeProperties = null;
-			this.ImageProperties = null;
 
 			this.ChangeLevel = null;
 			this.Group = null;
@@ -2474,8 +2509,7 @@
 			this.rotAdd = undefined;
 			this.flipH = undefined;
 			this.flipV = undefined;
-			this.flipHInert = undefined;
-			this.flipVInert = undefined;
+			this.resetCrop = undefined;
 		}
 	}
 
@@ -2799,6 +2833,16 @@
 
 		asc_putFlipVInvert: function(v){
 			this.flipVInvert = v;
+		},
+		asc_putResetCrop: function(v){
+			this.resetCrop = v;
+		},
+		asc_getShadow: function(){
+			return this.shadow;
+		},
+
+		asc_putShadow: function(v){
+			this.shadow = v;
 		}
 	};
 
@@ -3488,22 +3532,23 @@
 	};
 
 	function CStyleImage(name, type, image, uiPriority) {
-		this.Name = name;
+		this.name = name;
+		this.displayName = null;
 		this.type = type;
 		this.image = image;
 		this.uiPriority = uiPriority;
 	}
 
-	CStyleImage.prototype.asc_getName = CStyleImage.prototype.get_Name = function () {
-		return this.Name;
+	CStyleImage.prototype.asc_getId = CStyleImage.prototype.asc_getName = CStyleImage.prototype.get_Name = function () {
+		return this.name;
 	};
+	CStyleImage.prototype.asc_getDisplayName = function () { return this.displayName; };
 	CStyleImage.prototype.asc_getType = CStyleImage.prototype.get_Type = function () {
 		return this.type;
 	};
 	CStyleImage.prototype.asc_getImage = function () {
 		return this.image;
 	};
-
 
 	/** @constructor */
     function asc_CSpellCheckProperty(Word, Checked, Variants, ParaId, Element)
@@ -3571,6 +3616,9 @@
 		*/
 
 		this.inputContentSrc = htmlContent;
+		if (typeof this.inputContentSrc === "object")
+			this.inputContentSrc = JSON.stringify(this.inputContentSrc);
+
 		this.replaceMap = {};
 
 		this.image = null;
@@ -3702,6 +3750,13 @@
 					}
 				}
 
+				var _oldTrackRevision = false;
+                if (oApi.getEditorId() == AscCommon.c_oEditorId.Word && oApi.WordControl && oApi.WordControl.m_oLogicDocument)
+                    _oldTrackRevision = oApi.WordControl.m_oLogicDocument.TrackRevisions;
+
+                if (_oldTrackRevision)
+                    oApi.WordControl.m_oLogicDocument.TrackRevisions = false;
+
                 oShape.setBDeleted(false);
 				oShape.spPr = new AscFormat.CSpPr();
 				oShape.spPr.setParent(oShape);
@@ -3748,7 +3803,7 @@
 				}
 				for(var i = 0; i < aParagraphsS.length; ++i){
 					var oCurParS = aParagraphsS[i];
-					var oNewParagraph = new Paragraph(oContent.DrawingDocument, oContent, !bWord);
+					var oNewParagraph = new AscCommonWord.Paragraph(oContent.DrawingDocument, oContent, !bWord);
 					if(AscFormat.isRealNumber(oCurParS['align'])){
 						oNewParagraph.Set_Align(oCurParS['align'])
 					}
@@ -3770,15 +3825,16 @@
 						if(Array.isArray(oRunS['fill']) && oRunS['fill'].length === 3){
 							oRun.Set_Unifill(AscFormat.CreteSolidFillRGB(oRunS['fill'][0], oRunS['fill'][1], oRunS['fill'][2]));
 						}
-						if(oRunS['font-family']){
-							oRun.Set_RFonts_Ascii({Name : oRunS['font-family'], Index : -1});
-							oRun.Set_RFonts_CS({Name : oRunS['font-family'], Index : -1});
-							oRun.Set_RFonts_EastAsia({Name : oRunS['font-family'], Index : -1});
-							oRun.Set_RFonts_HAnsi({Name : oRunS['font-family'], Index : -1});
-						}
-						if(oRunS['font-size']){
-							oRun.Set_FontSize(oRunS['font-size']);
-						}
+						var fontFamilyName = oRunS['font-family'] ? oRunS['font-family'] : "Arial";
+						var fontSize = (oRunS['font-size'] != null) ? oRunS['font-size'] : 50;
+
+						oRun.Set_RFonts_Ascii({Name : fontFamilyName, Index : -1});
+						oRun.Set_RFonts_CS({Name : fontFamilyName, Index : -1});
+						oRun.Set_RFonts_EastAsia({Name : fontFamilyName, Index : -1});
+						oRun.Set_RFonts_HAnsi({Name : fontFamilyName, Index : -1});
+
+						oRun.Set_FontSize(fontSize);
+
 						oRun.Set_Bold(oRunS['bold'] === true);
 						oRun.Set_Italic(oRunS['italic'] === true);
 						oRun.Set_Strikeout(oRunS['strikeout'] === true);
@@ -3786,7 +3842,7 @@
 
 						var sCustomText = oRunS['text'];
 						if(sCustomText === "<%br%>"){
-							oRun.AddToContent(0, new ParaNewLine(break_Line), false);
+							oRun.AddToContent(0, new AscCommonWord.ParaNewLine(AscCommonWord.break_Line), false);
 						}
 						else{
 							oRun.AddText(sCustomText);
@@ -3806,8 +3862,8 @@
 				var oldShowParaMarks;
 				if (window.editor)
 				{
-					oldShowParaMarks = editor.ShowParaMarks;
-					editor.ShowParaMarks = false;
+					oldShowParaMarks = oApi.ShowParaMarks;
+                    oApi.ShowParaMarks = false;
 				}
 
 				AscCommon.IsShapeToImageConverter = true;
@@ -3856,8 +3912,11 @@
 
 				if (window.editor)
 				{
-					window.editor.ShowParaMarks = oldShowParaMarks;
+                    oApi.ShowParaMarks = oldShowParaMarks;
 				}
+
+				if (_oldTrackRevision)
+					oApi.WordControl.m_oLogicDocument.TrackRevisions = true;
 
 			}, this, [obj]);
 		};
@@ -4181,6 +4240,7 @@
 	window["AscCommon"].CreateAscColorCustom = CreateAscColorCustom;
 	window["AscCommon"].CreateAscColor = CreateAscColor;
 	window["AscCommon"].CreateGUID = CreateGUID;
+	window["AscCommon"].CreateUInt32 = CreateUInt32;
 
 	window['Asc']['c_oLicenseResult'] = window['Asc'].c_oLicenseResult = c_oLicenseResult;
 	prot = c_oLicenseResult;
@@ -4247,6 +4307,7 @@
 	prot["asc_getCanCoAuthoring"] = prot.asc_getCanCoAuthoring;
 	prot["asc_getCanReaderMode"] = prot.asc_getCanReaderMode;
 	prot["asc_getCanBranding"] = prot.asc_getCanBranding;
+	prot["asc_getCustomization"] = prot.asc_getCustomization;
 	prot["asc_getIsAutosaveEnable"] = prot.asc_getIsAutosaveEnable;
 	prot["asc_getAutosaveMinInterval"] = prot.asc_getAutosaveMinInterval;
 	prot["asc_getIsAnalyticsEnable"] = prot.asc_getIsAnalyticsEnable;
@@ -4451,9 +4512,12 @@
 	prot["get_ListSubType"] = prot["asc_getListSubType"] = prot.asc_getListSubType;
 
 	window["AscCommon"].asc_CTextFontFamily = asc_CTextFontFamily;
+	window["AscCommon"]["asc_CTextFontFamily"] = asc_CTextFontFamily;
 	prot = asc_CTextFontFamily.prototype;
-	prot["get_Name"] = prot["asc_getName"] = prot.asc_getName;
-	prot["get_Index"] = prot["asc_getIndex"] = prot.asc_getIndex;
+	prot["get_Name"] = prot["asc_getName"] = prot.get_Name = prot.asc_getName;
+	prot["get_Index"] = prot["asc_getIndex"] = prot.get_Index = prot.asc_getIndex;
+	prot["put_Name"] = prot["asc_putName"] = prot.put_Name = prot.asc_putName;
+	prot["put_Index"] = prot["asc_putIndex"] = prot.put_Index = prot.asc_putIndex;
 
 	window["Asc"]["asc_CParagraphTab"] = window["Asc"].asc_CParagraphTab = asc_CParagraphTab;
 	prot = asc_CParagraphTab.prototype;
@@ -4580,6 +4644,9 @@
 	prot["put_FramePr"] = prot["asc_putFramePr"] = prot.asc_putFramePr;
 	prot["get_CanAddDropCap"] = prot["asc_getCanAddDropCap"] = prot.asc_getCanAddDropCap;
 	prot["get_CanAddImage"] = prot["asc_getCanAddImage"] = prot.asc_getCanAddImage;
+	prot["get_OutlineLvl"] = prot["asc_getOutlineLvl"] = prot.asc_getOutlineLvl;
+	prot["put_OutlineLvl"] = prot["asc_putOutLineLvl"] = prot.asc_putOutLineLvl;
+	prot["get_OutlineLvlStyle"] = prot["asc_getOutlineLvlStyle"] = prot.asc_getOutlineLvlStyle;
 
 	window["AscCommon"].asc_CTexture = asc_CTexture;
 	prot = asc_CTexture.prototype;
@@ -4657,6 +4724,8 @@
 	prot["put_FlipHInvert"] = prot["asc_putFlipHInvert"] = prot.asc_putFlipHInvert;
 	prot["get_FlipVInvert"] = prot["asc_getFlipVInvert"] = prot.asc_getFlipVInvert;
 	prot["put_FlipVInvert"] = prot["asc_putFlipVInvert"] = prot.asc_putFlipVInvert;
+	prot["put_shadow"] = prot.put_shadow = prot["asc_putShadow"] = prot.asc_putShadow;
+	prot["get_shadow"] = prot.get_shadow = prot["asc_getShadow"] = prot.asc_getShadow;
 
 	window["Asc"]["asc_TextArtProperties"] = window["Asc"].asc_TextArtProperties = asc_TextArtProperties;
 	prot = asc_TextArtProperties.prototype;
@@ -4771,6 +4840,7 @@
 	prot["put_FlipHInvert"] = prot["asc_putFlipHInvert"] = prot.asc_putFlipHInvert;
 	prot["get_FlipVInvert"] = prot["asc_getFlipVInvert"] = prot.asc_getFlipVInvert;
 	prot["put_FlipVInvert"] = prot["asc_putFlipVInvert"] = prot.asc_putFlipVInvert;
+	prot["put_ResetCrop"] = prot["asc_putResetCrop"] = prot.asc_putResetCrop;
 
 	prot["get_Title"] = prot["asc_getTitle"] = prot.asc_getTitle;
 	prot["put_Title"] = prot["asc_putTitle"] = prot.asc_putTitle;
@@ -4951,7 +5021,8 @@
 
 	window["AscCommon"].CStyleImage = CStyleImage;
 	prot = CStyleImage.prototype;
-	prot["asc_getName"] = prot["get_Name"] = prot.asc_getName;
+	prot["asc_getId"] = prot["asc_getName"] = prot["get_Name"] = prot.asc_getName;
+	prot["asc_getDisplayName"] = prot.asc_getDisplayName;
 	prot["asc_getType"] = prot["get_Type"] = prot.asc_getType;
 	prot["asc_getImage"] = prot.asc_getImage;
 
