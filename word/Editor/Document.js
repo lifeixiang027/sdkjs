@@ -7544,7 +7544,7 @@ CDocument.prototype.GetSelectedContent = function(bUseHistory)
 	}
 
 	var oSelectedContent = new CSelectedContent();
-	oSelectedContent.SetMoveTrack(this.IsTrackRevisions(), this.TrackMoveId);
+	oSelectedContent.SetMoveTrack(isTrack, this.TrackMoveId);
 	this.Controller.GetSelectedContent(oSelectedContent);
 	oSelectedContent.On_EndCollectElements(this, false);
 
@@ -7929,6 +7929,14 @@ CDocument.prototype.IsTableBorder = function(X, Y, PageIndex)
 			return Element.IsTableBorder(X, Y, ElementPageIndex);
 		}
 	}
+};
+/**
+ * Проверяем, происходит ли сейчас выделение ячеек какой-либо таблицы
+ * @returns {boolean}
+ */
+CDocument.prototype.IsTableCellSelection = function()
+{
+	return this.Controller.IsTableCellSelection();
 };
 /**
  * Проверяем, попали ли мы четко в текст (не лежащий в автофигуре)
@@ -17147,6 +17155,10 @@ CDocument.prototype.controller_GetAllFields = function(isUseSelection, arrFields
 
 	return arrFields;
 };
+CDocument.prototype.controller_IsTableCellSelection = function()
+{
+	return (this.Selection.Use && this.Selection.StartPos === this.Selection.EndPos && this.Content[this.Selection.StartPos].IsTable() && this.Content[this.Selection.StartPos].IsTableCellSelection());
+};
 //----------------------------------------------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------------------------------------------
@@ -17731,6 +17743,12 @@ CDocument.prototype.GetAllFields = function(isUseSelection)
 CDocument.prototype.UpdateFields = function(isBySelection)
 {
 	var arrFields = this.GetAllFields(isBySelection);
+
+	if (arrFields.length <= 0)
+	{
+		var oInfo = this.GetSelectedElementsInfo();
+		arrFields = oInfo.GetComplexFields();
+	}
 
 	var oDocState = this.SaveDocumentState();
 
@@ -18705,6 +18723,15 @@ CDocument.prototype.AddTableCellFormula = function(sFormula)
 		if (!this.Document_Is_SelectionLocked(AscCommon.changestype_Paragraph_Content))
 		{
 			this.StartAction(AscDFH.historydescription_Document_AddTableFormula);
+
+			if (this.IsSelectionUse())
+			{
+				if (!this.IsTableCellSelection())
+					this.Remove(1, false, false, true);
+
+				this.RemoveSelection();
+			}
+
 			this.AddFieldWithInstruction(sFormula);
 			this.Recalculate();
 			this.UpdateInterface();

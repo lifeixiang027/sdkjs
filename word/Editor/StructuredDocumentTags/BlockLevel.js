@@ -897,6 +897,10 @@ CBlockLevelSdt.prototype.IsSelectedAll = function()
 {
 	return this.Content.IsSelectedAll();
 };
+CBlockLevelSdt.prototype.IsApplyToAll = function()
+{
+	return this.Content.IsApplyToAll();
+};
 CBlockLevelSdt.prototype.GetLastRangeVisibleBounds = function()
 {
 	return this.Content.GetLastRangeVisibleBounds();
@@ -1513,6 +1517,10 @@ CBlockLevelSdt.prototype.ReplacePlaceHolderWithContent = function()
 CBlockLevelSdt.prototype.CheckRunContent = function(fCheck)
 {
 	return this.Content.CheckRunContent(fCheck);
+};
+CBlockLevelSdt.prototype.IsTableCellSelection = function()
+{
+	return this.Content.IsTableCellSelection();
 };
 //--------------------------------------------------------export--------------------------------------------------------
 window['AscCommonWord'] = window['AscCommonWord'] || {};

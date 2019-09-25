@@ -2243,6 +2243,10 @@ CDocumentContent.prototype.Get_ApplyToAll = function()
 {
 	return this.ApplyToAll;
 };
+CDocumentContent.prototype.IsApplyToAll = function()
+{
+	return this.ApplyToAll;
+};
 CDocumentContent.prototype.UpdateCursorType = function(X, Y, CurPage)
 {
 	if (CurPage < 0 || CurPage >= this.Pages.length)
@@ -8173,6 +8177,11 @@ CDocumentContent.prototype.GetPresentationField = function()
 
 	return this.Content[nCurPos].GetPresentationField();
 };
+CDocumentContent.prototype.IsTableCellSelection = function()
+{
+	return (this.Selection.Use && this.Selection.StartPos === this.Selection.EndPos && this.Content[this.Selection.StartPos].IsTable() && this.Content[this.Selection.StartPos].IsTableCellSelection());
+};
+
 
 function CDocumentContentStartState(DocContent)
 {

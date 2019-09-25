@@ -2301,7 +2301,13 @@ CTable.prototype.GetAllFields = function(isSelection, arrFields)
 
 	return arrFields;
 };
+CTable.prototype.IsTableCellSelection = function()
+{
+	if (this.IsInnerTable())
+		return this.CurCell.GetContent().IsTableCellSelection();
 
+	return this.IsCellSelection();
+};
 CTable.prototype.GetAllSeqFieldsByType = function(sType, aFields)
 {
 	var aRows = this.Content;
@@ -5531,21 +5537,21 @@ CTable.prototype.RemoveSelection = function()
 	if (false === this.Selection.Use)
 		return;
 
-	if (this.Content.length <= 0)
+	this.CurCell = null;
+	if (this.GetRowsCount() > 0)
 	{
-		this.CurCell = null;
-	}
-	else
-	{
-		if (table_Selection_Text === this.Selection.Type)
+
+		var oRow  = this.GetRow(this.Selection.EndPos.Pos.Row);
+		var oCell = null;
+		if (!oRow)
+			oCell = this.GetRow(0).GetCell(0);
+		else
+			oCell = oRow.GetCellsCount() > this.Selection.EndPos.Pos.Cell ? oRow.GetCell(this.Selection.EndPos.Pos.Cell) : oRow.GetCell(0);
+
+		if (oCell)
 		{
-			this.CurCell = this.Content[this.Selection.StartPos.Pos.Row].Get_Cell(this.Selection.StartPos.Pos.Cell);
-			this.CurCell.Content.RemoveSelection();
-		}
-		else if (this.Content.length > 0 && this.Content[0].Get_CellsCount() > 0)
-		{
-			this.CurCell = this.Content[0].Get_Cell(0);
-			this.CurCell.Content.RemoveSelection();
+			this.CurCell = oCell;
+			this.CurCell.GetContent().RemoveSelection();
 		}
 	}
 
@@ -13551,7 +13557,7 @@ CTable.prototype.GotoFootnoteRef = function(isNext, isCurrent)
  */
 CTable.prototype.CanUpdateTarget = function(nCurPage)
 {
-	if (this.Pages.length <= 0 || !this.Pages[nCurPage])
+	if (this.Pages.length <= 0)
 		return false;
 
 	var oRow, oCell;
@@ -13569,12 +13575,24 @@ CTable.prototype.CanUpdateTarget = function(nCurPage)
 	if (!oRow || !oCell)
 		return false;
 
-	if (this.Pages[nCurPage].LastRow > oRow.Index)
-		return true;
-	else if (this.Pages[nCurPage].LastRow < oRow.Index)
-		return false;
+	if (nCurPage >= this.Pages.length)
+	{
+		var nLastPage = this.Pages.length - 1;
 
-	return oCell.Content.CanUpdateTarget(nCurPage - oCell.Content.Get_StartPage_Relative());
+		if (this.Pages[nLastPage].LastRow >= oRow.Index)
+			return true;
+
+		return false;
+	}
+	else
+	{
+		if (this.Pages[nCurPage].LastRow > oRow.Index)
+			return true;
+		else if (this.Pages[nCurPage].LastRow < oRow.Index)
+			return false;
+
+		return oCell.Content.CanUpdateTarget(nCurPage - oCell.Content.Get_StartPage_Relative());
+	}
 };
 /**
  * Проверяем, выделение идет по  ячейкам или нет

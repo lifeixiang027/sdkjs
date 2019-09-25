@@ -2046,6 +2046,8 @@
 			this.startOffset = 0;
 			this.startOffsetPx = 0;
 
+			this.scale = null;
+
 			this.titleRowRange = null;
 			this.titleColRange = null;
 			this.titleWidth = 0;

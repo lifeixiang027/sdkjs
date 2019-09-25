@@ -434,6 +434,8 @@
 
         this.cutRange = null;
 
+        this.usePrintScale = false;//флаг нужен для того, чтобы возвращался scale только в случае печати, а при отрисовке, допустим сектки, он был равен 1
+
         this.arrRowGroups = null;
         this.arrColGroups = null;
         this.clickedGroupButton = null;
@@ -800,6 +802,16 @@
     WorksheetView.prototype.getZoom = function () {
         return this.drawingCtx.getZoom();
     };
+
+	WorksheetView.prototype.getPrintScale = function () {
+		var res = 1;
+		if(this.usePrintScale) {
+			var printOptions = this.model.PagePrintOptions;
+			res = printOptions && printOptions.pageSetup ? printOptions.pageSetup.scale : 100;
+			res = res / 100;
+		}
+		return res;
+	};
 
     WorksheetView.prototype.changeZoom = function (isUpdate) {
         if (isUpdate) {
@@ -1607,7 +1619,7 @@
     };
 
     // ----- Drawing for print -----
-    WorksheetView.prototype._calcPagesPrint = function(range, pageOptions, indexWorksheet, arrPages) {
+    WorksheetView.prototype._calcPagesPrint = function(range, pageOptions, indexWorksheet, arrPages, printScale) {
         if (0 > range.r2 || 0 > range.c2) {
 			// Ничего нет
             return;
@@ -1621,6 +1633,7 @@
 		//TODO  в данный момент с этот флаг не используется. нужно проверить и убрать.
 		var bPageLayout = arguments[4];
 
+        //TODO убрать использование bFitToWidth/bFitToHeight. сейчас всё должно регулироваться скейлингом
 		var bFitToWidth = false;
 		var bFitToHeight = false;
 		var pageMargins, pageSetup, pageGridLines, pageHeadings;
@@ -1636,10 +1649,17 @@
             pageWidth = pageSetup.asc_getWidth();
             pageHeight = pageSetup.asc_getHeight();
             pageOrientation = pageSetup.asc_getOrientation();
-            bFitToWidth = pageSetup.asc_getFitToWidth();
-            bFitToHeight = pageSetup.asc_getFitToHeight();
-			scale = 1/*pageSetup.asc_getScale() / 100*/;
+            //bFitToWidth = pageSetup.asc_getFitToWidth();
+            //bFitToHeight = pageSetup.asc_getFitToHeight();
         }
+
+		if(printScale) {
+			scale = printScale / 100;
+		} else {
+			//scale пока всегда берём из модели
+			var pageSetupModel = this.model.PagePrintOptions ? this.model.PagePrintOptions.pageSetup : null;
+			scale = pageSetupModel ? pageSetupModel.asc_getScale() / 100 : 1;
+		}
 
         var pageLeftField, pageRightField, pageTopField, pageBottomField;
         if (pageMargins) {
@@ -1868,6 +1888,10 @@
 				newPagePrint.titleColRange = new asc_Range(tCol1, pageRange.r1, Math.min(tCol2, currentColIndex - 1), rowIndex - 1);
 				//newPagePrint.titleWidth = addedTitleWidth;
 			}
+			//чтобы передать временный scale(допустим при печати выделенного) добавляем его в pagePrint
+			if(printScale) {
+				newPagePrint.scale = printScale / 100;
+			}
 			arrPages.push(newPagePrint);
 
 			if (bIsAddOffset) {
@@ -1944,8 +1968,12 @@
 	};
 
     WorksheetView.prototype.calcPagesPrint = function (pageOptions, printOnlySelection, indexWorksheet, arrPages, arrRanges, ignorePrintArea, doNotRecalc) {
+		//this.fitToPages(1, 1);
+
 		var range, maxCell, t = this;
 		var printArea = !ignorePrintArea && this.model.workbook.getDefinesNames("Print_Area", this.model.getId());
+
+		//this.model.PagePrintOptions.pageSetup.scale  = 145;
 
 		var getPrintAreaRanges = function() {
 			var res = false;
@@ -1964,6 +1992,15 @@
 
 		var printAreaRanges = !printOnlySelection && printArea ? getPrintAreaRanges() : null;
 		if (printOnlySelection) {
+			var pageSetup = pageOptions.asc_getPageSetup();
+			var fitToWidth = pageSetup.asc_getFitToWidth();
+			var fitToHeight = pageSetup.asc_getFitToHeight();
+			var tempPrintScale;
+			//подменяем scale на временный для печати выделенной области
+			if(fitToWidth || fitToHeight) {
+				tempPrintScale = this.calcPrintScale(fitToWidth, fitToHeight, true);
+			}
+
 			for (var i = 0; i < this.model.selectionRange.ranges.length; ++i) {
 				range = this.model.selectionRange.ranges[i];
 				if (c_oAscSelectionType.RangeCells === range.getType()) {
@@ -1974,7 +2011,8 @@
 					maxCell = this._checkPrintRange(range, doNotRecalc);
 					range = new asc_Range(0, 0, maxCell.col, maxCell.row);
 				}
-				this._calcPagesPrint(range, pageOptions, indexWorksheet, arrPages);
+
+				this._calcPagesPrint(range, pageOptions, indexWorksheet, arrPages, tempPrintScale);
 			}
 		} else if(printArea && printAreaRanges) {
 
@@ -2024,12 +2062,13 @@
 		}
 	};
 
-    WorksheetView.prototype.drawForPrint = function(drawingCtx, printPagesData, indexPrintPage, countPrintPages) {
+	WorksheetView.prototype.drawForPrint = function (drawingCtx, printPagesData, indexPrintPage, countPrintPages) {
+
 		var t = this;
     	this.stringRender.fontNeedUpdate = true;
-        if (null === printPagesData) {
-            // Напечатаем пустую страницу
-            drawingCtx.BeginPage(c_oAscPrintDefaultSettings.PageWidth, c_oAscPrintDefaultSettings.PageHeight);
+		if (null === printPagesData) {
+			// Напечатаем пустую страницу
+			drawingCtx.BeginPage(c_oAscPrintDefaultSettings.PageWidth, c_oAscPrintDefaultSettings.PageHeight);
 
 			//draw header/footer
 			this._drawHeaderFooter(drawingCtx, printPagesData, indexPrintPage, countPrintPages);
@@ -2164,6 +2203,360 @@
             drawingCtx.EndPage();
         }
     };
+
+	WorksheetView.prototype.fitOnOnePage = function(val) {
+		//TODO add constant!
+		var width = undefined, height = undefined;
+		if(val === 0) {
+			//sheet
+			width = 1;
+			height = 1;
+			//todo fitToPage
+		} else if(val === 1) {
+			//columns
+			width = 1;
+			//pageSetup.asc_setFitToWidth();
+		} else {
+			//rows
+			height = 1;
+			//pageSetup.asc_setFitToHeight();
+		}
+
+		this.fitToPages(width, height);
+	};
+
+	WorksheetView.prototype.setPrintScale = function (width, height, scale) {
+		var t = this;
+		this._isLockedLayoutOptions(function(success) {
+			if(!success) {
+				return;
+			}
+			t.fitToWidthHeight(width, height, ((width === null && height === null) || (width === 0 && height === 0)) ? scale : undefined);
+		});
+	};
+
+	//пересчитывать необходимо когда после открытия зашли в настройки печати
+	WorksheetView.prototype.recalcScale = function () {
+		var pageOptions = t.model.PagePrintOptions;
+		var width = pageOptions.asc_getFitToWidth();
+		var height = pageOptions.asc_getFitToHeight();
+		this._setPrintScale(this.calcPrintScale(width, height));
+
+		//TODO нужно ли в данном случае лочить?
+		//this._isLockedLayoutOptions(callback);
+	};
+
+	WorksheetView.prototype.fitToPages = function (width, height) {
+		//width/height - count of pages
+		//automatic -> width/height = undefined
+		//define print scale
+		this._setPrintScale(this.calcPrintScale(width, height));
+
+		//TODO нужно ли в данном случае лочить?
+		//this._isLockedLayoutOptions(callback);
+	};
+
+	//вызывается из меню при изменении только scale to fit -> width
+	WorksheetView.prototype.fitToWidth = function (val) {
+		//width/height - count of pages
+		//automatic -> width/height = undefined
+		//define print scale
+
+		var t = this;
+		var pageOptions = t.model.PagePrintOptions;
+
+		if(val !== pageOptions.asc_getFitToWidth()) {
+			History.Create_NewPoint();
+			History.StartTransaction();
+
+			pageOptions.asc_setFitToWidth(val);
+			this._setPrintScale(this.calcPrintScale(pageOptions.asc_getFitToWidth(), pageOptions.asc_getFitToHeight()));
+
+			History.EndTransaction();
+		}
+
+		//TODO нужно ли в данном случае лочить?
+		//this._isLockedLayoutOptions(callback);
+	};
+
+	//вызывается из меню при изменении только scale to fit -> height
+	WorksheetView.prototype.fitToHeight = function (val) {
+		//width/height - count of pages
+		//automatic -> width/height = undefined
+		//define print scale
+
+		var t = this;
+		var pageOptions = t.model.PagePrintOptions;
+
+		if(val !== pageOptions.asc_getFitToHeight()) {
+			History.Create_NewPoint();
+			History.StartTransaction();
+
+			pageOptions.asc_setFitToHeight(val);
+			this._setPrintScale(this.calcPrintScale(pageOptions.asc_getFitToWidth(), pageOptions.asc_getFitToHeight()));
+
+			History.EndTransaction();
+		}
+
+		//TODO нужно ли в данном случае лочить?
+		//this._isLockedLayoutOptions(callback);
+	};
+
+	WorksheetView.prototype.fitToWidthHeight = function (width, height, scale) {
+		//width/height - count of pages
+		//automatic -> width/height = undefined
+		//define print scale
+		var t = this;
+		
+		var pageOptions = t.model.PagePrintOptions;
+		var pageSetup = pageOptions.asc_getPageSetup();
+
+		if(width === null) {
+			width = 0;
+		}
+		if(height === null) {
+			height = 0;
+		}
+
+		var fitToWidthModel = pageSetup.asc_getFitToWidth();
+		var changedWidth = width !== fitToWidthModel;
+		var fitToHeightModel = pageSetup.asc_getFitToHeight();
+		var changedHeight = height !== fitToHeightModel;
+		var changedScale = scale && scale !== pageSetup.asc_getScale();
+
+		if(changedWidth || changedHeight || changedScale) {
+			History.Create_NewPoint();
+			History.StartTransaction();
+
+			t._changeFitToPage(width, height);
+
+			if(changedWidth) {
+				pageSetup.asc_setFitToWidth(width);
+			}
+			if(changedHeight) {
+				pageSetup.asc_setFitToHeight(height);
+			}
+
+			if(undefined === scale && (width !== 0 || height !== 0)) {
+				scale = t.calcPrintScale(pageSetup.asc_getFitToWidth(), pageSetup.asc_getFitToHeight());
+			}
+			if(scale) {
+				t._setPrintScale(scale);
+			}
+
+			t.changeViewPrintLines(true);
+			if(t.viewPrintLines) {
+				t.updateSelection();
+			}
+
+			History.EndTransaction();
+		}
+	};
+
+	WorksheetView.prototype._setPrintScale = function (val) {
+		var pageOptions = this.model.PagePrintOptions;
+		var pageSetup = pageOptions.asc_getPageSetup();
+		var oldScale = pageSetup.asc_getScale() / 100;
+
+		if(val !== oldScale) {
+			History.Create_NewPoint();
+			History.StartTransaction();
+
+			pageSetup.asc_setScale(val);
+
+			History.EndTransaction();
+		}
+
+		//TODO нужно ли в данном случае лочить?
+		//this._isLockedLayoutOptions(callback);
+	};
+
+	WorksheetView.prototype._changeFitToPage = function(width, height) {
+		var fitToHeightAuto = height === 0;
+		var fitToWidthAuto = width === 0;
+		this.model.setFitToPage(!fitToHeightAuto || !fitToWidthAuto);
+	};
+
+	WorksheetView.prototype.calcPrintScale = function(width, height, bSelection) {
+		var pageOptions = this.model.PagePrintOptions;
+		var pageMargins, pageSetup, pageGridLines, pageHeadings;
+		if (pageOptions) {
+			pageMargins = pageOptions.asc_getPageMargins();
+			pageSetup = pageOptions.asc_getPageSetup();
+			pageGridLines = pageOptions.asc_getGridLines();
+			pageHeadings = pageOptions.asc_getHeadings();
+		}
+
+		var pageWidth, pageHeight, pageOrientation;
+		if (pageSetup instanceof asc_CPageSetup) {
+			pageWidth = pageSetup.asc_getWidth();
+			pageHeight = pageSetup.asc_getHeight();
+			pageOrientation = pageSetup.asc_getOrientation();
+		}
+
+		var pageLeftField, pageRightField, pageTopField, pageBottomField;
+		if (pageMargins) {
+			pageLeftField = Math.max(pageMargins.asc_getLeft(), c_oAscPrintDefaultSettings.MinPageLeftField);
+			pageRightField = Math.max(pageMargins.asc_getRight(), c_oAscPrintDefaultSettings.MinPageRightField);
+			pageTopField = Math.max(pageMargins.asc_getTop(), c_oAscPrintDefaultSettings.MinPageTopField);
+			pageBottomField = Math.max(pageMargins.asc_getBottom(), c_oAscPrintDefaultSettings.MinPageBottomField);
+		}
+
+
+		var vector_koef = AscCommonExcel.vector_koef / this.getZoom();
+		if (AscCommon.AscBrowser.isRetina) {
+			vector_koef /= AscCommon.AscBrowser.retinaPixelRatio;
+		}
+
+		if (null == pageGridLines) {
+			pageGridLines = c_oAscPrintDefaultSettings.PageGridLines;
+		}
+		if (null == pageHeadings) {
+			pageHeadings = c_oAscPrintDefaultSettings.PageHeadings;
+		}
+
+		if (null == pageWidth) {
+			pageWidth = c_oAscPrintDefaultSettings.PageWidth;
+		}
+		if (null == pageHeight) {
+			pageHeight = c_oAscPrintDefaultSettings.PageHeight;
+		}
+		if (null == pageOrientation) {
+			pageOrientation = c_oAscPrintDefaultSettings.PageOrientation;
+		}
+
+		if (null == pageLeftField) {
+			pageLeftField = c_oAscPrintDefaultSettings.PageLeftField;
+		}
+		if (null == pageRightField) {
+			pageRightField = c_oAscPrintDefaultSettings.PageRightField;
+		}
+		if (null == pageTopField) {
+			pageTopField = c_oAscPrintDefaultSettings.PageTopField;
+		}
+		if (null == pageBottomField) {
+			pageBottomField = c_oAscPrintDefaultSettings.PageBottomField;
+		}
+
+
+		if (Asc.c_oAscPageOrientation.PageLandscape === pageOrientation) {
+			var tmp = pageWidth;
+			pageWidth = pageHeight;
+			pageHeight = tmp;
+		}
+
+		var pageWidthWithFields = pageWidth - pageLeftField - pageRightField;
+		var pageHeightWithFields = pageHeight - pageTopField - pageBottomField;
+		var leftFieldInPx = pageLeftField / vector_koef + 1;
+		var topFieldInPx = pageTopField / vector_koef + 1;
+
+		//TODO ms считает именно так - каждый раз прибаляются размеры заголовков к полям. необходимо перепроверить!
+		//if (pageHeadings) {
+		// Рисуем заголовки, нужно чуть сдвинуться
+		leftFieldInPx += this.cellsLeft;
+		topFieldInPx += this.cellsTop;
+		//}
+
+		//TODO при сравнении резальтатов рассчета страниц в зависимости от scale - LO выдаёт похожие результаты, MS - другие. Необходимо пересмотреть!
+		var pageWidthWithFieldsHeadings = ((pageWidth - pageRightField) / vector_koef - leftFieldInPx) /*/ scale*/;
+		var pageHeightWithFieldsHeadings = ((pageHeight - pageBottomField) / vector_koef - topFieldInPx) /*/ scale*/;
+
+		var t = this;
+		var doCalcScaleWidth = function(start, end) {
+			var res;
+			if(width) {
+				var widthAllCols = pageHeadings ? t.cellsLeft * width : 0;
+				for(var i = start; i <= end; i++) {
+					widthAllCols += t._getColumnWidth(i);
+				}
+				res = ((pageWidthWithFieldsHeadings * width) / widthAllCols) * 100;
+			}
+			return res;
+		};
+		var doCalcScaleHeight = function(start, end) {
+			var res;
+			if(height) {
+				var heightAllRows = pageHeadings ? t.cellsTop * height : 0;
+				for(var i = start; i <= end; i++) {
+					heightAllRows += t._getRowHeight(i);
+				}
+				res = ((pageHeightWithFieldsHeadings * height) / heightAllRows) * 100;
+			}
+			return res;
+		};
+
+		var wScale;
+		var hScale;
+		var calcScaleByRanges = function(ranges) {
+			var tempWScale = null, tempHScale = null;
+			for(var i = 0; i < ranges.length; i++) {
+				tempWScale = doCalcScaleWidth(ranges[i].c1, ranges[i].c2);
+				tempHScale = doCalcScaleHeight(ranges[i].r1, ranges[i].r2);
+				if(!wScale || (tempWScale && wScale > tempWScale)) {
+					wScale = tempWScale;
+				}
+				if(!hScale || (tempHScale && hScale > tempHScale)) {
+					hScale = tempHScale;
+				}
+			}
+		};
+
+		if(bSelection) {
+			calcScaleByRanges(this._getSelection().ranges);
+		} else {
+			//TODO ignorePrintArea - необходимо протащить флаг!
+			var printArea = /*!ignorePrintArea &&*/ this.model.workbook.getDefinesNames("Print_Area", this.model.getId());
+			var getPrintAreaRanges = function() {
+				var res = false;
+				AscCommonExcel.executeInR1C1Mode(false, function () {
+					res = AscCommonExcel.getRangeByRef(printArea.ref, t.model, true, true)
+				});
+				return res && res.length ? res : null;
+			};
+
+			var printAreaRanges = printArea ? getPrintAreaRanges() : null;
+			if(printAreaRanges) {
+				calcScaleByRanges(printAreaRanges);
+			} else {
+				//calculate width/height all columns/rows
+				var range = new asc_Range(0, 0, this.model.getColsCount() - 1, this.model.getRowsCount() - 1);
+				var maxCell = this._checkPrintRange(range);
+				var maxCol = maxCell.col;
+				var maxRow = maxCell.row;
+
+				maxCell = this.model.autoFilters.getMaxColRow();
+				maxCol = Math.max(maxCol, maxCell.col);
+				maxRow = Math.max(maxRow, maxCell.row);
+
+				maxCell = this.objectRender.getMaxColRow();
+				maxCol = Math.max(maxCol, maxCell.col);
+				maxRow = Math.max(maxRow, maxCell.row);
+
+				//TODO print area
+				wScale = doCalcScaleWidth(0, maxCol);
+				hScale = doCalcScaleHeight(0, maxRow);
+			}
+		}
+
+
+		var minScale;
+		if(width && height) {
+			minScale = Math.min(Math.round(wScale), Math.round(hScale));
+		} else if(width) {
+			minScale = Math.round(wScale);
+		} else {
+			minScale = Math.round(hScale);
+		}
+
+		if(minScale < 10) {
+			minScale = 10;
+		}
+		if(minScale > 100) {
+			minScale = 100;
+		}
+
+		return minScale;
+	};
 
     // ----- Drawing -----
 
@@ -2319,8 +2712,7 @@
     };
 
     /** Рисует заголовки видимых колонок */
-    WorksheetView.prototype._drawColumnHeaders =
-      function (drawingCtx, start, end, style, offsetXForDraw, offsetYForDraw) {
+    WorksheetView.prototype._drawColumnHeaders = function (drawingCtx, start, end, style, offsetXForDraw, offsetYForDraw) {
           if (!drawingCtx && false === this.model.getSheetView().asc_getShowRowColHeaders()) {
               return;
           }
@@ -2577,10 +2969,15 @@
 				var str = new AscCommonExcel.Fragment();
 				str.text = getFragmentText(portion[i].text);
 				str.format = portion[i].format.clone();
+				//TODO уменьшаю только размер текста. пересмотреть!
+				str.format.fs = AscCommonExcel.g_oDefaultFormat.Font.fs * printScale;
 				res.push(str);
 			}
 			return res;
 		};
+
+		var scaleWithDoc = this.model.headerFooter.getScaleWithDoc();
+		var printScale = (scaleWithDoc === null || scaleWithDoc === true) ? this.getPrintScale() : 1;
 
 		var margins = this.model.PagePrintOptions.asc_getPageMargins();
 		var width = printPagesData.pageWidth / AscCommonExcel.vector_koef;
@@ -2642,10 +3039,22 @@
 
 		//добавил аналогично другим отрисовка.
 		//без этого отсутвует drawingCtx.DocumentRenderer.m_arrayPages[0].FontPicker.LastPickFont
+		/*var transformMatrix;
+		if (printScale !== 1 && drawingCtx.Transform) {
+			transformMatrix = drawingCtx.Transform.CreateDublicate();
+
+			drawingCtx.setTransform(printScale, drawingCtx.Transform.shy, drawingCtx.Transform.shx, printScale, 0, 0);
+		}*/
+
 		this._setDefaultFont(drawingCtx);
 		for(var i = 0; i < headerFooterParser.portions.length; i++) {
 			drawPortion(i);
 		}
+
+		/*if (transformMatrix) {
+			drawingCtx.setTransform(transformMatrix.sx, transformMatrix.shy, transformMatrix.shx,
+				transformMatrix.sy, transformMatrix.tx, transformMatrix.ty);
+		}*/
 	};
 
     WorksheetView.prototype._cleanColumnHeaders = function (colStart, colEnd) {
@@ -2743,9 +3152,10 @@
 		if (range === undefined) {
 			range = this.visibleRange;
 		}
+		var printScale = this.getPrintScale();
 		var ctx = drawingCtx || this.drawingCtx;
-		var widthCtx = (width) ? width : ctx.getWidth();
-		var heightCtx = (height) ? height : ctx.getHeight();
+		var widthCtx = (width) ? width / printScale : ctx.getWidth() / printScale;
+		var heightCtx = (height) ? height / printScale : ctx.getHeight() / printScale;
 		var offsetX = (undefined !== leftFieldInPx) ? leftFieldInPx : this._getColLeft(this.visibleRange.c1) - this.cellsLeft;
 		var offsetY = (undefined !== topFieldInPx) ? topFieldInPx : this._getRowTop(this.visibleRange.r1) - this.cellsTop;
 		if (!drawingCtx && this.topLeftFrozenCell) {
@@ -5518,18 +5928,18 @@
 		var isNumberFormat = !cell.isEmptyTextString() && (null === cellType || CellValueType.String !== cellType);
 		if (angle || isNumberFormat || align.getWrap()) {
 			this._addCellTextToCache(cell.nCol, cell.nRow);
-			return AscCommonExcel.convertPtToPx(this._getRowHeightReal(cell.nRow));
-		}
-
-		// ToDo with angle and wrap
-		for (var i = 0; i < fr.length; ++i) {
-			f = fr[i].format;
-			if (!f.isEqual2(AscCommonExcel.g_oDefaultFormat.Font) || f.va) {
-				fm = getFontMetrics(f, this.stringRender);
-				lm = this.stringRender._calcLineMetrics2(f.getSize(), f.va, fm);
-				th = Math.min(this.maxRowHeightPx, Math.max(th, lm.th + 1));
-				if (updateDescender && !f.va) {
-					d = Math.max(d, lm.th - lm.bl);
+			th = AscCommonExcel.convertPtToPx(this._getRowHeightReal(cell.nRow));
+		} else {
+			// ToDo with angle and wrap
+			for (var i = 0; i < fr.length; ++i) {
+				f = fr[i].format;
+				if (!f.isEqual2(AscCommonExcel.g_oDefaultFormat.Font) || f.va) {
+					fm = getFontMetrics(f, this.stringRender);
+					lm = this.stringRender._calcLineMetrics2(f.getSize(), f.va, fm);
+					th = Math.min(this.maxRowHeightPx, Math.max(th, lm.th + 1));
+					if (updateDescender && !f.va) {
+						d = Math.max(d, lm.th - lm.bl);
+					}
 				}
 			}
 		}
@@ -10150,6 +10560,9 @@
         if (fromBinary) {
             selectData = t._pasteFromBinary(val, null, tablesMap);
         } else {
+			if(bText) {
+				specialPasteProps.font = false;
+			}
             selectData = t._pasteFromHTML(val, null, specialPasteProps);
         }
 
@@ -10638,12 +11051,9 @@
             }
         }
 
-        var rangeUnMerge = t.model.getRange3(arn.r1, arn.c1, rMax - 1, cMax - 1);
-
         var rMax2 = rMax;
         var cMax2 = cMax;
-        //var rMax = values.length;
-		if (isCheckSelection) {
+        var getLockRange = function() {
 			var newArr = arn.clone(true);
 			newArr.r2 = rMax2 - 1;
 			newArr.c2 = cMax2 - 1;
@@ -10652,7 +11062,15 @@
 				newArr.c2 = arn.c2;
 			}
 			return newArr;
+		};
+
+		if (isCheckSelection) {
+			return getLockRange();
 		}
+
+		var bboxUnMerge = getLockRange();
+		var rangeUnMerge = t.model.getRange3(bboxUnMerge.r1, bboxUnMerge.c1, bboxUnMerge.r2, bboxUnMerge.c2);
+
 		//если не возникает конфликт, делаем unmerge
 		if (specialPasteProps.format) {
 			rangeUnMerge.unmerge();
@@ -11134,7 +11552,7 @@
 							_p_.renameSheetCopy(renameParams);
 							assemb = _p_.assemble(true)
 						} else {
-							assemb = _p_.changeOffset(offset).assemble(true);
+							assemb = _p_.changeOffset(offset, null, true).assemble(true);
 						}
 
 						rangeStyle.formula = {range: range, val: "=" + assemb, arrayRef: arrayFormulaRef};
@@ -11470,6 +11888,12 @@
 		var lockInfo = this.collaborativeEditing.getLockInfo(c_oAscLockTypeElem.Object, null, this.model.getId(),
 			AscCommonExcel.c_oAscLockLayoutOptions);
 		return lockInfo;
+	};
+
+	WorksheetView.prototype._isLockedPrintScaleOptions = function (callback) {
+		var lockInfo = this.collaborativeEditing.getLockInfo(c_oAscLockTypeElem.Object, null, this.model.getId(),
+			AscCommonExcel.c_oAscLockPrintScaleOptions);
+		this.collaborativeEditing.lock([lockInfo], callback);
 	};
 
 	// Залочена ли панель для закрепления
@@ -13450,7 +13874,9 @@
 
 					History.EndTransaction();
 				};
-
+				if(ar.containsRange(filterRange)) {
+					filterRange = ar.clone();
+				}
 				if (addNameColumn) {
 					filterRange.r2 = filterRange.r2 + 1;
 				}
@@ -14559,6 +14985,9 @@
 				worksheet.workbook.handlers.trigger("asc_onError", c_oAscError.ID.AutoFilterDataRangeError,
 					c_oAscError.Level.NoCritical);
 				result = false;
+			} else if (filter && styleName && filter.Ref.r1 === activeRange.r2 + 1 && addFormatTableOptionsObj.isTitle === false) {
+				worksheet.workbook.handlers.trigger("asc_onError", c_oAscError.ID.AutoFilterDataRangeError, c_oAscError.Level.NoCritical);
+				result = false;
 			} else if (!styleName && activeRange.isOneCell() && worksheet.autoFilters._isEmptyRange(activeRange, 1)) {
 				//add filter to empty range - if select contains 1 cell
 				worksheet.workbook.handlers.trigger("asc_onError", c_oAscError.ID.AutoFilterDataRangeError,
@@ -15202,92 +15631,91 @@
         return res;
     };
 
-    WorksheetView.prototype.af_insertCellsInTable = function (tableName, optionType) {
-        var t = this;
-        var ws = this.model;
+	WorksheetView.prototype.af_insertCellsInTable = function (tableName, optionType) {
+		var t = this;
+		var ws = this.model;
 
-        var tablePart = ws.autoFilters._getFilterByDisplayName(tableName);
+		var tablePart = ws.autoFilters._getFilterByDisplayName(tableName);
 
-        if (!tablePart || (tablePart && !tablePart.Ref)) {
-            return false;
-        }
+		if (!tablePart || (tablePart && !tablePart.Ref)) {
+			return false;
+		}
 
-        var insertCellsAndShiftDownRight = function (arn, displayName, type) {
-            var range = t.model.getRange3(arn.r1, arn.c1, arn.r2, arn.c2);
-            var isCheckChangeAutoFilter = t.af_checkInsDelCells(arn, type, "insCell", true);
-            if (isCheckChangeAutoFilter === false) {
-                return;
-            }
+		var insertCellsAndShiftDownRight = function (arn, displayName, type) {
+			var range = t.model.getRange3(arn.r1, arn.c1, arn.r2, arn.c2);
+			var isCheckChangeAutoFilter = t.af_checkInsDelCells(arn, type, "insCell", true);
+			if (isCheckChangeAutoFilter === false) {
+				return;
+			}
 
-            var callback = function (isSuccess) {
-                if (false === isSuccess) {
-                    return;
-                }
+			var callback = function (isSuccess) {
+				if (false === isSuccess) {
+					return;
+				}
 
-                History.Create_NewPoint();
-                History.StartTransaction();
-                var shiftCells = type === c_oAscInsertOptions.InsertCellsAndShiftRight ?
-                  range.addCellsShiftRight(displayName) : range.addCellsShiftBottom(displayName);
-                if (shiftCells) {
-                    t.cellCommentator.updateCommentsDependencies(true, type, arn);
-                    t.objectRender.updateDrawingObject(true, type, arn);
-                    t._onUpdateFormatTable(range, false, true);
-                }
-                History.EndTransaction();
-            };
+				History.Create_NewPoint();
+				History.StartTransaction();
+				var shiftCells = type === c_oAscInsertOptions.InsertCellsAndShiftRight ?
+					range.addCellsShiftRight(displayName) : range.addCellsShiftBottom(displayName);
+				if (shiftCells) {
+					t.cellCommentator.updateCommentsDependencies(true, type, arn);
+					t.objectRender.updateDrawingObject(true, type, arn);
+					t._onUpdateFormatTable(range, false, true);
+				}
+				History.EndTransaction();
+			};
 
 			var r2 = type === c_oAscInsertOptions.InsertCellsAndShiftRight ? tablePart.Ref.r2 : gc_nMaxRow0;
 			var c2 = type !== c_oAscInsertOptions.InsertCellsAndShiftRight ? tablePart.Ref.c2 : gc_nMaxCol0;
 			var changedRange = new asc_Range(tablePart.Ref.c1, tablePart.Ref.r1, c2, r2);
-            t._isLockedCells(changedRange, null, callback);
-        };
+			t._isLockedCells(changedRange, null, callback);
+		};
 
-        var newActiveRange = this.model.selectionRange.getLast().clone();
-        var displayName = undefined;
-        var type = null;
-        switch (optionType) {
-            case c_oAscInsertOptions.InsertTableRowAbove:
-            {
-                newActiveRange.c1 = tablePart.Ref.c1;
-                newActiveRange.c2 = tablePart.Ref.c2;
-                type = c_oAscInsertOptions.InsertCellsAndShiftDown;
+		var newActiveRange = this.model.selectionRange.getLast().clone();
+		var displayName = undefined;
+		var type = null;
+		var totalRow = tablePart.isTotalsRow();
+		switch (optionType) {
+			case c_oAscInsertOptions.InsertTableRowAbove: {
+				newActiveRange.c1 = tablePart.Ref.c1;
+				newActiveRange.c2 = tablePart.Ref.c2;
+				type = c_oAscInsertOptions.InsertCellsAndShiftDown;
 
-                break;
-            }
-            case c_oAscInsertOptions.InsertTableRowBelow:
-            {
-                newActiveRange.c1 = tablePart.Ref.c1;
-                newActiveRange.c2 = tablePart.Ref.c2;
-                newActiveRange.r1 = tablePart.Ref.r2 + 1;
-                newActiveRange.r2 = tablePart.Ref.r2 + 1;
-                displayName = tableName;
-                type = c_oAscInsertOptions.InsertCellsAndShiftDown;
+				break;
+			}
+			case c_oAscInsertOptions.InsertTableRowBelow: {
+				newActiveRange.c1 = tablePart.Ref.c1;
+				newActiveRange.c2 = tablePart.Ref.c2;
+				newActiveRange.r1 = totalRow ? tablePart.Ref.r2 : tablePart.Ref.r2 + 1;
+				newActiveRange.r2 = totalRow ? tablePart.Ref.r2 : tablePart.Ref.r2 + 1;
+				if (!totalRow) {
+					displayName = tableName;
+				}
+				type = c_oAscInsertOptions.InsertCellsAndShiftDown;
 
-                break;
-            }
-            case c_oAscInsertOptions.InsertTableColLeft:
-            {
-                newActiveRange.r1 = tablePart.Ref.r1;
-                newActiveRange.r2 = tablePart.Ref.r2;
-                type = c_oAscInsertOptions.InsertCellsAndShiftRight;
+				break;
+			}
+			case c_oAscInsertOptions.InsertTableColLeft: {
+				newActiveRange.r1 = tablePart.Ref.r1;
+				newActiveRange.r2 = tablePart.Ref.r2;
+				type = c_oAscInsertOptions.InsertCellsAndShiftRight;
 
-                break;
-            }
-            case c_oAscInsertOptions.InsertTableColRight:
-            {
-                newActiveRange.c1 = tablePart.Ref.c2 + 1;
-                newActiveRange.c2 = tablePart.Ref.c2 + 1;
-                newActiveRange.r1 = tablePart.Ref.r1;
-                newActiveRange.r2 = tablePart.Ref.r2;
-                displayName = tableName;
-                type = c_oAscInsertOptions.InsertCellsAndShiftRight;
+				break;
+			}
+			case c_oAscInsertOptions.InsertTableColRight: {
+				newActiveRange.c1 = tablePart.Ref.c2 + 1;
+				newActiveRange.c2 = tablePart.Ref.c2 + 1;
+				newActiveRange.r1 = tablePart.Ref.r1;
+				newActiveRange.r2 = tablePart.Ref.r2;
+				displayName = tableName;
+				type = c_oAscInsertOptions.InsertCellsAndShiftRight;
 
-                break;
-            }
-        }
+				break;
+			}
+		}
 
-        insertCellsAndShiftDownRight(newActiveRange, displayName, type)
-    };
+		insertCellsAndShiftDownRight(newActiveRange, displayName, type)
+	};
 
     WorksheetView.prototype.af_deleteCellsInTable = function (tableName, optionType) {
         var t = this;
@@ -15973,7 +16401,24 @@
 			History.Create_NewPoint();
 			History.StartTransaction();
 
+			var pageSetupModel = pageOptions.asc_getPageSetup();
+			var oldFitToWidth = pageSetupModel.asc_getFitToWidth();
+			var oldFitToHeight = pageSetupModel.asc_getFitToHeight();
+			var pageSetupObj = obj.asc_getPageSetup();
+			var newFitToWidth = pageSetupObj.asc_getFitToWidth();
+			var newFitToHeight = pageSetupObj.asc_getFitToHeight();
+
+			//если поменялись scaling - fit sheet on.. -> необходимо пересчитать scaling
+			if(oldFitToWidth != newFitToWidth || oldFitToHeight != newFitToHeight) {
+				t.fitToWidthHeight(newFitToWidth, newFitToHeight);
+			}
+
+			if(newFitToWidth === 0 && newFitToHeight === 0) {
+				pageOptions.asc_getPageSetup().asc_setScale(pageSetupObj.asc_getScale());
+			}
+
 			pageOptions.asc_setOptions(obj);
+
 			t.changeViewPrintLines(true);
 			//window["Asc"]["editor"]._onUpdateLayoutMenu(this.model.nSheetId);
 
