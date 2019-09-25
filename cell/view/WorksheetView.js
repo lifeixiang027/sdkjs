@@ -2097,8 +2097,9 @@
 
             var clipLeft, clipTop, clipWidth, clipHeight;
             var doDraw = function(range, titleWidth, titleHeight) {
-				drawingCtx.AddClipRect(clipLeft, clipTop, clipWidth, clipHeight);
-
+				//TODO пересмотреть условие printScale < 1 ? printScale
+				drawingCtx.AddClipRect(clipLeft, clipTop, clipWidth / (printScale < 1 ? printScale : 1), clipHeight / (printScale < 1 ? printScale : 1));
+				
 				var offsetCols = printPagesData.startOffsetPx;
 				var offsetX = t._getColLeft(range.c1) - printPagesData.leftFieldInPx + offsetCols - titleWidth;
 				var offsetY = t._getRowTop(range.r1) - printPagesData.topFieldInPx - titleHeight;
@@ -2145,8 +2146,22 @@
 				t.visibleRange = tmpVisibleRange;
 			};
 
+			this.usePrintScale = true;
+			var printScale = printPagesData.scale ? printPagesData.scale : this.getPrintScale();
+			var transformMatrix;
+			if (printScale !== 1 && drawingCtx.Transform) {
+				var mmToPx = asc_getcvt(3/*mm*/, 0/*px*/, this._getPPIX());
+				var leftDiff = printPagesData.pageClipRectLeft * (1 - printScale);
+				var topDiff = printPagesData.pageClipRectTop * (1 - printScale);
+				transformMatrix = drawingCtx.Transform.CreateDublicate();
 
-            if(printPagesData.titleRowRange || printPagesData.titleColRange) {
+				//drawingCtx.Transform.Scale(printScale, printScale);
+				drawingCtx.setTransform(printScale, drawingCtx.Transform.shy, drawingCtx.Transform.shx, printScale,
+					leftDiff / mmToPx, topDiff / mmToPx);
+			}
+
+
+			if(printPagesData.titleRowRange || printPagesData.titleColRange) {
 				var cellsLeft = printPagesData.pageHeadings ? this.cellsLeft : 0;
 				var cellsTop = printPagesData.pageHeadings ? this.cellsTop : 0;
             	if(printPagesData.titleRowRange && printPagesData.titleColRange){
@@ -2183,6 +2198,12 @@
 				clipHeight = printPagesData.pageClipRectHeight;
             	doDraw(printPagesData.pageRange, 0, 0);
 			}
+
+			if (transformMatrix) {
+				drawingCtx.setTransform(transformMatrix.sx, transformMatrix.shy, transformMatrix.shx,
+					transformMatrix.sy, transformMatrix.tx, transformMatrix.ty);
+			}
+			this.usePrintScale = false;
 
 			if(this.groupWidth || this.groupHeight) {
 				this.ignoreGroupSize = false;
