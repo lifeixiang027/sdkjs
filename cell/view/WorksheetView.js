@@ -8219,6 +8219,14 @@
 		}
 		else if(!arn.isOneCell())//в случае одной выделенной ячейки - всегда не выдаём сообщение и автоматически расширяем
 		{
+			//если одна замерженная ячейка
+			var cell = this.model.getRange3(arn.r1, arn.c1, arn.r2, arn.c2);
+			var isMerged = cell.hasMerged();
+
+			if(isMerged && isMerged.isEqual(arn)) {
+				return false;
+			}
+
 			var colCount = arn.c2 - arn.c1 + 1;
 			var rowCount = arn.r2 - arn.r1 + 1;
 			//если выделено более одного столбца и более одной строки - не выдаем сообщение и не расширяем
@@ -14337,8 +14345,7 @@
 		if (null === sortProps) {
 			//expand selectionRange
 			if (bIsExpandRange) {
-				//TODO стоит заменить на expandRange ?
-				expandRange = t.model.autoFilters._getAdjacentCellsAF(activeRange, true, true, true);
+				expandRange = t.model.autoFilters.expandRange(activeRange);
 
 				var bIgnoreFirstRow = window['AscCommonExcel'].ignoreFirstRowSort(t.model, expandRange);
 				if (bIgnoreFirstRow) {
@@ -15105,6 +15112,10 @@
 
         //get values
         var colId = filterProp.colId;
+		if(filterProp.id === null) {
+			colId = this.model.autoFilters._getTrueColId(filter, colId, true);
+		}
+
         var openAndClosedValues = ws.autoFilters.getOpenAndClosedValues(filter, colId);
         var values = openAndClosedValues.values;
         var automaticRowCount = openAndClosedValues.automaticRowCount;
@@ -15198,7 +15209,7 @@
 		autoFilterObject.asc_setColumnName(columnName);
 		autoFilterObject.asc_setSheetColumnName(AscCommon.g_oCellAddressUtils.colnumToColstr(rangeButton.c1 + 1));
 
-        var columnRange = new Asc.Range(rangeButton.c1, autoFilter.Ref.r1 + 1, rangeButton.c1, autoFilter.Ref.r2);
+		var columnRange = new Asc.Range(colId + autoFilter.Ref.c1, autoFilter.Ref.r1 + 1, colId + autoFilter.Ref.c1, autoFilter.Ref.r2);
 
         var filterTypes = this.af_getFilterTypes(columnRange);
         autoFilterObject.asc_setIsTextFilter(filterTypes.text);

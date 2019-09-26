@@ -1722,8 +1722,10 @@ function CDocumentSettings()
     this.MathSettings      = undefined !== CMathSettings ? new CMathSettings() : {};
     this.CompatibilityMode = document_compatibility_mode_Current;
     this.SdtSettings       = new CSdtGlobalSettings();
+
     this.ListSeparator = undefined;
     this.DecimalSymbol = undefined;
+    this.GutterAtTop   = false;
 }
 
 /**
@@ -13505,6 +13507,26 @@ CDocument.prototype.IsSdtGlobalSettingsDefault = function()
 {
 	return this.Settings.SdtSettings.IsDefault();
 };
+/**
+ * Выставляем глобальный параметр, находится ли переплет наверху документа
+ * @param {boolean} isGutterAtTop
+ */
+CDocument.prototype.SetGutterAtTop = function(isGutterAtTop)
+{
+	if (isGutterAtTop !== this.Settings.GutterAtTop)
+	{
+		this.History.Add(new CChangesDocumentSettingsGutterAtTop(this, this.Settings.GutterAtTop, isGutterAtTop));
+		this.Settings.GutterAtTop = isGutterAtTop;
+	}
+};
+/**
+ * Проверяем находится ли переплет наверху документа
+ * @returns {boolean}
+ */
+CDocument.prototype.IsGutterAtTop = function()
+{
+	return this.Settings.GutterAtTop;
+};
 //----------------------------------------------------------------------------------------------------------------------
 // Math
 //----------------------------------------------------------------------------------------------------------------------
@@ -14400,7 +14422,7 @@ CDocument.prototype.controller_AddInlineTable = function(Cols, Rows)
 			Grid[Index] = W / Cols;
 
 		var NewTable = new CTable(this.DrawingDocument, this, true, Rows, Cols, Grid);
-		NewTable.Set_ParagraphPrOnAdd(Item);
+		NewTable.SetParagraphPrOnAdd(Item);
 
 		var nContentPos = this.CurPos.ContentPos;
 		if (true === Item.IsCursorAtBegin() && undefined === Item.Get_SectionPr())
