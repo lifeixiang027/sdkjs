@@ -6076,6 +6076,9 @@ CMathAutoCorrectEngine.prototype.private_AutoCorrectEquation = function(Elements
                 } else if (Param.Type === MATH_DEGREE) {
                     tmp =  [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos,ElPos[0]-CurPos+1)];
                     fSkip = true;
+                } else if (Param.Type == MATH_LIMIT) {
+                    tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos,ElPos[0]-CurPos+1)];
+                    fSkip = true;
                 } else {
                     tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
                 }
@@ -6173,6 +6176,32 @@ CMathAutoCorrectEngine.prototype.private_AutoCorrectEquation = function(Elements
                 Param.Type = null;
                 Param.Props = {};
                 Param.Kind = null;
+            }
+            CurPos--;
+            continue;
+        } else if (Elem.value === 0x2534) { // above
+            if (Param.Type == MATH_FRACTION) {
+                CurPos--;
+                continue;
+            }
+            if (Param.Type !== null && Param.Type !== MATH_DEGREESubSup && Param.Type !== MATH_DEGREE) {
+                var tmp = [Elements.splice(ElPos[0]+1,(End-ElPos[0])),Elements.splice(CurPos+1,ElPos[0]-CurPos)];
+                this.private_CorrectEquation(Param,tmp);
+                End = CurPos + 1;
+                Elements.splice(End, 0, tmp[0]);
+            }
+            if (!Brackets[0]) {
+                // var tmp = [Elements.splice(CurPos+1,(End-CurPos)),Elements.splice(CurPos,1)];
+                Param.Type = MATH_LIMIT;
+                ElPos[0] = CurPos;
+                // Param.Bracket[0][0] -= (CurPos + 1);
+                // Param.Bracket[1][0] -= (CurPos + 1);
+                // this.private_CorrectEquation(Param,tmp);
+                // End = CurPos;
+                // Elements.splice(End,0,tmp[0]);  
+                // Param.Type = null;
+                // Param.Props = {};
+                // Param.Kind = null;
             }
             CurPos--;
             continue;
@@ -6517,6 +6546,21 @@ CMathAutoCorrectEngine.prototype.private_CorrectEquation = function(Param, Eleme
             var oBase = oAccent.getBase();
             this.private_PackTextToContent(oBase, Elements[0], true);
             Elements.splice(0,Elements.length, oAccent);
+            break;
+        case MATH_LIMIT:
+            var props = {
+                ctrPrp : this.TextPr.Copy(),
+                type : 1
+            };
+            if (Elements[1].length) {
+                Elements[1].splice(Elements[1].length-1,1);
+            }
+            var Limit = new CLimit(props);
+            var MathContent = Limit.getFName();
+            this.private_PackTextToContent(MathContent, Elements[1], true);
+            MathContent = Limit.getIterator();
+            this.private_PackTextToContent(MathContent, Elements[0], true);
+            Elements.splice(0,Elements.length, Limit);
             break;
     }
 };
@@ -7250,6 +7294,24 @@ CMathAutoCorrectEngine.prototype.private_AutoCorrectAccent = function(buff) {
         this.ReplaceContent.push(null);
     }
 };
+CMathAutoCorrectEngine.prototype.private_AutoCorrectAbove = function(buff) {
+    var RemoveCount = buff[0].length + buff[1].length + 1;
+    if (this.ActionElement.value == 0x20) {
+        RemoveCount++;
+    }
+    var props = {
+        ctrPrp : this.TextPr.Copy(),
+        type : 1
+    };
+    var Limit = new CLimit(props);
+    var MathContent = Limit.getFName();
+    this.private_PackTextToContent(MathContent, buff[1], true);
+    MathContent = Limit.getIterator();
+    this.private_PackTextToContent(MathContent, buff[0], true);
+    var Start = this.Elements.length - RemoveCount - this.Shift;
+    this.Remove.push({Count:RemoveCount, Start:Start});
+    this.ReplaceContent.unshift(Limit);
+};
 // AutoCorrectionControl.prototype.AutoCorrectPhantom = function(AutoCorrectEngine, CanMakeAutoCorrect)
 // {
 //     var props = new CMathPhantomPr();
@@ -7292,6 +7354,9 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
         if (Elem.value === undefined) {
             buffer[CurLvBuf].splice(0, 0, Elem);
         } else if (Elem.value === 0x002F) { // /
+            if (this.Type == MATH_LIMIT) {
+                break;
+            }
             if (Elem == this.ActionElement) {
                 this.CurPos--;
                 this.Shift = 1;
@@ -7337,6 +7402,9 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
             buffer[CurLvBuf].splice(0, 0, Elem);
             continue;
         } else if (Elem.value === 0x2044) { // fraction
+            if (this.Type == MATH_LIMIT) {
+                break;
+            }
             if (g_aMathAutoCorrectNotDoFraction[this.ActionElement.value]) {
                 //дробь не закончена и рано еще делать автозамену
                 // return false;
@@ -7354,6 +7422,9 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
             buffer[CurLvBuf].splice(0, 0, Elem);
             continue;
         } else if (0x00A6 === Elem.value) { // fraction
+            if (this.Type == MATH_LIMIT) {
+                break;
+            }
             if (g_aMathAutoCorrectNotDoFraction[this.ActionElement.value]) {
                 //дробь не закончена и рано еще делать автозамену
                 // return false;
@@ -7412,6 +7483,9 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
             }
             continue;  
         } else if  (Elem.value === 0x005E) { // ^
+            if (this.Type == MATH_LIMIT) {
+                break;
+            }
             if (Elem === this.ActionElement) {
                 this.Shift = 1;
                 this.CurPos--;
@@ -7491,6 +7565,9 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
             }
             continue;
         } else if (q_aMathAutoCorrectControlAggregationCodes[Elem.value]) { // cNary
+            if (this.Type == MATH_LIMIT) {
+                break;
+            }
             buffer[CurLvBuf].splice(0, 0, Elem);
             if (g_aMathAutoCorrectNotDoCNary[this.ActionElement.value]) {
                 this.CurPos--;
@@ -7505,7 +7582,7 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
             }
         } else if (g_aMathAutoCorrectRadicalCharCode[Elem.value]) { // sqrt
             // если на 1 уровне больше одной пары скобок, то делать скобки, а не корень
-            if ((this.Type == MATH_DEGREE || this.Type == MATH_DEGREESubSup) && !bBrackOpen) {
+            if ((this.Type == MATH_DEGREE || this.Type == MATH_DEGREESubSup || this.Type == MATH_LIMIT) && !bBrackOpen) {
                 break;
             }
             buffer[CurLvBuf].splice(0, 0, Elem);
@@ -7520,7 +7597,7 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
             this.CurPos--;
             continue;
         } else if (Elem.value == 0x25A1 || Elem.value == 0x25AD) { // box OR border box
-            if ((this.Type == MATH_DEGREE || this.Type == MATH_DEGREESubSup) && !bBrackOpen) {
+            if ((this.Type == MATH_DEGREE || this.Type == MATH_DEGREESubSup || this.Type == MATH_LIMIT) && !bBrackOpen) {
                 break;
             }
             buffer[CurLvBuf].splice(0, 0, Elem);
@@ -7538,10 +7615,13 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
             this.CurPos--;
             continue;
         } else if (g_aMathAutoCorrectGroupChar[Elem.value]) { // group character
-            if(this.Type == MATH_GROUP_CHARACTER && !bBrackOpen) {
+            if (this.Type == MATH_GROUP_CHARACTER && !bBrackOpen) {
                 break;
             }
             buffer[CurLvBuf].splice(0, 0, Elem);
+            if (this.Type == MATH_LIMIT) {
+                break;
+            }
             if ((this.Type == MATH_DEGREE || this.Type == MATH_DEGREESubSup) && !bBrackOpen) {
                 if (this.Type == MATH_DEGREE) {
                     this.Type = MATH_GROUP_CHARACTER;
@@ -7563,6 +7643,9 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
                 break;
             }
             buffer[CurLvBuf].splice(0, 0, Elem);
+            if (this.Type == MATH_LIMIT) {
+                break;
+            }
             if ((this.Type == MATH_DEGREE || this.Type == MATH_DEGREESubSup) && !bBrackOpen) {
                 break;
             }
@@ -7578,6 +7661,9 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
             continue;
         } else if (g_aMathAutoCorrectEqArrayMatrix[Elem.value]) { // eq array and matrix
             buffer[CurLvBuf].splice(0, 0, Elem);
+            if (this.Type == MATH_LIMIT) {
+                break;
+            }
             if((this.Type == MATH_MATRIX || this.Type === null || this.Type == MATH_DELIMITER) && !bBrackOpen) {
                 CurLvBuf++;
                 buffer[CurLvBuf] = [];
@@ -7600,6 +7686,10 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
                 break;
             }
             buffer[CurLvBuf].splice(0, 0, Elem);
+            if (this.Type == MATH_LIMIT) {
+                this.CurPos--;
+                continue;
+            }
             if (g_aMathAutoCorrectDoNotAccentNotClose[this.ActionElement.value]) {
                 this.CurPos--;
                 continue;
@@ -7633,6 +7723,23 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
                 this.props = {skip:this.Elements.length - this.CurPos};
                 this.Type = MATH_ACCENT;
                 break;
+            }
+            this.CurPos--;
+            continue;
+        } else if (Elem.value === 0x2534) { // above
+            if (this.Type == MATH_FRACTION || this.Type == MATH_MATRIX || this.Type == MATH_ACCENT || g_aMathAutoCorrectDoNotAbove[this.ActionElement.value]) {
+                buffer[CurLvBuf].splice(0, 0, Elem);
+                this.CurPos--;
+                continue;
+            }
+            if(this.Type !== null && !bBrackOpen) {
+                break;
+            }
+            if (!bBrackOpen){
+                CurLvBuf++;
+                buffer[CurLvBuf] = [];
+                // buffer[CurLvBuf].splice(0, 0, Elem);
+                this.Type = MATH_LIMIT;
             }
             this.CurPos--;
             continue;
@@ -7698,6 +7805,9 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
             return true;
         case MATH_ACCENT:
             this.private_AutoCorrectAccent(buffer);
+            return true;
+        case MATH_LIMIT:
+            this.private_AutoCorrectAbove(buffer);
             return true;
         default : 
         return false;
@@ -8664,6 +8774,12 @@ var g_aMathAutoCorrectDoNotAccentNotClose = {
 // символы, при которых не производится автозамена Accent вплотную
 var g_aMathAutoCorrectDoNotAccentClose = {
     0x22 : 1, 0x29 : 1, 0x5D : 1, 0x7D : 1
+};
+// символы при которых не производится автозамена Above
+var g_aMathAutoCorrectDoNotAbove = {
+    0x21 : 1, 0x22 : 1, 0x24 : 1, 0x27 : 1, 0x28 : 1,
+    0x29 : 1, 0x2C : 1, 0x2E : 1, 0x5B : 1, 0x5C : 1,
+    0x5D : 1, 0x5E : 1, 0x5F : 1, 0x7B : 1, 0x7C : 1, 0x7D : 1
 };
 // символы корней
 var g_aMathAutoCorrectRadicalCharCode = {
