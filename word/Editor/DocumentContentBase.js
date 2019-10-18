@@ -1190,7 +1190,7 @@ CDocumentContentBase.prototype.SetSelectionByContentPositions = function(StartDo
 	}
 };
 /**
- * Получем количество элементов
+ * Получим количество элементов
  * @return {number}
  */
 CDocumentContentBase.prototype.GetElementsCount = function()

@@ -1171,6 +1171,167 @@
 	Api.prototype.Save = function () {
 		this.SaveAfterMacros = true;
 	};
+	Api.prototype.AddComment = function(oElement, Comment, Autor)
+	{
+		var CommentData = new CCommentData();
+		CommentData.SetText(Comment);
+		CommentData.SetUserName(Autor);
+
+		// Если oElement не является массивом ранов, определяем параграф это или документ
+		if (!Array.isArray(oElement))
+		{
+			// Проверка на параграф
+			if ("GetType" in oElement)
+			{
+				if (oElement.GetType() === 0x0001)
+				{
+					var Para_pos  = undefined;
+					oTempDocument = this.GetDocument().Document;
+
+					oTempDocument.RemoveSelection();
+					oElement.Selection.Use = true;
+					oElement.Selection.Set_StartPos(0,0);
+					oElement.Selection.Set_EndPos(oElement.Content.length - 1, oElement.Content.length - 1);
+					for (var Index = 0; Index < oElement.Content.length; Index++)
+					{
+						oElement.Content[Index].State.Selection.Use 	 = true;
+						oElement.Content[Index].State.Selection.StartPos = 0;
+						oElement.Content[Index].State.Selection.EndPos   = oElement.Content[Index].Content.length;
+						oElement.Content[Index].Selection.Use 		     = true;
+						oElement.Content[Index].Selection.StartPos 	     = 0;
+						oElement.Content[Index].Selection.EndPos 	     = oElement.Content[Index].Content.length;
+					}
+					var QuotedText = oElement.GetSelectedText(false);
+					CommentData.Set_QuoteText(QuotedText);
+					var Comment = new CComment(oTempDocument.Comments, CommentData);
+					oTempDocument.Comments.Add(Comment);
+
+					oElement.AddComment(Comment, true, true);
+				}
+			}
+			// Проверка на документ
+			else if (oElement.hasOwnProperty("Api"))
+			{
+				if (oElement.Api.documentFormat === "docx")
+				{
+					oElement.AddComment(CommentData, true);
+				}
+			}
+		}
+		// Проверка на массив с ранами
+		else if (Array.isArray(oElement))
+		{
+			// Если хотя бы один элемент массива не является раном, или хотя бы один ран не принадлежит 
+			// ни одному параграфу - не добавляем комментарий
+			for (var Index = 0; Index < oElement.length; Index++)
+			{
+				if (!oElement[Index].hasOwnProperty("Type"))
+				{
+					return false;
+				}
+					
+				if (!oElement[Index].Get_Type() === 39)
+				{
+					return false;
+				}
+					
+				if (oElement[Index].Paragraph === null || "undefined" === typeof(oElement[Index].Paragraph))
+				{
+					return false;
+				}
+					
+			}
+			
+			var StartPos = [];
+			var EndPos  = [];
+			
+				
+			
+			// Если раны из принципиально разных контектов (из тела и хедера(или футера) то комментарий не добавляем)
+			for (var Index = 1; Index < oElement.length; Index++)
+			{
+				if (oElement[0].GetDocumentPositionFromObject()[0].Class !== oElement[Index].GetDocumentPositionFromObject()[0].Class)
+					return false;
+			}
+			
+			var oDocument = editor.WordControl.m_oLogicDocument;
+			
+			var min_pos_Index = 0; // Индекс рана в массиве, с которого начнется выделение
+			var max_pos_Index = 0; // -//- на котором закончится
+
+			var MinPos = oElement[0].GetDocumentPositionFromObject();
+			var MaxPos = oElement[0].GetDocumentPositionFromObject();
+
+			for (var Index = 1; Index < oElement.length; Index++)
+			{
+				var TempPos = oElement[Index].GetDocumentPositionFromObject();
+
+				var MinPosLength = MinPos.length;
+				var UsedLength1  = 0;
+
+				var MaxPosLength = MaxPos.length;
+				var UsedLength2  = 0;
+
+				if (MinPosLength <= TempPos.length)
+					UsedLength1 = MinPosLength;
+				else 
+					UsedLength1 = TempPos.length;
+
+				if (MaxPosLength <= TempPos.length)
+					UsedLength2 = MaxPosLength;
+				else 
+					UsedLength2 = TempPos.length;
+				
+				for (var Pos = 0; Pos < UsedLength1; Pos++)
+				{
+					if (TempPos[Pos].Position < MinPos[Pos].Position)
+					{
+						MinPos = TempPos;
+						min_pos_Index = Index;
+						break;
+					}
+					else if (TempPos[Pos].Position === MinPos[Pos].Position)
+						continue;
+					else if (TempPos[Pos].Position > MinPos[Pos].Position)
+						break;
+				}
+				for (var Pos = 0; Pos < UsedLength2; Pos++)
+				{
+					if (TempPos[Pos].Position > MaxPos[Pos].Position)
+					{
+						MaxPos = TempPos;
+						max_pos_Index = Index;
+						break;
+					}
+					else if (TempPos[Pos].Position === MaxPos[Pos].Position)
+						continue;
+					else if (TempPos[Pos].Position < MaxPos[Pos].Position)
+						break;
+				}
+			}
+		
+			var StartRunPos = 
+			{
+				Class : oElement[min_pos_Index],
+				Position : 0,
+			};
+			
+			var EndRunPos = 
+			{
+				Class : oElement[max_pos_Index],
+				Position : oElement[max_pos_Index].Content.length,
+			};
+			
+			StartPos = oElement[min_pos_Index].GetDocumentPositionFromObject();
+			EndPos = oElement[max_pos_Index].GetDocumentPositionFromObject();
+
+			StartPos.push(StartRunPos);
+			EndPos.push(EndRunPos);
+
+			StartPos[0].Class.SetSelectionByContentPositions(StartPos, EndPos);
+			oDocument.AddComment(CommentData, false);
+		}
+	};
 	//------------------------------------------------------------------------------------------------------------------
 	//
 	// ApiUnsupported
@@ -1256,8 +1417,15 @@
 			this.Document.Internal_Content_Add(this.Document.Content.length, oElement.private_GetImpl());
 			return true;
 		}
-
-		return false;
+		else if (typeof(oElement) === "string")
+		{
+			var Api = editor;
+			var oParagraph = Api.CreateParagraph();
+			oParagraph.AddText(oElement);
+			Api.GetDocument().Push(oParagraph);
+		}
+		else 
+			return false;
 	};
 	/**
 	 * Remove all elements from the current document or from the current document element.
@@ -1403,6 +1571,11 @@
 	{
 		return new ApiSection(this.Document.SectPr);
 	};
+	/**
+	 * Push the text line
+	 * @param Text // usual Text
+	 */
+	
 	/**
 	 * Create a new document section which ends at the specified paragraph. Allows to set local parameters for the current
 	 * section - page size, footer, header, columns, etc.
@@ -1747,6 +1920,23 @@
 		private_PushElementToParagraph(this.Paragraph, oRun);
 		return new ApiRun(oRun);
 	};
+	/**Add Run or Text into paragraph
+	 * @param {ApiRun} // string 
+	 */
+	ApiParagraph.prototype.Push = function(oElement)
+	{
+		if (oElement instanceof ApiRun)
+		{
+			this.AddElement(oElement)
+			return true;
+		}
+		else if (typeof(oElement) === "string")
+		{
+			this.AddText(oElement);
+		}
+		else 
+			return false;
+	}
 	/**
 	 * Add page break and start the next element from the next page.
 	 * @typeofeditors ["CDE"]
@@ -2109,6 +2299,19 @@
 		});
 
 		return new ApiRun(oRun);
+	};
+	/**Push text into Run
+	 * @param sText // string
+	 */
+	ApiRun.prototype.Push = function(sText)
+	{
+		if(typeof(sText) === "string")
+		{
+			this.AddText(sText);
+			return true;
+		}
+		else
+			return false;
 	};
 
 	//------------------------------------------------------------------------------------------------------------------
@@ -5780,10 +5983,19 @@
 		oStyles.Set_DefaultTextPr(oApiTextPr.TextPr);
 		oApiTextPr.TextPr = oStyles.Get_DefaultTextPr().Copy();
 	};
+	/** Return last Paragraph of Document 
+	 * 
+	*/
+	ApiDocument.prototype.last = function()
+	{
+		var oParagraph = this.GetElement(this.GetElementsCount() - 1);
+		return oParagraph;
+	};
 	ApiParagraph.prototype.private_GetImpl = function()
 	{
 		return this.Paragraph;
 	};
+	
 	ApiParagraph.prototype.OnChangeParaPr = function(oApiParaPr)
 	{
 		this.Paragraph.Set_Pr(oApiParaPr.ParaPr);
@@ -5794,6 +6006,12 @@
 		this.Paragraph.TextPr.Set_Value(oApiTextPr.TextPr);
 		oApiTextPr.TextPr = this.Paragraph.TextPr.Value.Copy();
 	};
+	/** Return last Run of Paragraph */
+	ApiParagraph.prototype.last = function()
+	{
+		var oRun = this.GetElement(this.GetElementsCount() - 1);
+		return oRun;
+	};
 	ApiRun.prototype.private_GetImpl = function()
 	{
 		return this.Run;
@@ -5802,6 +6020,100 @@
 	{
 		this.Run.Set_Pr(oApiTextPr.TextPr);
 		oApiTextPr.TextPr = this.Run.Pr.Copy();
+	};
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// Functions for changing text settings of Run
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	ApiRun.prototype.SetStyle = function(oStyle)
+	{
+		this.GetTextPr().SetStyle(oStyle);
+		return this.GetTextPr();
+	};
+	ApiRun.prototype.SetBold = function(isBold)
+	{
+		this.GetTextPr().SetBold(isBold);
+		return this.GetTextPr();
+	};
+	ApiRun.prototype.SetItalic = function(isItalic)
+	{
+		this.GetTextPr().SetItalic(isItalic);
+		return this.GetTextPr();
+	};
+	ApiRun.prototype.SetStrikeout = function(isSetStrikeout)
+	{
+		this.GetTextPr().SetStrikeout(isSetStrikeout);
+		return this.GetTextPr();
+	};
+	ApiRun.prototype.SetUnderline = function(isSetUnderline)
+	{
+		this.GetTextPr().SetUnderline(isSetUnderline);
+		return this.GetTextPr();
+	};
+	ApiRun.prototype.SetFontFamily = function(sFontFamily)
+	{
+		this.GetTextPr().SetFontFamily(sFontFamily);
+		return this.GetTextPr();
+	};
+	
+	ApiRun.prototype.SetFontSize = function(nSize)
+	{
+		this.GetTextPr().SetFontSize(nSize);
+		return this.GetTextPr();
+	};
+	ApiRun.prototype.SetColor = function(r, g, b, isAuto)
+	{
+		this.GetTextPr().SetColor(r, g, b, isAuto);
+		return this.GetTextPr();
+	};
+	ApiRun.prototype.SetVertAlign = function(sType)
+	{
+		this.GetTextPr().SetVertAlign(sType);
+		return this.GetTextPr();
+	};
+	ApiRun.prototype.SetHighlight = function(r, g, b, isNone)
+	{
+		this.GetTextPr().SetHighlight(r, g, b, isNone);
+		return this.GetTextPr();
+	};
+	ApiRun.prototype.SetSpacing = function(nSpacing)
+	{
+		this.GetTextPr().SetSpacing(nSpacing);
+		return this.GetTextPr();
+	};
+	ApiRun.prototype.SetDoubleStrikeout = function(isDoubleStrikeout)
+	{
+		this.GetTextPr().SetDoubleStrikeout(isDoubleStrikeout);
+		return this.GetTextPr();
+	};
+	ApiRun.prototype.SetCaps = function(isCaps)
+	{
+		this.GetTextPr().SetCaps(isCaps);
+		return this.GetTextPr();
+	};
+	ApiRun.prototype.SetSmallCaps = function(isSmallCaps)
+	{
+		this.GetTextPr().SetSmallCaps(isSmallCaps);
+		return this.GetTextPr();
+	};
+	ApiRun.prototype.SetPosition = function(nPosition)
+	{
+		this.GetTextPr().SetPosition(nPosition);
+		return this.GetTextPr();
+	};
+	ApiRun.prototype.SetLanguage = function(sLangId)
+	{
+		this.GetTextPr().SetLanguage(sLangId);
+		return this.GetTextPr();
+	};
+	ApiRun.prototype.SetShd = function(sType, r, g, b)
+	{
+		this.GetTextPr().SetShd(sType, r, g, b);
+		return this.GetTextPr();
+	};
+	ApiRun.prototype.SetFill = function(oApiFill)
+	{
+		this.GetTextPr().SetFill(oApiFill);
+		return this.GetTextPr();
 	};
 	ApiTable.prototype.private_GetImpl = function()
 	{
@@ -6008,3 +6320,13 @@
 		return new ApiDocumentContent(oDocContent);
 	};
 }(window, null));
+function Test()
+{
+	var Api = editor;
+	var oDocument = Api.GetDocument();
+	var oParagraph = oDocument.last();
+	
+	var oRun = oParagraph.last();
+	oRun.Push("kkkk");
+	oParagraph.last().SetCaps(true);
+}
