@@ -1177,46 +1177,49 @@
 		CommentData.SetText(Comment);
 		CommentData.SetUserName(Autor);
 
-		// Если oElement не является массивом ранов, определяем параграф это или документ
+		// Если oElement не является массивом, определяем параграф это или документ
 		if (!Array.isArray(oElement))
 		{
 			// Проверка на параграф
-			if ("GetType" in oElement)
+			if (oElement instanceof ApiParagraph)
 			{
-				if (oElement.GetType() === 0x0001)
+				var oTempDocument = this.GetDocument().Document;
+
+				var StartPos = oElement.Paragraph.GetDocumentPositionFromObject();
+				var EndPos   = oElement.Paragraph.GetDocumentPositionFromObject();
+
+				var StartParaPos = 
 				{
-					var Para_pos  = undefined;
-					oTempDocument = this.GetDocument().Document;
-
-					oTempDocument.RemoveSelection();
-					oElement.Selection.Use = true;
-					oElement.Selection.Set_StartPos(0,0);
-					oElement.Selection.Set_EndPos(oElement.Content.length - 1, oElement.Content.length - 1);
-					for (var Index = 0; Index < oElement.Content.length; Index++)
-					{
-						oElement.Content[Index].State.Selection.Use 	 = true;
-						oElement.Content[Index].State.Selection.StartPos = 0;
-						oElement.Content[Index].State.Selection.EndPos   = oElement.Content[Index].Content.length;
-						oElement.Content[Index].Selection.Use 		     = true;
-						oElement.Content[Index].Selection.StartPos 	     = 0;
-						oElement.Content[Index].Selection.EndPos 	     = oElement.Content[Index].Content.length;
-					}
-					var QuotedText = oElement.GetSelectedText(false);
-					CommentData.Set_QuoteText(QuotedText);
-					var Comment = new CComment(oTempDocument.Comments, CommentData);
-					oTempDocument.Comments.Add(Comment);
-
-					oElement.AddComment(Comment, true, true);
+					Class : oElement.Paragraph,
+					Position : 0,
+				};
+				var EndParaPos = 
+				{
+					Class : oElement.Paragraph,
+					Position : oElement.GetElementsCount() - 1,
 				}
+				var StartRunPos = 
+				{
+					Class : oElement.Paragraph.Content[0],
+					Position : 0,
+				};
+			
+				var EndRunPos = 
+				{
+					Class : oElement.Paragraph.Content[0],
+					Position : oElement.Paragraph.Content[oElement.GetElementsCount() - 1].Content.length,
+				};
+				StartPos.push(StartParaPos, StartRunPos);
+				EndPos.push(EndParaPos, EndRunPos);
+
+				oTempDocument.AddComment(CommentData, false);
+				
 			}
 			// Проверка на документ
-			else if (oElement.hasOwnProperty("Api"))
+			else if (oElement instanceof ApiDocument)
 			{
-				if (oElement.Api.documentFormat === "docx")
-				{
-					oElement.AddComment(CommentData, true);
-				}
-			}
+				oElement.Document.AddComment(CommentData, true);
+ 			}
 		}
 		// Проверка на массив с ранами
 		else if (Array.isArray(oElement))
@@ -1225,32 +1228,17 @@
 			// ни одному параграфу - не добавляем комментарий
 			for (var Index = 0; Index < oElement.length; Index++)
 			{
-				if (!oElement[Index].hasOwnProperty("Type"))
-				{
-					return false;
-				}
-					
-				if (!oElement[Index].Get_Type() === 39)
-				{
-					return false;
-				}
-					
-				if (oElement[Index].Paragraph === null || "undefined" === typeof(oElement[Index].Paragraph))
-				{
-					return false;
-				}
-					
+				if (!(oElement[Index] instanceof ApiRun))
+					return false;					
 			}
 			
 			var StartPos = [];
 			var EndPos  = [];
 			
-				
-			
 			// Если раны из принципиально разных контектов (из тела и хедера(или футера) то комментарий не добавляем)
 			for (var Index = 1; Index < oElement.length; Index++)
 			{
-				if (oElement[0].GetDocumentPositionFromObject()[0].Class !== oElement[Index].GetDocumentPositionFromObject()[0].Class)
+				if (oElement[0].Run.GetDocumentPositionFromObject()[0].Class !== oElement[Index].Run.GetDocumentPositionFromObject()[0].Class)
 					return false;
 			}
 			
@@ -1259,12 +1247,12 @@
 			var min_pos_Index = 0; // Индекс рана в массиве, с которого начнется выделение
 			var max_pos_Index = 0; // -//- на котором закончится
 
-			var MinPos = oElement[0].GetDocumentPositionFromObject();
-			var MaxPos = oElement[0].GetDocumentPositionFromObject();
+			var MinPos = oElement[0].Run.GetDocumentPositionFromObject();
+			var MaxPos = oElement[0].Run.GetDocumentPositionFromObject();
 
 			for (var Index = 1; Index < oElement.length; Index++)
 			{
-				var TempPos = oElement[Index].GetDocumentPositionFromObject();
+				var TempPos = oElement[Index].Run.GetDocumentPositionFromObject();
 
 				var MinPosLength = MinPos.length;
 				var UsedLength1  = 0;
@@ -1312,18 +1300,18 @@
 		
 			var StartRunPos = 
 			{
-				Class : oElement[min_pos_Index],
+				Class : oElement[min_pos_Index].Run,
 				Position : 0,
 			};
 			
 			var EndRunPos = 
 			{
-				Class : oElement[max_pos_Index],
-				Position : oElement[max_pos_Index].Content.length,
+				Class : oElement[max_pos_Index].Run,
+				Position : oElement[max_pos_Index].Run.Content.length,
 			};
 			
-			StartPos = oElement[min_pos_Index].GetDocumentPositionFromObject();
-			EndPos = oElement[max_pos_Index].GetDocumentPositionFromObject();
+			StartPos = oElement[min_pos_Index].Run.GetDocumentPositionFromObject();
+			EndPos = oElement[max_pos_Index].Run.GetDocumentPositionFromObject();
 
 			StartPos.push(StartRunPos);
 			EndPos.push(EndRunPos);
@@ -6324,9 +6312,16 @@ function Test()
 {
 	var Api = editor;
 	var oDocument = Api.GetDocument();
-	var oParagraph = oDocument.last();
-	
-	var oRun = oParagraph.last();
-	oRun.Push("kkkk");
-	oParagraph.last().SetCaps(true);
+	//oDocument.StartAction();
+	var oParagraph = oDocument.GetElement(0);
+	var oRun = oParagraph.GetElement(1);
+
+	var oParagraph1 = oDocument.GetElement(2);
+	var oRun1 = oParagraph1.GetElement(1);
+
+	var oParagraph2 = oDocument.GetElement(5);
+	var oRun2 = oParagraph2.GetElement(1);
+	var Runs = [oRun2, oRun, oRun1];
+	Api.AddComment(Runs, "УУУУ", "Nikita");
+	oDocument.FinalizeAction();
 }
