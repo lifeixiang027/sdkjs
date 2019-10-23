@@ -1171,11 +1171,20 @@
 	Api.prototype.Save = function () {
 		this.SaveAfterMacros = true;
 	};
+	/**
+	 * Add comment to oElement 
+	 * @param oElement // May be Document, Paragraph, Run's array
+	 * @param {string} Comment 
+	 * @param {string} Autor // Autor's name
+	 */
 	Api.prototype.AddComment = function(oElement, Comment, Autor)
 	{
 		var CommentData = new CCommentData();
 		CommentData.SetText(Comment);
 		CommentData.SetUserName(Autor);
+		//CommentData.m_sInitials = "JS";
+		//CommentData.m_sProviderId = "Teamlab";
+		//CommentData.m_sUserId = "uid-1";
 
 		// Если oElement не является массивом, определяем параграф это или документ
 		if (!Array.isArray(oElement))
@@ -1212,13 +1221,22 @@
 				StartPos.push(StartParaPos, StartRunPos);
 				EndPos.push(EndParaPos, EndRunPos);
 
-				oTempDocument.AddComment(CommentData, false);
+				var COMENT = oTempDocument.AddComment(CommentData, false);
+				if (null != COMENT)
+				{
+					editor.sync_AddComment(COMENT.Get_Id(), CommentData);
+				}
 				
 			}
 			// Проверка на документ
 			else if (oElement instanceof ApiDocument)
 			{
-				oElement.Document.AddComment(CommentData, true);
+				var COMENT = oElement.Document.AddComment(CommentData, true);
+				if (null != COMENT)
+				{
+					editor.sync_AddComment(COMENT.Get_Id(), CommentData);
+				}
+			
  			}
 		}
 		// Проверка на массив с ранами
@@ -1317,7 +1335,12 @@
 			EndPos.push(EndRunPos);
 
 			StartPos[0].Class.SetSelectionByContentPositions(StartPos, EndPos);
-			oDocument.AddComment(CommentData, false);
+			var COMENT = oDocument.AddComment(CommentData, false);
+			if (null != COMENT)
+			{
+				editor.sync_AddComment(COMENT.Get_Id(), CommentData);
+			}
+			
 		}
 	};
 	//------------------------------------------------------------------------------------------------------------------
@@ -1908,7 +1931,8 @@
 		private_PushElementToParagraph(this.Paragraph, oRun);
 		return new ApiRun(oRun);
 	};
-	/**Add Run or Text into paragraph
+	/** 
+	 * Add Run or Text into paragraph
 	 * @param {ApiRun} // string 
 	 */
 	ApiParagraph.prototype.Push = function(oElement)
@@ -1921,6 +1945,7 @@
 		else if (typeof(oElement) === "string")
 		{
 			this.AddText(oElement);
+			return true; 
 		}
 		else 
 			return false;
@@ -6312,7 +6337,7 @@ function Test()
 {
 	var Api = editor;
 	var oDocument = Api.GetDocument();
-	//oDocument.StartAction();
+	oDocument.Document.StartAction();
 	var oParagraph = oDocument.GetElement(0);
 	var oRun = oParagraph.GetElement(1);
 
@@ -6321,7 +6346,7 @@ function Test()
 
 	var oParagraph2 = oDocument.GetElement(5);
 	var oRun2 = oParagraph2.GetElement(1);
-	var Runs = [oRun2, oRun, oRun1];
+	var Runs = [oRun];
 	Api.AddComment(Runs, "УУУУ", "Nikita");
-	oDocument.FinalizeAction();
+	oDocument.Document.FinalizeAction();
 }
