@@ -4802,6 +4802,19 @@ CUniFill.prototype =
         this.transparent = transparent;
     },
 
+    getUniColor: function()
+    {
+        if(this.fill && this.fill instanceof CSolidFill &&  this.fill.color)
+        {
+            return this.fill.color;
+        }
+        else
+        {
+            var RGBA = this.getRGBAColor();
+            return CreateUniColorRGB(RGBA.R, RGBA.G, RGBA.B);
+        }
+    },
+
     Set_FromObject: function(o)
     {
         //TODO:
@@ -5291,6 +5304,15 @@ function CompareShapeProperties(shapeProp1, shapeProp2)
     else
     {
         _result_shape_prop.flipV = null;
+    }
+
+    if(shapeProp1.anchor === shapeProp2.anchor)
+    {
+        _result_shape_prop.anchor = shapeProp1.anchor;
+    }
+    else
+    {
+        _result_shape_prop.anchor = null;
     }
 
     if(shapeProp1.stroke == null || shapeProp2.stroke == null)

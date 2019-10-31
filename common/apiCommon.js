@@ -657,8 +657,9 @@
 		this.separator = null;
 		this.horAxisProps = null;
 		this.vertAxisProps = null;
-		this.range = null;
 		this.inColumns = null;
+
+		this.aRanges = [];
 
 		this.showMarker = null;
 		this.bLine = null;
@@ -748,9 +749,14 @@
                     return false;
                 }
             }
-            if(this.range !== oPr.range){
+            if(this.aRanges.length !== oPr.aRanges.length){
                 return false;
             }
+			for(var i = 0; i < this.aRanges.length; ++i) {
+				if(this.aRanges[i] !== oPr.aRanges[i]) {
+					return false;
+				}
+			}
             if(!this.equalBool(this.inColumns, oPr.inColumns)){
                 return false;
             }
@@ -790,6 +796,18 @@
 			return this.bLine;
 		},
 
+		putRanges: function(aRanges) {
+			if(Array.isArray(aRanges)) {
+				this.aRanges = aRanges;
+			}
+			else {
+				this.aRanges.length = 0;
+			}
+		},
+
+		getRanges: function(aRanges) {
+			return this.aRanges;
+		},
 
 		putSmooth: function (v) {
 			this.smooth = v;
@@ -808,11 +826,15 @@
 		},
 
 		putRange: function (range) {
-			this.range = range;
+			this.aRanges.length = 0;
+			this.aRanges[0] = range;
 		},
 
 		getRange: function () {
-			return this.range;
+			if(this.aRanges.length > 0) {
+				return this.aRanges[0];
+			}
+			return null;
 		},
 
 		putInColumns: function (inColumns) {
@@ -1842,6 +1864,52 @@
 			this.ListType = (undefined != obj.ListType) ? obj.ListType : undefined;
 			this.OutlineLvl = (undefined != obj.OutlineLvl) ? obj.OutlineLvl : undefined;
 			this.OutlineLvlStyle = (undefined != obj.OutlineLvlStyle) ? obj.OutlineLvlStyle : false;
+			this.BulletSize = undefined;
+			this.BulletColor = undefined;
+			var oBullet = obj.Bullet;
+			if(oBullet)
+			{
+				this.BulletSize = 100;
+				if(oBullet.bulletSize)
+				{
+					switch (oBullet.bulletSize.type)
+					{
+						case AscFormat.BULLET_TYPE_SIZE_NONE:
+						{
+							break;
+						}
+						case AscFormat.BULLET_TYPE_SIZE_TX:
+						{
+							break;
+						}
+						case AscFormat.BULLET_TYPE_SIZE_PCT:
+						{
+							this.BulletSize = oBullet.bulletSize.val / 1000.0;
+							break;
+						}
+						case AscFormat.BULLET_TYPE_SIZE_PTS:
+						{
+							break;
+						}
+					}
+				}
+				this.BulletColor = CreateAscColorCustom(0, 0, 0);
+				if(oBullet.bulletColor)
+				{
+					if(oBullet.bulletColor.UniColor)
+					{
+						this.BulletColor = CreateAscColor(oBullet.bulletColor.UniColor);
+					}
+				}
+				else 
+				{
+					if(obj.Unifill)
+					{
+						var RGBA = obj.Unifill.getRGBAColor();
+						this.BulletColor = CreateAscColorCustom(RGBA.R, RGBA.G, RGBA.B);
+					}	
+				}
+			}
 		} else {
 			//ContextualSpacing : false,            // Удалять ли интервал между параграфами одинакового стиля
 			//
@@ -1885,6 +1953,8 @@
 			this.ListType = undefined;
 			this.OutlineLvl = undefined;
 			this.OutlineLvlStyle = false;
+			this.BulletSize = undefined;
+			this.BulletColor = undefined;
 		}
 	}
 
@@ -1990,6 +2060,14 @@
 			this.OutlineLvl = nLvl;
 		}, asc_getOutlineLvlStyle: function() {
 			return this.OutlineLvlStyle;
+		}, asc_putBulletSize: function(size) {
+			this.BulletSize = size;
+		}, asc_getBulletSize: function() {
+			return this.BulletSize;
+		}, asc_putBulletColor: function(color) {
+			this.BulletColor = color;
+		}, asc_getBulletColor: function() {
+			return this.BulletColor;
 		}
 	};
 
@@ -2091,6 +2169,7 @@
 		this.flipHInvert = null;
 		this.flipVInvert = null;
 		this.shadow = undefined;
+		this.anchor = null;
 	}
 
 	asc_CShapeProperty.prototype = {
@@ -2247,6 +2326,13 @@
 
 		asc_putShadow: function(v){
 			this.shadow = v;
+		},
+		asc_getAnchor: function(){
+			return this.anchor;
+		},
+
+		asc_putAnchor: function(v){
+			this.anchor = v;
 		}
 	};
 
@@ -2462,6 +2548,7 @@
 			this.flipH = obj.flipH != undefined ? obj.flipH : undefined;
 			this.flipV = obj.flipV != undefined ? obj.flipV : undefined;
 			this.resetCrop =  obj.resetCrop != undefined ? obj.resetCrop : undefined;
+			this.anchor =  obj.anchor != undefined ? obj.anchor : undefined;
 
 		} else {
 			this.CanBeFlow = true;
@@ -2510,6 +2597,7 @@
 			this.flipH = undefined;
 			this.flipV = undefined;
 			this.resetCrop = undefined;
+			this.anchor = undefined;
 		}
 	}
 
@@ -2843,6 +2931,13 @@
 
 		asc_putShadow: function(v){
 			this.shadow = v;
+		},
+		asc_getAnchor: function(){
+			return this.anchor;
+		},
+
+		asc_putAnchor: function(v){
+			this.anchor = v;
 		}
 	};
 
@@ -4425,6 +4520,8 @@
 	prot["getVertAxisProps"] = prot.getVertAxisProps;
 	prot["putRange"] = prot.putRange;
 	prot["getRange"] = prot.getRange;
+	prot["putRanges"] = prot.putRanges;
+	prot["getRanges"] = prot.getRanges;
 	prot["putInColumns"] = prot.putInColumns;
 	prot["getInColumns"] = prot.getInColumns;
 	prot["putShowMarker"] = prot.putShowMarker;
@@ -4647,6 +4744,10 @@
 	prot["get_OutlineLvl"] = prot["asc_getOutlineLvl"] = prot.asc_getOutlineLvl;
 	prot["put_OutlineLvl"] = prot["asc_putOutLineLvl"] = prot.asc_putOutLineLvl;
 	prot["get_OutlineLvlStyle"] = prot["asc_getOutlineLvlStyle"] = prot.asc_getOutlineLvlStyle;
+	prot["put_BulletSize"] = prot["asc_putBulletSize"] = prot.asc_putBulletSize;
+	prot["get_BulletSize"] = prot["asc_getBulletSize"] = prot.asc_getBulletSize;
+	prot["put_BulletColor"] = prot["asc_putBulletColor"] = prot.asc_putBulletColor;
+	prot["get_BulletColor"] = prot["asc_getBulletColor"] = prot.asc_getBulletColor;
 
 	window["AscCommon"].asc_CTexture = asc_CTexture;
 	prot = asc_CTexture.prototype;
@@ -4724,8 +4825,10 @@
 	prot["put_FlipHInvert"] = prot["asc_putFlipHInvert"] = prot.asc_putFlipHInvert;
 	prot["get_FlipVInvert"] = prot["asc_getFlipVInvert"] = prot.asc_getFlipVInvert;
 	prot["put_FlipVInvert"] = prot["asc_putFlipVInvert"] = prot.asc_putFlipVInvert;
-	prot["put_shadow"] = prot.put_shadow = prot["asc_putShadow"] = prot.asc_putShadow;
-	prot["get_shadow"] = prot.get_shadow = prot["asc_getShadow"] = prot.asc_getShadow;
+	prot["put_Shadow"] = prot.put_Shadow = prot["put_shadow"] = prot.put_shadow = prot["asc_putShadow"] = prot.asc_putShadow;
+	prot["get_Shadow"] = prot.get_Shadow = prot["get_shadow"] = prot.get_shadow = prot["asc_getShadow"] = prot.asc_getShadow;
+	prot["put_Anchor"] = prot.put_Anchor = prot["asc_putAnchor"] = prot.asc_putAnchor;
+	prot["get_Anchor"] = prot.get_Anchor = prot["asc_getAnchor"] = prot.asc_getAnchor;
 
 	window["Asc"]["asc_TextArtProperties"] = window["Asc"].asc_TextArtProperties = asc_TextArtProperties;
 	prot = asc_TextArtProperties.prototype;
@@ -4851,6 +4954,12 @@
 	prot["get_ColumnSpace"] = prot["asc_getColumnSpace"] = prot.asc_getColumnSpace;
 	prot["put_ColumnSpace"] = prot["asc_putColumnSpace"] = prot.asc_putColumnSpace;
 	prot["asc_getSignatureId"] = prot["asc_getSignatureId"] = prot.asc_getSignatureId;
+
+	prot["put_Shadow"] = prot.put_Shadow = prot["put_shadow"] = prot.put_shadow = prot["asc_putShadow"] = prot.asc_putShadow;
+	prot["get_Shadow"] = prot.get_Shadow = prot["get_shadow"] = prot.get_shadow = prot["asc_getShadow"] = prot.asc_getShadow;
+
+	prot["put_Anchor"] = prot.put_Anchor = prot["asc_putAnchor"] = prot.asc_putAnchor;
+	prot["get_Anchor"] = prot.get_Anchor = prot["asc_getAnchor"] = prot.asc_getAnchor;
 
 
 

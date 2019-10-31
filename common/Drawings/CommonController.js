@@ -3632,6 +3632,16 @@ DrawingObjectsController.prototype =
             }
         }
 
+        if(props.anchor !== null && props.anchor !== undefined)
+        {
+            for(i = 0; i < this.selectedObjects.length; ++i)
+            {
+                CheckSpPrXfrm3(this.selectedObjects[i]);
+                this.selectedObjects[i].setDrawingBaseType(props.anchor);
+                this.selectedObjects[i].checkDrawingBaseCoords();
+            }
+        }
+
 
         if(typeof props.ImageUrl === "string" && props.ImageUrl.length > 0)
         {
@@ -3786,7 +3796,7 @@ DrawingObjectsController.prototype =
             }
         }
         if(isRealObject(props.Position) && AscFormat.isRealNumber(props.Position.X) && AscFormat.isRealNumber(props.Position.Y)
-        || AscFormat.isRealBool(props.flipH) || AscFormat.isRealBool(props.flipV) || AscFormat.isRealBool(props.flipHInvert) || AscFormat.isRealBool(props.flipVInvert) || AscFormat.isRealNumber(props.rotAdd) || AscFormat.isRealNumber(props.rot))
+        || AscFormat.isRealBool(props.flipH) || AscFormat.isRealBool(props.flipV) || AscFormat.isRealBool(props.flipHInvert) || AscFormat.isRealBool(props.flipVInvert) || AscFormat.isRealNumber(props.rotAdd) || AscFormat.isRealNumber(props.rot) || AscFormat.isRealNumber(props.anchor))
         {
             var bPosition = isRealObject(props.Position) && AscFormat.isRealNumber(props.Position.X) && AscFormat.isRealNumber(props.Position.Y);
             for(i = 0; i < objects_by_type.shapes.length; ++i)
@@ -8105,6 +8115,7 @@ DrawingObjectsController.prototype =
     {
         var bDocument = isRealObject(this.document), bNeedRecalculateCurPos = false;
         var nPageIndex = 0;
+        var bSlide = false;
         if(AscFormat.isRealNumber(PageIndex)){
             nPageIndex = PageIndex;
         }
@@ -8113,6 +8124,7 @@ DrawingObjectsController.prototype =
             if(this.drawingObjects.getObjectType && this.drawingObjects.getObjectType() === AscDFH.historyitem_type_Slide)
             {
                 nPageIndex = 0;
+                bSlide = true;
             }
         }
         if(oSelectionState && oSelectionState.DrawingsSelectionState)
@@ -8120,7 +8132,9 @@ DrawingObjectsController.prototype =
             var oDrawingSelectionState = oSelectionState.DrawingsSelectionState;
             if(oDrawingSelectionState.textObject)
             {
-                if(oDrawingSelectionState.textObject.Is_UseInDocument() && (!oDrawingSelectionState.textObject.group || oDrawingSelectionState.textObject.group === this))
+                if(oDrawingSelectionState.textObject.Is_UseInDocument()
+                    && (!oDrawingSelectionState.textObject.group || oDrawingSelectionState.textObject.group === this)
+                && (!bSlide || oDrawingSelectionState.textObject.parent === this.drawingObjects))
                 {
                     this.selectObject(oDrawingSelectionState.textObject, bDocument ? (oDrawingSelectionState.textObject.parent ? oDrawingSelectionState.textObject.parent.PageNum : nPageIndex) : nPageIndex);
                     var oDocContent;
@@ -8148,7 +8162,8 @@ DrawingObjectsController.prototype =
             }
             else if(oDrawingSelectionState.groupObject)
             {
-                if(oDrawingSelectionState.groupObject.Is_UseInDocument() && !oDrawingSelectionState.groupObject.group)
+                if(oDrawingSelectionState.groupObject.Is_UseInDocument() && !oDrawingSelectionState.groupObject.group
+                    && (!bSlide || oDrawingSelectionState.groupObject.parent === this.drawingObjects))
                 {
                     this.selectObject(oDrawingSelectionState.groupObject, bDocument ? (oDrawingSelectionState.groupObject.parent ? oDrawingSelectionState.groupObject.parent.PageNum : nPageIndex) : nPageIndex);
                     oDrawingSelectionState.groupObject.resetSelection(this);
@@ -8172,7 +8187,8 @@ DrawingObjectsController.prototype =
             }
             else if(oDrawingSelectionState.chartObject)
             {
-                if(oDrawingSelectionState.chartObject.Is_UseInDocument())
+                if(oDrawingSelectionState.chartObject.Is_UseInDocument()
+                    && (!bSlide || oDrawingSelectionState.chartObject.parent === this.drawingObjects))
                 {
                     this.selectObject(oDrawingSelectionState.chartObject, bDocument ? (oDrawingSelectionState.chartObject.parent ? oDrawingSelectionState.chartObject.parent.PageNum : nPageIndex) : nPageIndex);
                     oDrawingSelectionState.chartObject.resetSelection();
@@ -8198,7 +8214,8 @@ DrawingObjectsController.prototype =
             }
             else if(oDrawingSelectionState.cropObject)
             {
-                if(oDrawingSelectionState.cropObject.Is_UseInDocument())
+                if(oDrawingSelectionState.cropObject.Is_UseInDocument()
+                    && (!bSlide || oDrawingSelectionState.cropObject.parent === this.drawingObjects))
                 {
                     this.selectObject(oDrawingSelectionState.cropObject, bDocument ? (oDrawingSelectionState.cropObject.parent ? oDrawingSelectionState.cropObject.parent.PageNum : nPageIndex) : nPageIndex);
                     this.selection.cropSelection = oDrawingSelectionState.cropObject;
@@ -8216,7 +8233,8 @@ DrawingObjectsController.prototype =
                 for(var i = 0; i < oDrawingSelectionState.selection.length; ++i)
                 {
                     var oSp = oDrawingSelectionState.selection[i].object;
-                    if(oSp.Is_UseInDocument() && !oSp.group)
+                    if(oSp.Is_UseInDocument() && !oSp.group
+                        && (!bSlide || oSp.parent === this.drawingObjects))
                     {
                         this.selectObject(oSp, bDocument ? (oSp.parent ? oSp.parent.PageNum : nPageIndex) : nPageIndex);
                     }
@@ -8363,7 +8381,8 @@ DrawingObjectsController.prototype =
                         columnNumber: drawing.getColumnNumber(),
                         columnSpace: drawing.getColumnSpace(),
                         signatureId: drawing.getSignatureLineGuid(),
-                        shadow: drawing.getOuterShdw()
+                        shadow: drawing.getOuterShdw(),
+                        anchor: drawing.getDrawingBaseType()
                     };
                     if(!shape_props)
                         shape_props = new_shape_props;
@@ -8388,7 +8407,8 @@ DrawingObjectsController.prototype =
                         y: drawing.y,
                         lockAspect: lockAspect,
                         title: drawing.getTitle(),
-                        description: drawing.getDescription()
+                        description: drawing.getDescription(),
+                        anchor: drawing.getDrawingBaseType()
                     };
                     if(!image_props)
                         image_props = new_image_props;
@@ -8419,6 +8439,8 @@ DrawingObjectsController.prototype =
                             image_props.title = undefined;
                         if(image_props.description !== new_image_props.description)
                             image_props.description = undefined;
+                        if(image_props.anchor !== new_image_props.anchor)
+                            image_props.anchor = undefined;
                         
                     }
 
@@ -8448,7 +8470,8 @@ DrawingObjectsController.prototype =
                         columnNumber: null,
                         columnSpace: null,
                         signatureId: null,
-                        shadow: drawing.getOuterShdw()
+                        shadow: drawing.getOuterShdw(),
+                        anchor: drawing.getDrawingBaseType()
                     };
                     if(!shape_props)
                         shape_props = new_shape_props;
@@ -8482,7 +8505,8 @@ DrawingObjectsController.prototype =
                         oleWidth: drawing.m_fDefaultSizeX,
                         oleHeight: drawing.m_fDefaultSizeY,
                         title: drawing.getTitle(),
-                        description: drawing.getDescription()
+                        description: drawing.getDescription(),
+                        anchor: drawing.getDrawingBaseType()
                     };
                     if(!image_props)
                         image_props = new_image_props;
@@ -8510,6 +8534,8 @@ DrawingObjectsController.prototype =
                             image_props.title = undefined;
                         if(image_props.description !== new_image_props.description)
                             image_props.description = undefined;
+                        if(image_props.anchor !== new_image_props.anchor)
+                            image_props.anchor = undefined;
                     }
                     break;
                 }
@@ -8526,7 +8552,8 @@ DrawingObjectsController.prototype =
                         locked: locked,
                         lockAspect: lockAspect,
                         title: drawing.getTitle(),
-                        description: drawing.getDescription()
+                        description: drawing.getDescription(),
+                        anchor: drawing.getDrawingBaseType()
                     };
                     if(!chart_props)
                     {
@@ -8564,6 +8591,8 @@ DrawingObjectsController.prototype =
                             chart_props.title = undefined;
                         if(chart_props.description !== new_chart_props.description)
                             chart_props.description = undefined;
+                        if(chart_props.anchor !== new_chart_props.anchor)
+                            chart_props.anchor = undefined;
                     }
 
                     new_shape_props =
@@ -8584,7 +8613,8 @@ DrawingObjectsController.prototype =
                         lockAspect: lockAspect,
                         title: drawing.getTitle(),
                         description: drawing.getDescription(),
-                        signatureId: drawing.getSignatureLineGuid()
+                        signatureId: drawing.getSignatureLineGuid(),
+                        anchor: drawing.getDrawingBaseType()
                     };
                     if(!shape_props)
                         shape_props = new_shape_props;
@@ -8660,9 +8690,13 @@ DrawingObjectsController.prototype =
                 }
                 case AscDFH.historyitem_type_GroupShape:
                 {
+                    var anchor = drawing.getDrawingBaseType();
+
                     var group_drawing_props = this.getDrawingPropsFromArray(drawing.spTree);
+
                     if(group_drawing_props.shapeProps)
                     {
+                        group_drawing_props.shapeProps.anchor = anchor;
                         if(!shape_props)
                             shape_props = group_drawing_props.shapeProps;
                         else
@@ -8673,6 +8707,7 @@ DrawingObjectsController.prototype =
 
                     if(group_drawing_props.shapeChartProps)
                     {
+                        group_drawing_props.shapeChartProps.anchor = anchor;
                         if(!shape_chart_props)
                         {
                             shape_chart_props = group_drawing_props.shapeChartProps;
@@ -8684,6 +8719,7 @@ DrawingObjectsController.prototype =
                     }
                     if(group_drawing_props.imageProps)
                     {
+                        group_drawing_props.imageProps.anchor = anchor;
                         if(!image_props)
                             image_props = group_drawing_props.imageProps;
                         else
@@ -8720,6 +8756,7 @@ DrawingObjectsController.prototype =
                     }
                     if(group_drawing_props.chartProps)
                     {
+                        group_drawing_props.chartProps.anchor = anchor;
                         if(!chart_props)
                         {
                             chart_props = group_drawing_props.chartProps;
@@ -8848,6 +8885,7 @@ DrawingObjectsController.prototype =
             shape_props.ShapeProperties.bFromChart = props.shapeChartProps.bFromChart;
             shape_props.ShapeProperties.bFromImage = props.shapeChartProps.bFromImage;
             shape_props.ShapeProperties.lockAspect = props.shapeChartProps.lockAspect;
+            shape_props.ShapeProperties.anchor = props.shapeChartProps.anchor;
 
             if(props.shapeChartProps.paddings)
             {
@@ -8928,6 +8966,7 @@ DrawingObjectsController.prototype =
             shape_props.title = props.shapeProps.title;
             shape_props.ShapeProperties.textArtProperties = AscFormat.CreateAscTextArtProps(props.shapeProps.textArtProperties);
             shape_props.lockAspect = props.shapeProps.lockAspect;
+            shape_props.anchor = props.shapeProps.anchor;
 
             shape_props.ShapeProperties.columnNumber = props.shapeProps.columnNumber;
             shape_props.ShapeProperties.columnSpace = props.shapeProps.columnSpace;
@@ -9005,6 +9044,7 @@ DrawingObjectsController.prototype =
             image_props.ImageUrl = props.imageProps.ImageUrl;
             image_props.Locked = props.imageProps.locked === true;
             image_props.lockAspect = props.imageProps.lockAspect;
+            image_props.anchor = props.imageProps.anchor;
 
 
             image_props.pluginGuid = props.imageProps.pluginGuid;
@@ -9031,6 +9071,7 @@ DrawingObjectsController.prototype =
             chart_props.ChartProperties = props.chartProps.chartProps;
             chart_props.Locked = props.chartProps.locked === true;
             chart_props.lockAspect = props.chartProps.lockAspect;
+            chart_props.anchor = props.chartProps.anchor;
             if(!bParaLocked)
             {
                 bParaLocked = chart_props.Locked;
@@ -9438,10 +9479,10 @@ DrawingObjectsController.prototype =
     {
         if(typeof Asc.asc_CParagraphProperty !== "undefined" && !(props instanceof Asc.asc_CParagraphProperty))
         {
-            if(props && props.ChartProperties && typeof props.ChartProperties.range === "string")
+            if(props && props.ChartProperties && typeof props.ChartProperties.getRange() === "string")
             {
                 var editor = window["Asc"]["editor"];
-                var check = parserHelp.checkDataRange(editor.wbModel, editor.wb, Asc.c_oAscSelectionDialogType.Chart, props.ChartProperties.range, true, !props.ChartProperties.inColumns, props.ChartProperties.type);
+                var check = parserHelp.checkDataRange(editor.wbModel, editor.wb, Asc.c_oAscSelectionDialogType.Chart, props.ChartProperties.getRange(), true, !props.ChartProperties.getInColumns(), props.ChartProperties.getType());
                 if(check === c_oAscError.ID.StockChartError || check === c_oAscError.ID.DataRangeError
                     || check === c_oAscError.ID.MaxDataSeriesError)
                 {
@@ -9455,7 +9496,6 @@ DrawingObjectsController.prototype =
             if(AscFormat.isRealNumber(props.Width) && AscFormat.isRealNumber(props.Height)){
                 aAdditionalObjects = this.getConnectorsForCheck2();
             }
-
             this.checkSelectedObjectsAndCallback(this.setGraphicObjectPropsCallBack, [props], false, AscDFH.historydescription_Spreadsheet_SetGraphicObjectsProps, aAdditionalObjects);
             var oApplyProps = null;
             if(props)
@@ -12370,6 +12410,10 @@ function ApplyPresetToChartSpace(oChartSpace, aPreset, bCreate){
 
 
     function fGetFontByNumInfo(Type, SubType){
+        if(!AscFormat.isRealNumber(Type) || !AscFormat.isRealNumber(SubType))
+        {
+            return null;
+        }
         if(SubType >= 0){
             if(Type === 0){
                 switch(SubType)
@@ -12399,6 +12443,10 @@ function ApplyPresetToChartSpace(oChartSpace, aPreset, bCreate){
     }
 
     function fGetPresentationBulletByNumInfo(NumInfo){
+        if(!AscFormat.isRealNumber(NumInfo.Type) || !AscFormat.isRealNumber(NumInfo.SubType))
+        {
+            return null;
+        }
         var bullet = new AscFormat.CBullet();
         if(NumInfo.SubType < 0)
         {

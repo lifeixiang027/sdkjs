@@ -779,6 +779,11 @@ function BinaryPPTYLoader()
                     _slide.notes.setSlide(_slide);
                     _slide.notes.setNotesMaster(this.presentation.notesMasters[0]);
                 }
+                else{
+                    if(!_slide.notes.Master){
+                        _slide.notes.setNotesMaster(this.presentation.notesMasters[0]);
+                    }
+                }
             }
             //var _editor = this.Api;
             //_editor.sync_InitEditorThemes(_editor.ThemeLoader.Themes.EditorThemes, _editor.ThemeLoader.Themes.DocumentThemes);
@@ -3193,7 +3198,7 @@ function BinaryPPTYLoader()
                                                 if(oEffect)
                                                 {
                                                     uni_fill.fill.Effects.push(oEffect);
-                                                    if(oEffect instanceof AscFormat.CAlphaModFix)
+                                                    if(oEffect instanceof AscFormat.CAlphaModFix && AscFormat.isRealNumber(oEffect.amt))
                                                     {
                                                         uni_fill.setTransparent(255 * oEffect.amt / 100000);
                                                     }
@@ -5933,6 +5938,13 @@ function BinaryPPTYLoader()
                     var binary_length;
                     switch(oleType)
                     {
+                        case 0:
+                        {
+                            binary_length = s.GetULong();
+                            ole.setBinaryData(s.data.slice(s.cur, s.cur + binary_length));
+                            s.Seek2(s.cur + binary_length);
+                            break;
+                        }
                         case 1:
                         {
                             ole.setObjectFile("maskFile.docx");
@@ -11615,6 +11627,13 @@ function CPres()
                         var binary_length;
                         switch(oleType)
                         {
+                            case 0:
+                            {
+                                binary_length = s.GetULong();
+                                ole.setBinaryData(s.data.slice(s.cur, s.cur + binary_length));
+                                s.Seek2(s.cur + binary_length);
+                                break;
+                            }
                             case 1:
                             {
                                 ole.setObjectFile("maskFile.docx");

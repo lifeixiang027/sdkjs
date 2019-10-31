@@ -80,7 +80,10 @@
             }
 
             if (type == "init")
+            {
                 window.Asc.plugin.info = pluginData;
+                window.Asc.plugin.checkPixelRatio();
+            }
 
             if (!window.Asc.plugin.tr || !window.Asc.plugin.tr_init)
             {
@@ -111,16 +114,24 @@
 
 					_client.onreadystatechange = function ()
 					{
-						if (_client.readyState == 4 && (_client.status == 200 || location.href.indexOf("file:") == 0))
+						if (_client.readyState == 4)
 						{
-							try
-							{
-								window.Asc.plugin.translateManager = JSON.parse(_client.responseText);
-							}
-							catch (err)
-							{
+						    if (_client.status == 200 || location.href.indexOf("file:") == 0)
+						    {
+                                try
+                                {
+                                    window.Asc.plugin.translateManager = JSON.parse(_client.responseText);
+                                }
+                                catch (err)
+                                {
+                                    window.Asc.plugin.translateManager = {};
+                                }
+                            }
+                            else
+                            {
                                 window.Asc.plugin.translateManager = {};
-							}
+                            }
+
 
                             if (window.Asc.plugin.onTranslate)
                                 window.Asc.plugin.onTranslate();

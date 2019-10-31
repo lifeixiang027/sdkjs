@@ -46,6 +46,9 @@ var HANDLE_EVENT_MODE_CURSOR = AscFormat.HANDLE_EVENT_MODE_CURSOR;
 
 var asc_CImgProperty = Asc.asc_CImgProperty;
 
+var c_oAscAlignH         = Asc.c_oAscAlignH;
+var c_oAscAlignV         = Asc.c_oAscAlignV;
+
 function CGraphicObjects(document, drawingDocument, api)
 {
     this.api = api;
@@ -1500,19 +1503,10 @@ CGraphicObjects.prototype =
         }
         else
         {
-            if(this.selectedObjects[0] && this.selectedObjects[0].parent && this.selectedObjects[0].parent.Is_Inline())
+            if(this.selectedObjects.length > 0)
             {
-                this.resetInternalSelection();
-                this.document.Remove(1, true);
+                this.resetSelection2();
                 this.document.AddInlineImage(W, H, Img, Chart, bFlow );
-            }
-            else
-            {
-                if(this.selectedObjects.length > 0)
-                {
-                    this.resetSelection2();
-                    this.document.AddInlineImage(W, H, Img, Chart, bFlow );
-                }
             }
         }
     },
@@ -3457,6 +3451,7 @@ CGraphicObjects.prototype =
                 {
                     return;
                 }
+
                 if(alignType === Asc.c_oAscObjectsAlignType.Page)
                 {
                     switch (type)
@@ -3468,7 +3463,7 @@ CGraphicObjects.prototype =
                         }
                         case c_oAscAlignShapeType.ALIGN_RIGHT:
                         {
-                            this.alignRight(oSectPr.Get_PageWidth(), Bounds.arrBounds);
+                            this.alignRight(oSectPr.GetPageWidth(), Bounds.arrBounds);
                             break;
                         }
                         case c_oAscAlignShapeType.ALIGN_TOP:
@@ -3478,17 +3473,17 @@ CGraphicObjects.prototype =
                         }
                         case c_oAscAlignShapeType.ALIGN_BOTTOM:
                         {
-                            this.alignBottom(oSectPr.Get_PageHeight(), Bounds.arrBounds);
+                            this.alignBottom(oSectPr.GetPageHeight(), Bounds.arrBounds);
                             break;
                         }
                         case c_oAscAlignShapeType.ALIGN_CENTER:
                         {
-                            this.alignCenter(oSectPr.Get_PageWidth()/2, Bounds.arrBounds);
+                            this.alignCenter(oSectPr.GetPageWidth()/2, Bounds.arrBounds);
                             break;
                         }
                         case c_oAscAlignShapeType.ALIGN_MIDDLE:
                         {
-                            this.alignMiddle(oSectPr.Get_PageHeight()/2, Bounds.arrBounds);
+                            this.alignMiddle(oSectPr.GetPageHeight()/2, Bounds.arrBounds);
                             break;
                         }
                         default:
@@ -3497,36 +3492,37 @@ CGraphicObjects.prototype =
                 }
                 else
                 {
-                    switch (type)
+					var oFrame = oSectPr.GetContentFrame(this.selection.groupSelection.parent.PageNum);
+					switch (type)
                     {
                         case c_oAscAlignShapeType.ALIGN_LEFT:
                         {
-                            this.alignLeft(oSectPr.Get_PageMargin_Left(), Bounds.arrBounds);
+                            this.alignLeft(oFrame.Left, Bounds.arrBounds);
                             break;
                         }
                         case c_oAscAlignShapeType.ALIGN_RIGHT:
                         {
-                            this.alignRight(oSectPr.Get_PageWidth() - oSectPr.Get_PageMargin_Right(), Bounds.arrBounds);
+                            this.alignRight(oFrame.Right, Bounds.arrBounds);
                             break;
                         }
                         case c_oAscAlignShapeType.ALIGN_TOP:
                         {
-                            this.alignTop(oSectPr.Get_PageMargin_Top(), Bounds.arrBounds);
+                            this.alignTop(oFrame.Top, Bounds.arrBounds);
                             break;
                         }
                         case c_oAscAlignShapeType.ALIGN_BOTTOM:
                         {
-                            this.alignBottom(oSectPr.Get_PageHeight() - oSectPr.Get_PageMargin_Bottom(), Bounds.arrBounds);
+                            this.alignBottom(oFrame.Bottom, Bounds.arrBounds);
                             break;
                         }
                         case c_oAscAlignShapeType.ALIGN_CENTER:
                         {
-                            this.alignCenter(oSectPr.Get_PageMargin_Left() + (oSectPr.Get_PageWidth() - oSectPr.Get_PageMargin_Left() - oSectPr.Get_PageMargin_Right())/2, Bounds.arrBounds);
+                            this.alignCenter((oFrame.Left + oFrame.Right) / 2, Bounds.arrBounds);
                             break;
                         }
                         case c_oAscAlignShapeType.ALIGN_MIDDLE:
                         {
-                            this.alignMiddle(oSectPr.Get_PageMargin_Top() + (oSectPr.Get_PageHeight() - oSectPr.Get_PageMargin_Top() - oSectPr.Get_PageMargin_Bottom())/2, Bounds.arrBounds);
+                            this.alignMiddle((oFrame.Top + oFrame.Bottom) / 2, Bounds.arrBounds);
                             break;
                         }
                         default:
@@ -3728,15 +3724,18 @@ CGraphicObjects.prototype =
                 {
                     return;
                 }
+
                 if(alignType === Asc.c_oAscObjectsAlignType.Page)
                 {
-                    pos1 =  0;
-                    pos2 = oSectPr.Get_PageWidth();
+                    pos1 = 0;
+                    pos2 = oSectPr.GetPageWidth();
                 }
                 else
                 {
-                    pos1 =  oSectPr.Get_PageMargin_Left();
-                    pos2 = oSectPr.Get_PageWidth() - oSectPr.Get_PageMargin_Right();
+					var oFrame = oSectPr.GetContentFrame(sortObjects[0].trackObject.originalObject.selectStartPage);
+
+					pos1 = oFrame.Left;
+                    pos2 = oFrame.Right;
                 }
             }
             var summ_width = boundsObject.summWidth;
@@ -3794,15 +3793,18 @@ CGraphicObjects.prototype =
                 {
                     return;
                 }
+
                 if(alignType === Asc.c_oAscObjectsAlignType.Page)
                 {
-                    pos1 =  0;
-                    pos2 = oSectPr.Get_PageHeight();
+                    pos1 = 0;
+                    pos2 = oSectPr.GetPageHeight();
                 }
                 else
                 {
-                    pos1 =  oSectPr.Get_PageMargin_Top();
-                    pos2 = oSectPr.Get_PageHeight() - oSectPr.Get_PageMargin_Bottom();
+					var oFrame = oSectPr.GetContentFrame(sortObjects[0].trackObject.originalObject.selectStartPage);
+
+                    pos1 = oFrame.Top;
+                    pos2 = oFrame.Bottom;
                 }
             }
             var summ_height = boundsObject.summHeight;
@@ -4198,6 +4200,43 @@ CGraphicObjects.prototype =
             }
         }
     }
+};
+CGraphicObjects.prototype.Document_Is_SelectionLocked = function(CheckType)
+{
+    if(CheckType === AscCommon.changestype_ColorScheme)
+    {
+        this.Lock.Check(this.Get_Id());
+    }
+};
+CGraphicObjects.prototype.documentIsSelectionLocked = function(CheckType)
+{
+    var oDrawing, i;
+    var bDelete = (AscCommon.changestype_Delete === CheckType || AscCommon.changestype_Remove === CheckType);
+    if(AscCommon.changestype_Drawing_Props === CheckType
+        || AscCommon.changestype_Image_Properties === CheckType
+        || AscCommon.changestype_Delete === CheckType
+        || AscCommon.changestype_Remove === CheckType
+        || AscCommon.changestype_Paragraph_Content === CheckType
+        || AscCommon.changestype_Paragraph_TextProperties === CheckType
+        || AscCommon.changestype_Paragraph_AddText === CheckType
+        || AscCommon.changestype_ContentControl_Add === CheckType
+        || AscCommon.changestype_Paragraph_Properties === CheckType
+        || AscCommon.changestype_Document_Content_Add === CheckType)
+    {
+        for(i = 0; i < this.selectedObjects.length; ++i)
+        {
+            oDrawing = this.selectedObjects[i].parent;
+            if(bDelete)
+            {
+                oDrawing.CheckContentControlDeletingLock();
+            }
+            oDrawing.Lock.Check(oDrawing.Get_Id());
+        }
+    }
+
+    var oDocContent = this.getTargetDocContent();
+    if (oDocContent)
+        oDocContent.Document_Is_SelectionLocked(CheckType);
 };
 
 function ComparisonByZIndexSimpleParent(obj1, obj2)

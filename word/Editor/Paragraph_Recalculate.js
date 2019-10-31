@@ -34,6 +34,7 @@
 
 // Import
 var g_oTextMeasurer = AscCommon.g_oTextMeasurer;
+var c_oAscSectionBreakType    = Asc.c_oAscSectionBreakType;
 
 // TODO: В колонтитулах быстрые пересчеты отключены. Надо реализовать.
 
@@ -1555,11 +1556,11 @@ Paragraph.prototype.private_RecalculateLineCheckRanges = function(CurLine, CurPa
     if (this.bFromDocument && PRS.GetTopDocument() === this.LogicDocument && !PRS.IsInTable())
 	{
 		// Заглушка для случая, когда параграф лежит в CBlockLevelSdt
-		PageFields = this.LogicDocument.Get_ColumnFields(PRS.GetTopIndex(), this.Get_AbsoluteColumn(CurPage));
+		PageFields = this.LogicDocument.Get_ColumnFields(PRS.GetTopIndex(), this.Get_AbsoluteColumn(CurPage), this.GetAbsolutePage(CurPage));
 	}
 	else
 	{
-		PageFields = this.Parent.Get_ColumnFields ? this.Parent.Get_ColumnFields(this.Get_Index(), this.Get_AbsoluteColumn(CurPage)) : this.Parent.Get_PageFields(this.private_GetRelativePageIndex(CurPage));
+		PageFields = this.Parent.Get_ColumnFields ? this.Parent.Get_ColumnFields(this.Get_Index(), this.Get_AbsoluteColumn(CurPage), this.GetAbsolutePage(CurPage)) : this.Parent.Get_PageFields(this.private_GetRelativePageIndex(CurPage));
 	}
 
     var Ranges = PRS.Ranges;
@@ -3063,18 +3064,14 @@ CParagraphRecalculateStateWrap.prototype =
 
 			var NumPr = ParaPr.NumPr;
 
+			if (NumPr && (undefined === NumPr.NumId || 0 === NumPr.NumId || "0" === NumPr.NumId))
+				NumPr = undefined;
+
+			if (oPrevNumPr && (undefined === oPrevNumPr.NumId || 0 === oPrevNumPr.NumId || "0" === oPrevNumPr.NumId || undefined === oPrevNumPr.Lvl))
+				oPrevNumPr = undefined;
+
 			var isHaveNumbering = false;
-			if ((undefined === Para.Get_SectionPr()
-				|| true !== Para.IsEmpty())
-				&& ((NumPr
-				&& undefined !== NumPr.NumId
-				&& 0 !== NumPr.NumId
-				&& "0" !== NumPr.NumId)
-				|| (oPrevNumPr
-				&& undefined !== oPrevNumPr.NumId
-				&& undefined !== oPrevNumPr.Lvl
-				&& 0 !== oPrevNumPr.NumId
-				&& "0" !== oPrevNumPr.NumId)))
+			if ((undefined === Para.Get_SectionPr() || true !== Para.IsEmpty()) && (NumPr || oPrevNumPr))
 			{
 				isHaveNumbering = true;
 			}

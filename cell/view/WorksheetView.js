@@ -924,7 +924,6 @@
 			t.cellCommentator.updateActiveComment();
             t.cellCommentator.updateAreaComments();
             if (t.objectRender) {
-                t.objectRender.updateSizeDrawingObjects({target: c_oTargetType.ColumnResize, col: col});
                 if(bIsHidden !==  t.model.getColHidden(col)) {
                     t.objectRender.rebuildChartGraphicObjects([new asc_Range(col, 0, col, gc_nMaxRow0)]);
                 }
@@ -987,7 +986,6 @@
 			t.cellCommentator.updateActiveComment();
 			t.cellCommentator.updateAreaComments();
             if (t.objectRender) {
-                t.objectRender.updateSizeDrawingObjects({target: c_oTargetType.RowResize, row: row});
 				t.objectRender.rebuildChartGraphicObjects([new asc_Range(0, row, gc_nMaxCol0, row)]);
             }
 			if (viewMode) {
@@ -1971,14 +1969,16 @@
 		//this.fitToPages(1, 1);
 
 		var range, maxCell, t = this;
-		var printArea = !ignorePrintArea && this.model.workbook.getDefinesNames("Print_Area", this.model.getId());
+		var _printArea = this.model.workbook.getDefinesNames("Print_Area", this.model.getId());
+		var printArea = !ignorePrintArea && _printArea;
 
+		this.recalcPrintScale();
 		//this.model.PagePrintOptions.pageSetup.scale  = 145;
 
 		var getPrintAreaRanges = function() {
 			var res = false;
 			AscCommonExcel.executeInR1C1Mode(false, function () {
-				res = AscCommonExcel.getRangeByRef(printArea.ref, t.model, true, true)
+				res = AscCommonExcel.getRangeByRef(printArea.ref, t.model, true, true, true)
 			});
 			return res && res.length ? res : null;
 		};
@@ -1991,10 +1991,10 @@
 		}
 
 		var printAreaRanges = !printOnlySelection && printArea ? getPrintAreaRanges() : null;
+		var pageSetup = pageOptions.asc_getPageSetup();
+		var fitToWidth = pageSetup.asc_getFitToWidth();
+		var fitToHeight = pageSetup.asc_getFitToHeight();
 		if (printOnlySelection) {
-			var pageSetup = pageOptions.asc_getPageSetup();
-			var fitToWidth = pageSetup.asc_getFitToWidth();
-			var fitToHeight = pageSetup.asc_getFitToHeight();
 			var tempPrintScale;
 			//подменяем scale на временный для печати выделенной области
 			if(fitToWidth || fitToHeight) {
@@ -2052,7 +2052,13 @@
 			maxRow = Math.max(maxRow, maxCell.row);
 
 			range = new asc_Range(0, 0, maxCol, maxRow);
-			this._calcPagesPrint(range, pageOptions, indexWorksheet, arrPages);
+
+			//подменяем scale на временный для печати выделенной области
+			if(_printArea && ignorePrintArea && (fitToWidth || fitToHeight)) {
+				tempPrintScale = this.calcPrintScale(fitToWidth, fitToHeight, null, ignorePrintArea);
+			}
+
+			this._calcPagesPrint(range, pageOptions, indexWorksheet, arrPages, tempPrintScale);
 		}
 
 		if(this.groupWidth || this.groupHeight) {
@@ -2065,7 +2071,7 @@
 	WorksheetView.prototype.drawForPrint = function (drawingCtx, printPagesData, indexPrintPage, countPrintPages) {
 
 		var t = this;
-    	this.stringRender.fontNeedUpdate = true;
+		this.stringRender.fontNeedUpdate = true;
 		if (null === printPagesData) {
 			// Напечатаем пустую страницу
 			drawingCtx.BeginPage(c_oAscPrintDefaultSettings.PageWidth, c_oAscPrintDefaultSettings.PageHeight);
@@ -2073,17 +2079,17 @@
 			//draw header/footer
 			this._drawHeaderFooter(drawingCtx, printPagesData, indexPrintPage, countPrintPages);
 
-            if(window['Asc']['editor'].watermarkDraw)
-            {
-                window['Asc']['editor'].watermarkDraw.zoom = 1;//this.worksheet.objectRender.zoom.current;
-                window['Asc']['editor'].watermarkDraw.Generate();
-                window['Asc']['editor'].watermarkDraw.StartRenderer();
-                window['Asc']['editor'].watermarkDraw.DrawOnRenderer(drawingCtx.DocumentRenderer, c_oAscPrintDefaultSettings.PageWidth, c_oAscPrintDefaultSettings.PageHeight);
-                window['Asc']['editor'].watermarkDraw.EndRenderer();
-            }
-            drawingCtx.EndPage();
-        } else {
-            drawingCtx.BeginPage(printPagesData.pageWidth, printPagesData.pageHeight);
+			if(window['Asc']['editor'].watermarkDraw)
+			{
+				window['Asc']['editor'].watermarkDraw.zoom = 1;//this.worksheet.objectRender.zoom.current;
+				window['Asc']['editor'].watermarkDraw.Generate();
+				window['Asc']['editor'].watermarkDraw.StartRenderer();
+				window['Asc']['editor'].watermarkDraw.DrawOnRenderer(drawingCtx.DocumentRenderer, c_oAscPrintDefaultSettings.PageWidth, c_oAscPrintDefaultSettings.PageHeight);
+				window['Asc']['editor'].watermarkDraw.EndRenderer();
+			}
+			drawingCtx.EndPage();
+		} else {
+			drawingCtx.BeginPage(printPagesData.pageWidth, printPagesData.pageHeight);
 
 			//TODO для печати не нужно учитывать размер группы
 			if(this.groupWidth || this.groupHeight) {
@@ -2095,18 +2101,37 @@
 			//draw header/footer
 			this._drawHeaderFooter(drawingCtx, printPagesData, indexPrintPage, countPrintPages);
 
-            var clipLeft, clipTop, clipWidth, clipHeight;
-            var doDraw = function(range, titleWidth, titleHeight) {
+			var clipLeft, clipTop, clipWidth, clipHeight;
+			var doDraw = function(range, titleWidth, titleHeight) {
 				//TODO пересмотреть условие printScale < 1 ? printScale
 				drawingCtx.AddClipRect(clipLeft, clipTop, clipWidth / (printScale < 1 ? printScale : 1), clipHeight / (printScale < 1 ? printScale : 1));
-				
+
+
 				var offsetCols = printPagesData.startOffsetPx;
+				var range = printPagesData.pageRange;
 				var offsetX = t._getColLeft(range.c1) - printPagesData.leftFieldInPx + offsetCols - titleWidth;
 				var offsetY = t._getRowTop(range.r1) - printPagesData.topFieldInPx - titleHeight;
 
 				var tmpVisibleRange = t.visibleRange;
 				// Сменим visibleRange для прохождения проверок отрисовки
 				t.visibleRange = range;
+
+
+				// Нужно отрисовать заголовки
+				if (printPagesData.pageHeadings) {
+					t._drawColumnHeaders(drawingCtx, range.c1, range.c2, /*style*/ undefined, offsetX,
+						printPagesData.topFieldInPx - t.cellsTop);
+					t._drawRowHeaders(drawingCtx, range.r1, range.r2, /*style*/ undefined,
+						printPagesData.leftFieldInPx - t.cellsLeft, offsetY);
+				}
+
+				var leftHeading = printPagesData.pageHeadings ? t.cellsLeft : 0;
+				var topHeading = printPagesData.pageHeadings ? t.cellsTop : 0;
+				var clipContentLeft = printPagesData.pageClipRectLeft + leftHeading;
+				var clipContentTop = printPagesData.pageClipRectTop + topHeading;
+				var clipContentWidth = t.getCellLeft(range.c2 + 1, 0) - t.cellsLeft;
+				var clipContentHeight = t.getCellTop(range.r2 + 1, 0) - t.cellsTop;
+				drawingCtx.AddClipRect(clipContentLeft, clipContentTop, clipContentWidth, clipContentHeight);
 
 				// Рисуем сетку
 				if (printPagesData.pageGridLines) {
@@ -2121,28 +2146,39 @@
 				// Отрисовываем ячейки и бордеры
 				t._drawCellsAndBorders(drawingCtx, range, offsetX, offsetY);
 
-				//Отрисовываем панель группировки по строкам
-				//this._drawGroupData(drawingCtx, null, offsetX, offsetY);
+				drawingCtx.RemoveClipRect();
 
-				var oldRange = printPagesData.pageRange;
-				printPagesData.pageRange = range;
+				if (transformMatrix) {
+					drawingCtx.setTransform(transformMatrix.sx, transformMatrix.shy, transformMatrix.shx,
+						transformMatrix.sy, transformMatrix.tx, transformMatrix.ty);
+				}
+				t.usePrintScale = false;
+
+				//Отрисовываем панель группировки по строкам
+				//t._drawGroupData(drawingCtx, null, offsetX, offsetY);
+
 				var drawingPrintOptions = {
 					ctx: drawingCtx, printPagesData: printPagesData, titleWidth: titleWidth, titleHeight: titleHeight
 				};
+				var oOldBaseTransform = drawingCtx.DocumentRenderer.m_oBaseTransform;
+				var oBaseTransform = new AscCommon.CMatrix();
+				oBaseTransform.sx = printScale;
+				oBaseTransform.sy = printScale;
 
+				oBaseTransform.tx = asc_getcvt(0/*mm*/, 3/*px*/, t._getPPIX()) * (printPagesData.pageClipRectLeft + (printPagesData.leftFieldInPx - printPagesData.pageClipRectLeft) * printScale) - (t.getCellLeft(range.c1, 3) - t.getCellLeft(0, 3)) * printScale;
+				oBaseTransform.ty = asc_getcvt(0/*mm*/, 3/*px*/, t._getPPIX()) * (printPagesData.pageClipRectTop + (printPagesData.topFieldInPx - printPagesData.pageClipRectTop) * printScale) - (t.getCellTop(range.r1, 3) - t.getCellTop(0, 3)) * printScale;
+
+				drawingCtx.AddClipRect(printPagesData.pageClipRectLeft + (printPagesData.leftFieldInPx - printPagesData.pageClipRectLeft)*printScale,
+					printPagesData.pageClipRectTop + (printPagesData.topFieldInPx - printPagesData.pageClipRectTop)*printScale,
+					printPagesData.pageClipRectWidth*(printScale < 1 ? printScale : 1) ,
+					printPagesData.pageClipRectHeight*(printScale < 1 ? printScale : 1));
+
+				drawingCtx.DocumentRenderer.SetBaseTransform(oBaseTransform);
 				t.objectRender.showDrawingObjectsEx(false, null, drawingPrintOptions);
-				printPagesData.pageRange = oldRange;
+				drawingCtx.DocumentRenderer.SetBaseTransform(oOldBaseTransform);
+				t.visibleRange = tmpVisibleRange;
 
 				drawingCtx.RemoveClipRect();
-
-				// Нужно отрисовать заголовки
-				if (printPagesData.pageHeadings) {
-					t._drawColumnHeaders(drawingCtx, range.c1, range.c2, /*style*/ undefined, offsetX,
-						printPagesData.topFieldInPx - t.cellsTop);
-					t._drawRowHeaders(drawingCtx, range.r1, range.r2, /*style*/ undefined,
-						printPagesData.leftFieldInPx - t.cellsLeft, offsetY);
-				}
-
 				t.visibleRange = tmpVisibleRange;
 			};
 
@@ -2164,7 +2200,7 @@
 			if(printPagesData.titleRowRange || printPagesData.titleColRange) {
 				var cellsLeft = printPagesData.pageHeadings ? this.cellsLeft : 0;
 				var cellsTop = printPagesData.pageHeadings ? this.cellsTop : 0;
-            	if(printPagesData.titleRowRange && printPagesData.titleColRange){
+				if(printPagesData.titleRowRange && printPagesData.titleColRange){
 					clipLeft = printPagesData.pageClipRectLeft + cellsLeft;
 					clipTop =  printPagesData.pageClipRectTop + cellsTop;
 					clipWidth = printPagesData.titleWidth + cellsLeft;
@@ -2196,7 +2232,7 @@
 				clipTop =  printPagesData.pageClipRectTop;
 				clipWidth = printPagesData.pageClipRectWidth;
 				clipHeight = printPagesData.pageClipRectHeight;
-            	doDraw(printPagesData.pageRange, 0, 0);
+				doDraw(printPagesData.pageRange, 0, 0);
 			}
 
 			if (transformMatrix) {
@@ -2211,19 +2247,21 @@
 				this._calcHeaderRowHeight();
 			}
 
+			drawingCtx.RemoveClipRect();
 
-            if(window['Asc']['editor'].watermarkDraw)
-            {
-                window['Asc']['editor'].watermarkDraw.zoom = 1;//this.worksheet.objectRender.zoom.current;
-                window['Asc']['editor'].watermarkDraw.Generate();
-                window['Asc']['editor'].watermarkDraw.StartRenderer();
-                window['Asc']['editor'].watermarkDraw.DrawOnRenderer(drawingCtx.DocumentRenderer, printPagesData.pageWidth,
-                    printPagesData.pageHeight);
-                window['Asc']['editor'].watermarkDraw.EndRenderer();
-            }
-            drawingCtx.EndPage();
-        }
-    };
+			if(window['Asc']['editor'].watermarkDraw)
+			{
+				window['Asc']['editor'].watermarkDraw.zoom = 1;//this.worksheet.objectRender.zoom.current;
+				window['Asc']['editor'].watermarkDraw.Generate();
+				window['Asc']['editor'].watermarkDraw.StartRenderer();
+				window['Asc']['editor'].watermarkDraw.DrawOnRenderer(drawingCtx.DocumentRenderer, printPagesData.pageWidth,
+					printPagesData.pageHeight);
+				window['Asc']['editor'].watermarkDraw.EndRenderer();
+			}
+			this.stringRender.resetTransform(drawingCtx);
+			drawingCtx.EndPage();
+		}
+	};
 
 	WorksheetView.prototype.fitOnOnePage = function(val) {
 		//TODO add constant!
@@ -2257,11 +2295,20 @@
 	};
 
 	//пересчитывать необходимо когда после открытия зашли в настройки печати
-	WorksheetView.prototype.recalcScale = function () {
-		var pageOptions = t.model.PagePrintOptions;
-		var width = pageOptions.asc_getFitToWidth();
-		var height = pageOptions.asc_getFitToHeight();
-		this._setPrintScale(this.calcPrintScale(width, height));
+	WorksheetView.prototype.recalcPrintScale = function () {
+		var pageOptions = this.model.PagePrintOptions;
+		var pageSetup = pageOptions.asc_getPageSetup();
+		var width = pageSetup.asc_getFitToWidth();
+		var height = pageSetup.asc_getFitToHeight();
+
+		if(!height && !width) {
+			return;
+		}
+
+		var calcScale = this.calcPrintScale(width, height);
+		if(!isNaN(calcScale)) {
+			this._setPrintScale(calcScale);
+		}
 
 		//TODO нужно ли в данном случае лочить?
 		//this._isLockedLayoutOptions(callback);
@@ -2339,13 +2386,19 @@
 			height = 0;
 		}
 
-		var fitToWidthModel = pageSetup.asc_getFitToWidth();
+		var fitToPageModel = this.model.sheetPr ? this.model.sheetPr.FitToPage : null;
+		var fitToHeightAuto = height === 0 || height === undefined;
+		var fitToWidthAuto = width === 0 || width === undefined;
+		var changedFitToPage = (!fitToHeightAuto || !fitToWidthAuto) !== fitToPageModel;
+
+		var fitToWidthModel = pageSetup.fitToWidth;
 		var changedWidth = width !== fitToWidthModel;
-		var fitToHeightModel = pageSetup.asc_getFitToHeight();
+		var fitToHeightModel = pageSetup.fitToHeight;
 		var changedHeight = height !== fitToHeightModel;
+
 		var changedScale = scale && scale !== pageSetup.asc_getScale();
 
-		if(changedWidth || changedHeight || changedScale) {
+		if(changedWidth || changedHeight || changedScale || changedFitToPage) {
 			History.Create_NewPoint();
 			History.StartTransaction();
 
@@ -2393,12 +2446,19 @@
 	};
 
 	WorksheetView.prototype._changeFitToPage = function(width, height) {
-		var fitToHeightAuto = height === 0;
-		var fitToWidthAuto = width === 0;
+		var fitToHeightAuto = height === 0 || height === undefined;
+		var fitToWidthAuto = width === 0 || width === undefined;
 		this.model.setFitToPage(!fitToHeightAuto || !fitToWidthAuto);
 	};
 
-	WorksheetView.prototype.calcPrintScale = function(width, height, bSelection) {
+	WorksheetView.prototype.calcPrintScale = function(width, height, bSelection, ignorePrintArea) {
+		//TODO для печати не нужно учитывать размер группы
+		if(this.groupWidth || this.groupHeight) {
+			this.ignoreGroupSize = true;
+			this._calcHeaderColumnWidth();
+			this._calcHeaderRowHeight();
+		}
+
 		var pageOptions = this.model.PagePrintOptions;
 		var pageMargins, pageSetup, pageGridLines, pageHeadings;
 		if (pageOptions) {
@@ -2511,8 +2571,9 @@
 		var calcScaleByRanges = function(ranges) {
 			var tempWScale = null, tempHScale = null;
 			for(var i = 0; i < ranges.length; i++) {
-				tempWScale = doCalcScaleWidth(ranges[i].c1, ranges[i].c2);
-				tempHScale = doCalcScaleHeight(ranges[i].r1, ranges[i].r2);
+				var range = ranges[i].bbox ? ranges[i].bbox : ranges[i];
+				tempWScale = doCalcScaleWidth(range.c1, range.c2);
+				tempHScale = doCalcScaleHeight(range.r1, range.r2);
 				if(!wScale || (tempWScale && wScale > tempWScale)) {
 					wScale = tempWScale;
 				}
@@ -2526,7 +2587,7 @@
 			calcScaleByRanges(this._getSelection().ranges);
 		} else {
 			//TODO ignorePrintArea - необходимо протащить флаг!
-			var printArea = /*!ignorePrintArea &&*/ this.model.workbook.getDefinesNames("Print_Area", this.model.getId());
+			var printArea = !ignorePrintArea && this.model.workbook.getDefinesNames("Print_Area", this.model.getId());
 			var getPrintAreaRanges = function() {
 				var res = false;
 				AscCommonExcel.executeInR1C1Mode(false, function () {
@@ -2574,6 +2635,12 @@
 		}
 		if(minScale > 100) {
 			minScale = 100;
+		}
+
+		if(this.groupWidth || this.groupHeight) {
+			this.ignoreGroupSize = false;
+			this._calcHeaderColumnWidth();
+			this._calcHeaderRowHeight();
 		}
 
 		return minScale;
@@ -2991,25 +3058,31 @@
 				str.text = getFragmentText(portion[i].text);
 				str.format = portion[i].format.clone();
 				//TODO уменьшаю только размер текста. пересмотреть!
-				str.format.fs = AscCommonExcel.g_oDefaultFormat.Font.fs * printScale;
+				var fSize = str.format.fs ? str.format.fs : AscCommonExcel.g_oDefaultFormat.Font.fs;
+				str.format.fs = fSize * printScale;
 				res.push(str);
 			}
 			return res;
 		};
 
+		var vector_koef = AscCommonExcel.vector_koef / this.getZoom();
+		if (AscCommon.AscBrowser.isRetina) {
+			vector_koef /= AscCommon.AscBrowser.retinaPixelRatio;
+		}
+
 		var scaleWithDoc = this.model.headerFooter.getScaleWithDoc();
 		var printScale = (scaleWithDoc === null || scaleWithDoc === true) ? this.getPrintScale() : 1;
 
 		var margins = this.model.PagePrintOptions.asc_getPageMargins();
-		var width = printPagesData.pageWidth / AscCommonExcel.vector_koef;
-		var height = printPagesData.pageHeight / AscCommonExcel.vector_koef;
+		var width = printPagesData.pageWidth / vector_koef;
+		var height = printPagesData.pageHeight / vector_koef;
 
 		//это стандартный маргин для случая, если alignWithMargins = true
 		//TODO необходимо перепроверить размер маргина
 		var defaultMargin = 17.8;
 		var alignWithMargins = this.model.headerFooter.getAlignWithMargins();
-		var left =  alignWithMargins ? margins.left / AscCommonExcel.vector_koef : defaultMargin / AscCommonExcel.vector_koef;
-		var right = alignWithMargins ? margins.right / AscCommonExcel.vector_koef : defaultMargin / AscCommonExcel.vector_koef;
+		var left =  alignWithMargins ? margins.left / vector_koef : defaultMargin / vector_koef;
+		var right = alignWithMargins ? margins.right / vector_koef : defaultMargin / vector_koef;
 		var top = margins.header / AscCommonExcel.vector_koef;
 		var bottom = margins.footer / AscCommonExcel.vector_koef;
 
@@ -4153,8 +4226,20 @@
 			this._calcPagesPrint(range, printOptions, null, printPages, null, null, true);
 		}
 
+		var pageSetupModel = printOptions.asc_getPageSetup();
+		var fitToWidth = pageSetupModel.asc_getFitToWidth();
+		var fitToHeight = pageSetupModel.asc_getFitToHeight();
+		var drawProp;
+		if(fitToWidth >= 1 && fitToHeight >= 1) {
+			return;
+		} else if(fitToWidth >= 1) {
+			drawProp = 1;
+		} else if(fitToHeight >= 1) {
+			drawProp = 2;
+		}
+
 		for (var i = 0, l = printPages.length; i < l; ++i) {
-			this._drawElements(this._drawSelectionElement, printPages[i].pageRange, AscCommonExcel.selectionLineType.Dash, new CColor(0, 0, 0));
+			this._drawElements(this._drawSelectionElement, printPages[i].pageRange, AscCommonExcel.selectionLineType.Dash, new CColor(0, 0, 0), undefined, drawProp);
 		}
 	};
 
@@ -4952,6 +5037,16 @@
         var drawRightSide = oIntersection.c2 === range.c2;
         var drawTopSide = oIntersection.r1 === range.r1;
         var drawBottomSide = oIntersection.r2 === range.r2;
+
+        if(args[4]) {
+        	if(args[4] === 1) {
+				drawLeftSide = false;
+				drawRightSide = false;
+			} else if(args[4] === 2){
+				drawTopSide = false;
+				drawBottomSide = false;
+			}
+		}
 
         var x1 = this._getColLeft(oIntersection.c1) - offsetX;
         var x2 = this._getColLeft(oIntersection.c2 + 1) - offsetX;
@@ -6058,7 +6153,7 @@
 					itRow.setRow(r);
 					var cell;
 					while (cell = itRow.next()) {
-						if (c_oAscMergeType.cols & getMergeType(t.model.getMergedByCell(cell.nRow, cell.nCol))) {
+						if (c_oAscMergeType.rows & getMergeType(t.model.getMergedByCell(cell.nRow, cell.nCol))) {
 							return;
 						}
 						t.updateRowHeightValuePx = (cache && cache[cell.nCol] ? t._updateRowHeight(cache[cell.nCol], r)
@@ -10013,7 +10108,9 @@
         if ( this.objectRender.selectedGraphicObjectsExists() ) {
 			var isIntoShape = this.objectRender.controller.getTargetDocContent();
 			if(bIsCut && isIntoShape) {
-				this.objectRender.controller.remove(-1, undefined, undefined, undefined, undefined);
+                if(isIntoShape.Selection && isIntoShape.Selection.Use) {
+                    this.objectRender.controller.remove(-1, undefined, undefined, undefined, undefined);
+                }
 			} else {
 				this.objectRender.controller.deleteSelectedObjects();
 			}
@@ -10353,6 +10450,14 @@
 					window['AscCommon'].g_specialPasteHelper.Paste_Process_End();
 				}
 			}
+
+			if(prop === "paste") {
+				if(val.needDraw) {
+					t.draw();
+				} else {
+					val.needDraw = true;
+				}
+			}
         };
 
 		if ("paste" === prop) {
@@ -10690,11 +10795,14 @@
 				if (isLargeRange) {
 					t.handlers.trigger("slowOperation", false);
 				}
-				t.isChanged = true;
-				t._cleanCache(arn);
-				t.changeWorksheet("update", {reinitRanges: true});
-				t.objectRender.rebuildChartGraphicObjects(selectData);
-                t.objectRender.showDrawingObjectsEx(true);
+
+				t._updateRange(arn);
+			}
+
+			if(val.needDraw) {
+				t.draw();
+			} else {
+				val.needDraw = true;
 			}
 
 			var oSelection = History.GetSelection();
@@ -14123,7 +14231,7 @@
             }
 
             if (null !== minChangeRow) {
-                t.objectRender.updateSizeDrawingObjects({target: c_oTargetType.RowResize, row: minChangeRow});
+                t.objectRender.updateSizeDrawingObjects({target: c_oTargetType.RowResize, row: minChangeRow}, true);
             }
         };
 		if (!window['AscCommonExcel'].filteringMode) {
@@ -14194,7 +14302,7 @@
             }
 
             if (null !== minChangeRow) {
-                t.objectRender.updateSizeDrawingObjects({target: c_oTargetType.RowResize, row: minChangeRow});
+                t.objectRender.updateSizeDrawingObjects({target: c_oTargetType.RowResize, row: minChangeRow}, true);
             }
         };
 		if (!window['AscCommonExcel'].filteringMode) {
@@ -14300,7 +14408,7 @@
                 }
 
                 if (null !== minChangeRow) {
-                    t.objectRender.updateSizeDrawingObjects({target: c_oTargetType.RowResize, row: minChangeRow});
+                    t.objectRender.updateSizeDrawingObjects({target: c_oTargetType.RowResize, row: minChangeRow}, true);
                 }
             }
 
@@ -14338,6 +14446,11 @@
 		}
 
 		var sortProps = t.model.autoFilters.getPropForSort(cellId, ar, displayName);
+		if(bIsExpandRange && sortProps && sortProps.curFilter && sortProps.curFilter.isAutoFilter()) {
+			//в случае расширения диапазона если мы находимся внутри а/ф игнорируются натройки
+			sortProps = null;
+		}
+
 		var expandRange;
 		var selectionRange = t.model.selectionRange;
 		var activeCell = selectionRange.activeCell.clone();
@@ -15601,7 +15714,7 @@
 					if(checkShift(table.Ref)) {
 						//сдвиг диапазона вниз
 						lockRange = Asc.Range(table.Ref.c1, table.Ref.r2 + 1, table.Ref.c2, gc_nMaxRow0);
-						res = table.Ref;
+						res = Asc.Range(table.Ref.c1, table.Ref.r1, table.Ref.c2, table.Ref.r2 + 1);
 					} else if(!this.model.autoFilters._isEmptyRange(range, 0)){
 						sendError();
 						res = false;
@@ -16309,6 +16422,7 @@
 
 			History.EndTransaction();
 
+			t.recalcPrintScale();
 			t.changeViewPrintLines(true);
 
 			if(t.viewPrintLines) {
@@ -16336,6 +16450,7 @@
 
 			History.EndTransaction();
 
+			t.recalcPrintScale();
 			t.changeViewPrintLines(true);
 
 			if(t.viewPrintLines) {
@@ -16367,6 +16482,7 @@
 
 			History.EndTransaction();
 
+			t.recalcPrintScale();
 			t.changeViewPrintLines(true);
 
 			if(t.viewPrintLines) {
@@ -16389,6 +16505,7 @@
 			History.StartTransaction();
 
 			callback(val);
+			t.recalcPrintScale();
 			t.changeViewPrintLines(true);
 
 			History.EndTransaction();
@@ -16415,6 +16532,7 @@
 			}
 
 			t.savePageOptions(obj, viewMode);
+			t.recalcPrintScale();
 			t.changeViewPrintLines(true);
 
 			if(t.viewPrintLines) {
@@ -16451,6 +16569,7 @@
 
 			pageOptions.asc_setOptions(obj);
 
+			t.recalcPrintScale();
 			t.changeViewPrintLines(true);
 			//window["Asc"]["editor"]._onUpdateLayoutMenu(this.model.nSheetId);
 
@@ -16529,6 +16648,7 @@
 						oldRef = oldDefName.asc_getRef();
 						newRef = getRangesStr(t.model.selectionRange.ranges, oldRef);
 						newDefName = new Asc.asc_CDefName("Print_Area", newRef, oldScope, false, null, null, true);
+						t.recalcPrintScale();
 						t.changeViewPrintLines(true);
 						wb.editDefinedNames(oldDefName, newDefName);
 					}
@@ -16550,7 +16670,7 @@
 
             var areaRefsArr;
 			AscCommonExcel.executeInR1C1Mode(false, function () {
-				areaRefsArr = AscCommonExcel.getRangeByRef(printArea.ref, t.model, true, true)
+				areaRefsArr = AscCommonExcel.getRangeByRef(printArea.ref, t.model, true, true, true)
 			});
             if(areaRefsArr && areaRefsArr.length) {
 				res = true;
@@ -18306,10 +18426,6 @@
 		var t = this;
 
 		var oRecalcType = AscCommonExcel.recalcType.recalc;
-		var reinitRanges = false;
-		var updateDrawingObjectsInfo = null;
-		var updateDrawingObjectsInfo2 = null;//{bInsert: false, operType: c_oAscInsertOptions.InsertColumns, updateRange: arn}
-		var isUpdateCols = false, isUpdateRows = false;
 		var lockDraw = false;	// Параметр, при котором не будет отрисовки (т.к. мы просто обновляем информацию на неактивном листе)
 		var arrChangedRanges = [];
 
@@ -18325,16 +18441,7 @@
 		t.cellCommentator.updateAreaComments();
 
 		if (t.objectRender) {
-			if (reinitRanges && t.objectRender.drawingArea) {
-				t.objectRender.drawingArea.reinitRanges();
-			}
-			if (null !== updateDrawingObjectsInfo) {
-				t.objectRender.updateSizeDrawingObjects(updateDrawingObjectsInfo);
-			}
-			if (null !== updateDrawingObjectsInfo2) {
-				t.objectRender.updateDrawingObject(updateDrawingObjectsInfo2.bInsert,
-					updateDrawingObjectsInfo2.operType, updateDrawingObjectsInfo2.updateRange);
-			}
+			t._updateDrawingArea();
 			t.model.onUpdateRanges(arrChangedRanges);
 			t.objectRender.rebuildChartGraphicObjects(arrChangedRanges);
 		}
@@ -18350,18 +18457,9 @@
 			t._updateGroups(true, undefined, undefined, true);
 		}
 
-
 		t.draw(lockDraw);
 
 		t.handlers.trigger("reinitializeScroll", AscCommonExcel.c_oAscScrollType.ScrollVertical | AscCommonExcel.c_oAscScrollType.ScrollHorizontal);
-
-		if (isUpdateCols) {
-			t._updateVisibleColsCount();
-		}
-		if (isUpdateRows) {
-			t._updateVisibleRowsCount();
-		}
-
 		t.handlers.trigger("selectionChanged");
 		t.handlers.trigger("selectionMathInfoChanged", t.getSelectionMathInfo());
 	};
@@ -18614,13 +18712,13 @@
 				break;
 			}
 			case asc.c_oAscHeaderFooterField.date: {
-				curDate = new cDate();
+				curDate = new Asc.cDate();
 				curDateNum = curDate.getExcelDate();
 				res = api.asc_getLocaleExample(AscCommon.getShortDateFormat(), curDateNum);
 				break;
 			}
 			case asc.c_oAscHeaderFooterField.time: {
-				curDate = new cDate();
+				curDate = new Asc.cDate();
 				curDateNum = curDate.getExcelDateWithTime(true) - curDate.getTimezoneOffset()/(60*24);
 				res = api.asc_getLocaleExample(AscCommon.getShortTimeFormat(), curDateNum);
 				break;
@@ -19306,7 +19404,7 @@
 	function CHeaderFooterEditor(idArr, width, pageType) {
 		window.Asc.g_header_footer_editor = this;
 
-		this.parentWidth = width;
+		this.parentWidth = AscBrowser.isRetina ? AscCommon.AscBrowser.convertToRetinaValue(width, true) : width;
 		this.parentHeight = 90;
 		this.pageType = undefined === pageType ? asc.c_oAscHeaderFooterType.odd : pageType;//odd, even, first
 		this.canvas = [];
@@ -19346,6 +19444,7 @@
 			obj.canvas.id = obj.id;
 			obj.canvas.width = t.parentWidth;
 			obj.canvas.height = t.parentHeight;
+			obj.canvas.style.width = AscBrowser.isRetina ? AscCommon.AscBrowser.convertToRetinaValue(t.parentWidth) + "px" : t.parentWidth + "px";
 
 			var curElem = document.getElementById(id);
 			curElem.appendChild(obj.canvas);
@@ -19450,26 +19549,28 @@
 				var fragments = cSection.getFragments();
 				var self = wb;
 				if(!t.cellEditor) {
-					t.cellEditor = new AscCommonExcel.CellEditor(sectionElem, wb.input, wb.fmgrGraphics, wb.m_oFont, /*handlers*/{
-						"closed": function () {
-							self._onCloseCellEditor.apply(self, arguments);
-						}, "updated": function () {
-							self.Api.checkLastWork();
-							self._onUpdateCellEditor.apply(self, arguments);
-						}, /*"gotFocus": function (hasFocus) {
-							self.controller.setFocus(!hasFocus);
-						},*/ "updateEditorState": function (state) {
-							self.handlers.trigger("asc_onEditCell", state);
-						}, "updateEditorSelectionInfo": function (info) {
-							self.handlers.trigger("asc_onEditorSelectionChanged", info);
-						}, "onContextMenu": function (event) {
-							self.handlers.trigger("asc_onContextMenu", event);
-						}, "updateMenuEditorCursorPosition": function(pos, height) {
-							self.handlers.trigger("asc_updateEditorCursorPosition", pos, height);
-						}, "resizeEditorHeight": function () {
-							self.handlers.trigger("asc_resizeEditorHeight");
-						}
-					}, 2, /*settings*/{ menuEditor: true });
+					t.cellEditor =
+						new AscCommonExcel.CellEditor(sectionElem, wb.input, wb.fmgrGraphics, wb.m_oFont, /*handlers*/{
+							"closed": function () {
+								self._onCloseCellEditor.apply(self, arguments);
+							}, "updated": function () {
+								self.Api.checkLastWork();
+								self._onUpdateCellEditor.apply(self, arguments);
+							}, /*"gotFocus": function (hasFocus) {
+							 self.controller.setFocus(!hasFocus);
+							 },*/ "updateEditorState": function (state) {
+								self.handlers.trigger("asc_onEditCell", state);
+							}, "updateEditorSelectionInfo": function (info) {
+								self.handlers.trigger("asc_onEditorSelectionChanged", info);
+							}, "onContextMenu": function (event) {
+								self.handlers.trigger("asc_onContextMenu", event);
+							}, "updateMenuEditorCursorPosition": function (pos, height) {
+								self.handlers.trigger("asc_updateEditorCursorPosition", pos, height);
+							}, "resizeEditorHeight": function () {
+								self.handlers.trigger("asc_resizeEditorHeight");
+							}
+						}, AscCommon.AscBrowser.isRetina ? AscCommon.AscBrowser.convertToRetinaValue(2, true) :
+							2, /*settings*/{menuEditor: true});
 
 					//временно меняем cellEditor у wb
 					wb.cellEditor = t.cellEditor;
@@ -19893,7 +19994,9 @@
 		var section = this.sections[curType];
 
 		if(this.cellEditor) {
-			this.cellEditor.close();
+			if(section[c_nPortionLeft] && section[c_nPortionLeft].canvasObj) {
+				this.click(section[c_nPortionLeft].canvasObj.idParent);
+			}
 		}
 
 		this.curParentFocusId = null;
