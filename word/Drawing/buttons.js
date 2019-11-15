@@ -586,7 +586,9 @@
     AscCommon.CCButtonType = {
         Name : 0,
         Toc : 1,
-        Image : 2
+        Image : 2,
+        Combo : 3,
+        Date : 4
     };
 
     AscCommon.ContentControlTrack = {
@@ -652,33 +654,79 @@
         };
     }
 
-    function CContentControlTrack(_id, _type, _data, _transform, _name, _name_advanced, _button_types, _color)
+    function CContentControlTrack(obj, state, geom)
     {
-        this.id = (undefined == _id) ? -1 : _id;
-        this.type = (undefined == _type) ? -1 : _type;
-        this.color = _color;
+        // native contentControl
+        this.base = obj;
+        this.type = this.base.GetSpecificType();
+        this.state = state;
 
+        this.geom = geom;
         this.rects = undefined;
         this.paths = undefined;
 
-        if (undefined === _data[0].Points)
-            this.rects = _data;
+        if (undefined === geom[0].Points)
+            this.rects = geom;
         else
-            this.paths = _data;
+            this.paths = geom;
 
-        this.transform = (undefined == _transform) ? null : _transform;
+        this.transform = this.base.Get_ParentTextTransform();
 
         this.X = undefined;
         this.Y = undefined;
 
-        this.Name = _name ? _name : "";
-        this.NameButtonAdvanced = _name_advanced ? true : false;
-        this.Buttons = _button_types ? _button_types : [];
+        this.Name = this.base.GetAlias();
+        if (this.base.IsBuiltInTableOfContents && this.base.IsBuiltInTableOfContents())
+            this.Name = AscCommon.translateManager.getValue("Table of Contents");
+        this.NameWidth = 0;
+
+        this.Buttons = [];
+        this.GenerateButtons();
+
+        this.Color = this.base.GetColor();
 
         this.HoverButtonIndex = -2; // -1 => Text, otherwise index in this.Buttons
         this.ActiveButtonIndex = -2; // -1 => Text, otherwise index in this.Buttons
-        this.NameWidth = 0;
     }
+
+    // является ли имя кнопкой
+    CContentControlTrack.prototype.IsNameButton = function()
+    {
+        if (Asc.c_oAscContentControlSpecificType.TOC == this.type)
+            return true;
+        return false;
+    };
+    // генерация кнопок по типу
+    CContentControlTrack.prototype.GenerateButtons = function()
+    {
+        this.Buttons = [];
+        switch (this.type)
+        {
+            case Asc.c_oAscContentControlSpecificType.TOC:
+            {
+                this.Buttons.push(AscCommon.CCButtonType.Toc);
+                break;
+            }
+            case Asc.c_oAscContentControlSpecificType.Picture:
+            {
+                this.Buttons.push(AscCommon.CCButtonType.Image);
+                break;
+            }
+            case Asc.c_oAscContentControlSpecificType.ComboBox:
+            case Asc.c_oAscContentControlSpecificType.DropDownList:
+            {
+                this.Buttons.push(AscCommon.CCButtonType.Combo);
+                break;
+            }
+            case Asc.c_oAscContentControlSpecificType.DateTime:
+            {
+                this.Buttons.push(AscCommon.CCButtonType.Date);
+                break;
+            }
+            default:
+                break;
+        }
+    };
     CContentControlTrack.prototype.getPage = function()
     {
         if (this.rects)
@@ -723,11 +771,7 @@
     };
     CContentControlTrack.prototype.Copy = function()
     {
-        return new CContentControlTrack(this.id, this.type, this.rects ? this.rects : this.paths, this.transform, this.color);
-    };
-    CContentControlTrack.prototype.getColor = function()
-    {
-        return this.color;
+        return new CContentControlTrack(this.base, this.state, this.geom);
     };
 
     function ContentControls(drDocument)
