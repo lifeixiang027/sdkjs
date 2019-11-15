@@ -1310,6 +1310,109 @@ CDocumentRecalcInfo.prototype =
 
 };
 
+function TRange(oElement, Start, End)
+{
+	if (oElement == null)
+		return false;
+	if (Start === undefined)
+		Start = 0;
+	if (End === undefined)
+		End   = oElement.Content.length;
+
+	this.hyperlink			  = null;
+	this.inlinePictures 	  = null;
+	this.isEmpty 			  = true;
+	this.lists 				  = null;
+	this.paragraphs 		  = null;
+	this.parentBody 		  = null;
+	this.parentContentControl = null;
+	this.parentTable 		  = null;
+	this.parentTableCell 	  = null;
+	this.style				  = null;
+	this.tables 			  = null;
+	this.text 				  = null;
+	this.Start 				  = Start;
+	this.End 				  = End;
+	this.StartPos 		 	  = null;
+	this.EndPos 			  = null;
+
+	this.SetStart = function()
+	{
+		if (oElement instanceof CDocument)
+		{
+			var ViewedChars = 0;
+			var AllParagraphsList = oElement.GetAllParagraphs({All : true});
+			point : for (var Index1 = 0; Index1 < AllParagraphsList.length; Index1++)
+			{
+				for (var Index2 = 0; Index2 < AllParagraphsList[Index1].Content.length; Index2++)
+				{
+					for (var Index3 = 0; Index3 < AllParagraphsList[Index1].Content[Index2].Content.length; Index3++)
+					{
+						if (AllParagraphsList[Index1].Content[Index2].Content[Index3] instanceof ParaText)
+						{
+							if (Start === ViewedChars)
+							{
+								var StartRunPos = 
+								{
+									Class : AllParagraphsList[Index1].Content[Index2],
+									Position : Index3,
+								};
+								this.StartPos = AllParagraphsList[Index1].Content[Index2].GetDocumentPositionFromObject();
+								this.StartPos.push(StartRunPos);
+								break point;
+							}
+							ViewedChars += 1;
+						}
+					}
+				}
+			}
+		}
+	}
+	this.SetEnd = function()
+	{
+		if (oElement instanceof CDocument)
+		{
+			var ViewedChars = 0;
+			var AllParagraphsList = oElement.GetAllParagraphs({All : true});
+			point : for (var Index1 = 0; Index1 < AllParagraphsList.length; Index1++)
+			{
+				for (var Index2 = 0; Index2 < AllParagraphsList[Index1].Content.length; Index2++)
+				{
+					for (var Index3 = 0; Index3 < AllParagraphsList[Index1].Content[Index2].Content.length; Index3++)
+					{
+						if (AllParagraphsList[Index1].Content[Index2].Content[Index3] instanceof ParaText)
+						{
+							if (End === ViewedChars)
+							{
+								var EndRunPos = 
+								{
+									Class : AllParagraphsList[Index1].Content[Index2],
+									Position : Index3 + 1,
+								};
+								this.EndPos = AllParagraphsList[Index1].Content[Index2].GetDocumentPositionFromObject();
+								this.EndPos.push(EndRunPos);
+								break point;
+							}
+							ViewedChars += 1;
+						}
+					}
+				}
+			}
+		}
+	}
+};
+TRange.prototype.constructor = TRange;
+TRange.prototype.SetSelection = function()
+{
+	//this.StartPos[0].Class.RemoveSelection();
+	//this.StartPos[0].Class.Selection.Use = true;
+	
+	this.StartPos[0].Class.SetSelectionByContentPositions(this.StartPos, this.EndPos);
+	this.StartPos[0].Class.UpdateSelection();
+	
+}
+
+
 function CDocumentFieldsManager()
 {
 	this.m_aFields = [];
@@ -1318,6 +1421,7 @@ function CDocumentFieldsManager()
 
 	this.m_aComplexFields = [];
 	this.m_oCurrentComplexField = null;
+	
 }
 
 CDocumentFieldsManager.prototype.Register_Field = function(oField)
@@ -1901,7 +2005,7 @@ function CDocument(DrawingDocument, isMainLogicDocument)
 	this.RecalcTableHeader         = false; // Пересчитываем ли сейчас заголовок таблицы
 	this.TrackMoveId               = null;  // Идентификатор переноса внутри рецензирования
 	this.TrackMoveRelocation       = false; // Перенос ранее перенесенного текста внутри рецензирования
-	this.RemoveEmptySelection      = true;  // При обновлении селекта, если он пустой тогда сбрасываем его
+	this.RemoveEmptySelection      = true;  // ��ри обновлении селекта, если он пустой тогда сбрасываем его
 	this.MoveDrawing               = false; // Происходит ли сейчас перенос автофигуры
 
 	// Параметры для случая, когда мы не можем сразу перерисовать треки и нужно перерисовывать их на таймере пересчета
@@ -1988,6 +2092,11 @@ CDocument.prototype.Init                           = function()
 {
 
 };
+CDocument.prototype.GetRange1 = function(Start, End)
+{
+	var RangeT = new TRange(this, Start, End);
+	return RangeT;
+}
 CDocument.prototype.On_EndLoad                     = function()
 {
     // Обновляем информацию о секциях
@@ -11057,7 +11166,7 @@ CDocument.prototype.Set_SelectionState2 = function(State)
 	}
 };
 //----------------------------------------------------------------------------------------------------------------------
-// Функции для работы с комментариями
+// Функц��и для работы с комментариями
 //----------------------------------------------------------------------------------------------------------------------
 CDocument.prototype.AddComment = function(CommentData, isForceGlobal)
 {
