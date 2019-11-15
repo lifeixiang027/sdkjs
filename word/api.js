@@ -500,8 +500,15 @@
 						_content_control_pr.Tag = _current["Props"]["Tag"];
 						_content_control_pr.Lock = c_oAscSdtLockType.Unlocked;
 						_content_control_pr.InternalId = _current["Props"]["InternalId"];
-                        _content_control_pr.Alias = _current["Props"]["Alias"];
+						_content_control_pr.Alias = _current["Props"]["Alias"];
+						
+						_content_control_pr.SectionType = _current["Props"]["SectionType"];
 
+						if (undefined !== _current["Props"]["SectionType"])
+						{
+							LogicDocument.Add_SectionBreak(_content_control_pr.SectionType);
+						}
+						
                         if (undefined !== _current["Props"]["Appearance"])
                             _content_control_pr.Appearance = _current["Props"]["Appearance"];
 
