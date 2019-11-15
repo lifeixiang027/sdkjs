@@ -654,8 +654,11 @@
         };
     }
 
-    function CContentControlTrack(obj, state, geom)
+    function CContentControlTrack(parent, obj, state, geom)
     {
+        // contentControls
+        this.parent = parent;
+
         // native contentControl
         this.base = obj;
         this.type = this.base.GetSpecificType();
@@ -692,14 +695,20 @@
     // является ли имя кнопкой
     CContentControlTrack.prototype.IsNameButton = function()
     {
+        if (this.parent.document.m_oWordControl.m_oApi.isViewMode)
+            return false;
+
         if (Asc.c_oAscContentControlSpecificType.TOC == this.type)
             return true;
+
         return false;
     };
     // генерация кнопок по типу
     CContentControlTrack.prototype.GenerateButtons = function()
     {
         this.Buttons = [];
+
+
         switch (this.type)
         {
             case Asc.c_oAscContentControlSpecificType.TOC:
@@ -771,7 +780,7 @@
     };
     CContentControlTrack.prototype.Copy = function()
     {
-        return new CContentControlTrack(this.base, this.state, this.geom);
+        return new CContentControlTrack(this.parent, this.base, this.state, this.geom);
     };
 
     function ContentControls(drDocument)
@@ -844,9 +853,9 @@
                 var _obj1 = this.ContentControlObjects[i];
                 var _obj2 = this.ContentControlObjectsLast[i];
 
-                if (_obj1.id != _obj2.id)
+                if (_obj1.base.GetId() != _obj2.base.GetId())
                     return true;
-                if (_obj1.type != _obj2.type)
+                if (_obj1.state != _obj2.state)
                     return true;
 
                 if (_obj1.rects && _obj2.rects)
@@ -905,6 +914,7 @@
             return false;
         };
 
+        // отрисовка
         this.DrawContentControlsTrack = function(overlay)
         {
             var ctx = overlay.m_oContext;
@@ -1641,13 +1651,13 @@
             this.ContentControlsSaveLast();
         };
 
-        this.OnDrawContentControl = function(id, type, rects, transform, name, name_advanced, button_types, color)
+        this.OnDrawContentControl = function(obj, state, geom)
         {
             var isActiveRemove = false;
             // всегда должен быть максимум один hover и in
             for (var i = 0; i < this.ContentControlObjects.length; i++)
             {
-                if (type == this.ContentControlObjects[i].type)
+                if (state == this.ContentControlObjects[i].state)
                 {
                     if (-2 != this.ContentControlObjects[i].ActiveButtonIndex)
                         isActiveRemove = true;
@@ -1657,37 +1667,26 @@
                 }
             }
 
-            if (null == id || !rects || rects.length == 0)
+            if (null == obj)
             {
                 if (isActiveRemove)
                     this.document.m_oWordControl.m_oApi.sendEvent("asc_onHideContentControlsActions");
                 return;
             }
 
-            if (type == AscCommon.ContentControlTrack.In)
+            if (this.ContentControlObjects.length != 0 && this.ContentControlObjects[0].base.GetId() == obj.GetId())
             {
-                if (this.ContentControlObjects.length != 0 && this.ContentControlObjects[0].id == id)
-                {
-                    if (-2 != this.ContentControlObjects[0].ActiveButtonIndex)
-                        isActiveRemove = true;
-
-                    this.ContentControlObjects.splice(0, 1);
-                }
-                if (this.document.m_oWordControl.m_oApi.isViewMode)
-                    this.ContentControlObjects.push(new CContentControlTrack(id, type, rects, transform, name, undefined, undefined, color));
-                else
-                    this.ContentControlObjects.push(new CContentControlTrack(id, type, rects, transform, name, name_advanced, button_types, color));
-            }
-            else
-            {
-                if (this.ContentControlObjects.length != 0 && this.ContentControlObjects[0].id == id)
+                if (state === AscCommon.ContentControlTrack.Hover)
                     return;
 
-                if (this.document.m_oWordControl.m_oApi.isViewMode)
-                    this.ContentControlObjects.push(new CContentControlTrack(id, type, rects, transform, name, undefined, undefined, color));
-                else
-                    this.ContentControlObjects.push(new CContentControlTrack(id, type, rects, transform, name, name_advanced, button_types, color));
+                // In
+                if (-2 != this.ContentControlObjects[0].ActiveButtonIndex)
+                    isActiveRemove = true;
+
+                this.ContentControlObjects.splice(0, 1);
             }
+
+            this.ContentControlObjects.push(new CContentControlTrack(this, obj, state, geom));
 
             if (isActiveRemove)
                 this.document.m_oWordControl.m_oApi.sendEvent("asc_onHideContentControlsActions");
