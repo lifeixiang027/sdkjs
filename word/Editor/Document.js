@@ -402,7 +402,7 @@ CSelectedContent.prototype =
             Element.GetAllComments(this.Comments);
             Element.GetAllMaths(this.Maths);
 
-            var nElementType = Element.GetType();
+            var nElementType = Element.GetType();		
 
 			if (type_Paragraph === nElementType && Count > 1)
 				Element.Correct_Content();
@@ -1317,7 +1317,21 @@ function TRange(oElement, Start, End)
 	if (Start === undefined)
 		Start = 0;
 	if (End === undefined)
-		End   = oElement.Content.length;
+	{
+		End = 0;
+		for (var Index1 = 0; Index1 < oElement.Content.length; Index1++)
+		{
+			for (var Index2 = 0; Index2 < oElement.Content[Index1].Content.length; Index2++)
+			{
+				if (oElement.Content[Index1].Content[Index2] instanceof ParaText)
+				{
+					End++;
+				}
+					
+			}
+		}
+	}
+		
 
 	this.hyperlink			  = null;
 	this.inlinePictures 	  = null;
@@ -1331,8 +1345,10 @@ function TRange(oElement, Start, End)
 	this.style				  = null;
 	this.tables 			  = null;
 	this.text 				  = null;
-	this.Start 				  = Start;
-	this.End 				  = End;
+	this.RelativeStart 		  = Start;
+	this.RelativeEnd 		  = End;
+	this.AbsoluteStart 		  = undefined;
+	this.AbsoluteEnd		  = undefined;
 	this.StartPos 		 	  = null;
 	this.EndPos 			  = null;
 
@@ -1340,7 +1356,7 @@ function TRange(oElement, Start, End)
 	{
 		if (oElement instanceof CDocument)
 		{
-			var ViewedChars = 0;
+			var AllViewedChars = 0;
 			var AllParagraphsList = oElement.GetAllParagraphs({All : true});
 			point : for (var Index1 = 0; Index1 < AllParagraphsList.length; Index1++)
 			{
@@ -1350,7 +1366,9 @@ function TRange(oElement, Start, End)
 					{
 						if (AllParagraphsList[Index1].Content[Index2].Content[Index3] instanceof ParaText)
 						{
-							if (Start === ViewedChars)
+							
+
+							if (this.RelativeStart === AllViewedChars)
 							{
 								var StartRunPos = 
 								{
@@ -1361,10 +1379,65 @@ function TRange(oElement, Start, End)
 								this.StartPos.push(StartRunPos);
 								break point;
 							}
-							ViewedChars += 1;
+
+							AllViewedChars += 1;
 						}
 					}
 				}
+			}
+		}
+		else if (oElement instanceof Paragraph)
+		{
+			var Api = editor;
+			var oDocument = Api.GetDocument().Document;
+
+			var AllViewedChars = 0;
+			var ViewedParaChars = 0;
+			var AllParagraphsList = oDocument.GetAllParagraphs({All : true});
+			point : for (var Index1 = 0; Index1 < AllParagraphsList.length; Index1++)
+			{
+				if (AllParagraphsList[Index1].Id === oElement.Id)
+				{
+					for (var Index2 = 0; Index2 < AllParagraphsList[Index1].Content.length; Index2++)
+					{
+						for (var Index3 = 0; Index3 < AllParagraphsList[Index1].Content[Index2].Content.length; Index3++)
+						{
+							if (AllParagraphsList[Index1].Content[Index2].Content[Index3] instanceof ParaText)
+							{
+								
+								if (this.RelativeStart === ViewedParaChars)
+								{
+									var StartRunPos = 
+									{
+										Class : AllParagraphsList[Index1].Content[Index2],
+										Position : Index3,
+									};
+									this.StartPos = AllParagraphsList[Index1].Content[Index2].GetDocumentPositionFromObject();
+									this.StartPos.push(StartRunPos);
+									this.AbsoluteStart = AllViewedChars;
+									break point;
+								}
+
+								AllViewedChars += 1;
+								ViewedParaChars += 1;
+							}
+						}
+					}
+				}
+				else  
+				{
+					for (var Index2 = 0; Index2 < AllParagraphsList[Index1].Content.length; Index2++)
+					{
+						for (var Index3 = 0; Index3 < AllParagraphsList[Index1].Content[Index2].Content.length; Index3++)
+						{
+							if (AllParagraphsList[Index1].Content[Index2].Content[Index3] instanceof ParaText)
+							{
+								AllViewedChars += 1;
+							}
+						}
+					}
+				}
+				
 			}
 		}
 	}
@@ -1372,7 +1445,7 @@ function TRange(oElement, Start, End)
 	{
 		if (oElement instanceof CDocument)
 		{
-			var ViewedChars = 0;
+			var AllViewedChars = 0;
 			var AllParagraphsList = oElement.GetAllParagraphs({All : true});
 			point : for (var Index1 = 0; Index1 < AllParagraphsList.length; Index1++)
 			{
@@ -1382,24 +1455,83 @@ function TRange(oElement, Start, End)
 					{
 						if (AllParagraphsList[Index1].Content[Index2].Content[Index3] instanceof ParaText)
 						{
-							if (End === ViewedChars)
+							AllViewedChars += 1;
+
+							if (this.RelativeEnd === AllViewedChars)
 							{
 								var EndRunPos = 
 								{
 									Class : AllParagraphsList[Index1].Content[Index2],
-									Position : Index3 + 1,
+									Position : Index3 + 2,
 								};
 								this.EndPos = AllParagraphsList[Index1].Content[Index2].GetDocumentPositionFromObject();
 								this.EndPos.push(EndRunPos);
 								break point;
 							}
-							ViewedChars += 1;
+							
 						}
 					}
 				}
 			}
 		}
+		else if (oElement instanceof Paragraph)
+		{
+			var AllViewedChars = 0;
+			var ViewedParaChars = 0;
+
+			var Api = editor;
+			var oDocument = Api.GetDocument().Document;
+
+			var AllParagraphsList = oDocument.GetAllParagraphs({All : true});
+			point : for (var Index1 = 0; Index1 < AllParagraphsList.length; Index1++)
+			{
+				if (AllParagraphsList[Index1].Id === oElement.Id)
+				{
+					for (var Index2 = 0; Index2 < AllParagraphsList[Index1].Content.length; Index2++)
+					{
+						for (var Index3 = 0; Index3 < AllParagraphsList[Index1].Content[Index2].Content.length; Index3++)
+						{
+							if (AllParagraphsList[Index1].Content[Index2].Content[Index3] instanceof ParaText)
+							{
+								AllViewedChars += 1;
+								ViewedParaChars += 1;
+
+								if (this.RelativeEnd === ViewedParaChars)
+								{
+									var EndRunPos = 
+									{
+										Class : AllParagraphsList[Index1].Content[Index2],
+										Position : Index3 + 2,
+									};
+									this.EndPos = AllParagraphsList[Index1].Content[Index2].GetDocumentPositionFromObject();
+									this.EndPos.push(EndRunPos);
+									this.AbsoluteEnd = AllViewedChars;
+									break point;
+									
+								}
+								
+							}
+						}
+					}
+				}
+				else  
+				{
+					for (var Index2 = 0; Index2 < AllParagraphsList[Index1].Content.length; Index2++)
+					{
+						for (var Index3 = 0; Index3 < AllParagraphsList[Index1].Content[Index2].Content.length; Index3++)
+						{
+							if (AllParagraphsList[Index1].Content[Index2].Content[Index3] instanceof ParaText)
+							{
+								AllViewedChars += 1;
+							}
+						}
+					}
+				}
+				
+			}
+		}
 	}
+
 };
 TRange.prototype.constructor = TRange;
 TRange.prototype.SetSelection = function()
@@ -2092,9 +2224,13 @@ CDocument.prototype.Init                           = function()
 {
 
 };
-CDocument.prototype.GetRange1 = function(Start, End)
+CDocument.prototype.GetTRange = function(Start, End)
 {
 	var RangeT = new TRange(this, Start, End);
+	
+	// Расчет абсолютных позиий
+	RangeT.SetStart(); 
+	RangeT.SetEnd();
 	return RangeT;
 }
 CDocument.prototype.On_EndLoad                     = function()

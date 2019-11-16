@@ -11911,6 +11911,7 @@ Paragraph.prototype.Set_SectionPr = function(SectPr, bUpdate)
 		}
 	}
 };
+
 Paragraph.prototype.GetLastRangeVisibleBounds = function()
 {
 	var CurLine = this.Lines.length - 1;
@@ -14274,6 +14275,15 @@ Paragraph.prototype.CheckTrackMoveMarkInSelection = function(isStart)
 	}
 
 	return null;
+};
+Paragraph.prototype.GetTRange = function(Start, End)
+{
+	var RangeT = new TRange(this, Start, End);
+	
+	// Расчет абсолютных позиий
+	RangeT.SetStart(); 
+	RangeT.SetEnd();
+	return RangeT;
 };
 
 var pararecalc_0_All  = 0;
