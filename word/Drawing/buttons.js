@@ -673,27 +673,47 @@
         else
             this.paths = geom;
 
+        this.OffsetX = 0;
+        this.OffsetY = 0;
+
         this.transform = this.base.Get_ParentTextTransform();
+        if (this.transform && this.transform.IsIdentity())
+            this.transform = null;
+        if (this.transform && this.transform.IsIdentity2())
+        {
+            this.OffsetX = this.transform.tx;
+            this.OffsetX = this.transform.ty;
+            this.transform = null;
+        }
+        this.invertTransform = this.transform ? this.transform.Invert() : null;
 
         this.X = undefined;
         this.Y = undefined;
+        this.getXY();
 
         this.Name = this.base.GetAlias();
         if (this.base.IsBuiltInTableOfContents && this.base.IsBuiltInTableOfContents())
             this.Name = AscCommon.translateManager.getValue("Table of Contents");
         this.NameWidth = 0;
 
+        this.NameRect = null;
+        this.MoveRect = null;
         this.Buttons = [];
-        this.GenerateButtons();
+
+        this.CalculateNameRect();
+        this.CalculateMoveRect();
+        this.CalculateButtons();
 
         this.Color = this.base.GetColor();
 
         this.HoverButtonIndex = -2; // -1 => Text, otherwise index in this.Buttons
         this.ActiveButtonIndex = -2; // -1 => Text, otherwise index in this.Buttons
+
+        this.IsNoButtons = this.document.m_oLogicDocument ? this.document.m_oLogicDocument.IsFillingFormMode() : false;
     }
 
     // является ли имя кнопкой
-    CContentControlTrack.prototype.IsNameButton = function()
+    CContentControlTrack.prototype.IsNameAdvanced = function()
     {
         if (this.parent.document.m_oWordControl.m_oApi.isViewMode)
             return false;
@@ -703,11 +723,19 @@
 
         return false;
     };
+    CContentControlTrack.prototype.CalculateNameRect = function()
+    {
+
+    };
+    // расчет области для переноса
+    CContentControlTrack.prototype.CalculateMoveRect = function()
+    {
+
+    };
     // генерация кнопок по типу
-    CContentControlTrack.prototype.GenerateButtons = function()
+    CContentControlTrack.prototype.CalculateButtons = function()
     {
         this.Buttons = [];
-
 
         switch (this.type)
         {
@@ -746,37 +774,37 @@
     };
     CContentControlTrack.prototype.getXY = function()
     {
-        if (undefined === this.X && undefined === this.Y)
+        if (undefined !== this.X && undefined !== this.Y)
+            return;
+
+        if (this.rects)
         {
-            if (this.rects)
+            this.X = this.rects[0].X;
+            this.Y = this.rects[0].Y;
+        }
+        else if (this.paths)
+        {
+            var _points = this.paths[0].Points;
+            this.Y = _points[0].Y;
+
+            // берем самую верхнюю точку
+            for (var i = 1; i < _points.length; i++)
             {
-                this.X = this.rects[0].X;
-                this.Y = this.rects[0].Y;
+                if (this.Y > _points[i].Y)
+                    this.Y = _points[i].Y;
             }
-            else if (this.paths)
+
+            // берем самую левую из верхних
+            this.X = 1000000000;
+            for (var i = 0; i < _points.length; i++)
             {
-                var _points = this.paths[0].Points;
-                this.Y = _points[0].Y;
-
-                for (var i = 1; i < _points.length; i++)
+                if (Math.abs(this.Y - _points[i].Y) < 0.0001)
                 {
-                    if (this.Y > _points[i].Y)
-                        this.Y = _points[i].Y;
-                }
-
-                this.X = 1000000000;
-                for (var i = 0; i < _points.length; i++)
-                {
-                    if (Math.abs(this.Y - _points[i].Y) < 0.0001)
-                    {
-                        if (this.X > _points[i].X)
-                            this.X = _points[i].X;
-                    }
+                    if (this.X > _points[i].X)
+                        this.X = _points[i].X;
                 }
             }
         }
-
-        return { X : this.X, Y : this.Y };
     };
     CContentControlTrack.prototype.Copy = function()
     {
@@ -812,9 +840,6 @@
         {
             if (!this.measures[text])
                 this.measures[text] = [0, 0];
-
-            if (not_cache)
-                return ctx.measureText(text).width;
 
             var arr = this.measures[text];
             var index = AscCommon.AscBrowser.isRetina ? 1 : 0;
@@ -1692,6 +1717,24 @@
                 this.document.m_oWordControl.m_oApi.sendEvent("asc_onHideContentControlsActions");
         };
 
+        this.checkSmallChanges = function(pos)
+        {
+            if (!this.ContentControlSmallChangesCheck.IsSmall)
+                return;
+
+            if (pos.Page != this.ContentControlSmallChangesCheck.Page ||
+                Math.abs(pos.X - this.ContentControlSmallChangesCheck.X) > this.ContentControlSmallChangesCheck.Min ||
+                Math.abs(pos.Y - this.ContentControlSmallChangesCheck.Y) > this.ContentControlSmallChangesCheck.Min)
+            {
+                this.ContentControlSmallChangesCheck.IsSmall = false;
+            }
+        };
+
+        this.isInlineTrack = function()
+        {
+            return (this.ContentControlObjectState == 1) ? true : false;
+        };
+
         this.onPointerDown = function(pos)
         {
             var oWordControl = this.document.m_oWordControl;
@@ -1844,24 +1887,6 @@
             }
 
             return false;
-        };
-
-        this.checkSmallChanges = function(pos)
-        {
-            if (!this.ContentControlSmallChangesCheck.IsSmall)
-                return;
-
-            if (pos.Page != this.ContentControlSmallChangesCheck.Page ||
-                Math.abs(pos.X - this.ContentControlSmallChangesCheck.X) > this.ContentControlSmallChangesCheck.Min ||
-                Math.abs(pos.Y - this.ContentControlSmallChangesCheck.Y) > this.ContentControlSmallChangesCheck.Min)
-            {
-                this.ContentControlSmallChangesCheck.IsSmall = false;
-            }
-        };
-
-        this.isInlineTrack = function()
-        {
-            return (this.ContentControlObjectState == 1) ? true : false;
         };
 
         this.onPointerMove = function(pos)
