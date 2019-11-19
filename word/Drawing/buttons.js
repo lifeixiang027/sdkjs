@@ -1454,6 +1454,8 @@
                             ctx.rect(_x, _y, widthHeader, 20);
                             ctx.stroke();
                             ctx.beginPath();
+
+                            // есть ли комбо-кнопка?
                         }
                         else
                         {
