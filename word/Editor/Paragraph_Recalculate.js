@@ -34,6 +34,7 @@
 
 // Import
 var g_oTextMeasurer = AscCommon.g_oTextMeasurer;
+var c_oAscSectionBreakType    = Asc.c_oAscSectionBreakType;
 
 // TODO: В колонтитулах быстрые пересчеты отключены. Надо реализовать.
 
@@ -404,6 +405,9 @@ Paragraph.prototype.Recalculate_Page = function(CurPage)
     this.private_CheckColumnBreak(CurPage);
 
     this.Parent.RecalcInfo.Reset_WidowControl();
+
+    if (recalcresult_NextElement === RecalcResult && window['AscCommon'].g_specialPasteHelper && window['AscCommon'].g_specialPasteHelper.showButtonIdParagraph === this.GetId())
+		window['AscCommon'].g_specialPasteHelper.SpecialPasteButtonById_Show();
 
     return RecalcResult;
 };
@@ -1555,11 +1559,11 @@ Paragraph.prototype.private_RecalculateLineCheckRanges = function(CurLine, CurPa
     if (this.bFromDocument && PRS.GetTopDocument() === this.LogicDocument && !PRS.IsInTable())
 	{
 		// Заглушка для случая, когда параграф лежит в CBlockLevelSdt
-		PageFields = this.LogicDocument.Get_ColumnFields(PRS.GetTopIndex(), this.Get_AbsoluteColumn(CurPage));
+		PageFields = this.LogicDocument.Get_ColumnFields(PRS.GetTopIndex(), this.Get_AbsoluteColumn(CurPage), this.GetAbsolutePage(CurPage));
 	}
 	else
 	{
-		PageFields = this.Parent.Get_ColumnFields ? this.Parent.Get_ColumnFields(this.Get_Index(), this.Get_AbsoluteColumn(CurPage)) : this.Parent.Get_PageFields(this.private_GetRelativePageIndex(CurPage));
+		PageFields = this.Parent.Get_ColumnFields ? this.Parent.Get_ColumnFields(this.Get_Index(), this.Get_AbsoluteColumn(CurPage), this.GetAbsolutePage(CurPage)) : this.Parent.Get_PageFields(this.private_GetRelativePageIndex(CurPage));
 	}
 
     var Ranges = PRS.Ranges;
@@ -2296,13 +2300,19 @@ Paragraph.prototype.private_RecalculateMoveLineToNextPage = function(CurLine, Cu
 			if (CompatibilityMode <= document_compatibility_mode_Word14)
 			{
 				if (null != this.Get_DocumentPrev() && true != this.Parent.IsTableCellContent() && 0 === CurPage)
+				{
 					CurLine = 0;
+					PRS.RunRecalcInfoBreak = null;
+				}
 			}
 			else if (CompatibilityMode >= document_compatibility_mode_Word15)
 			{
 				// TODO: Разобраться с 2016 вордом
 				if (null != this.Get_DocumentPrev() && 0 === CurPage)
+				{
 					CurLine = 0;
+					PRS.RunRecalcInfoBreak = null;
+				}
 			}
 		}
 
@@ -3063,18 +3073,14 @@ CParagraphRecalculateStateWrap.prototype =
 
 			var NumPr = ParaPr.NumPr;
 
+			if (NumPr && (undefined === NumPr.NumId || 0 === NumPr.NumId || "0" === NumPr.NumId))
+				NumPr = undefined;
+
+			if (oPrevNumPr && (undefined === oPrevNumPr.NumId || 0 === oPrevNumPr.NumId || "0" === oPrevNumPr.NumId || undefined === oPrevNumPr.Lvl))
+				oPrevNumPr = undefined;
+
 			var isHaveNumbering = false;
-			if ((undefined === Para.Get_SectionPr()
-				|| true !== Para.IsEmpty())
-				&& ((NumPr
-				&& undefined !== NumPr.NumId
-				&& 0 !== NumPr.NumId
-				&& "0" !== NumPr.NumId)
-				|| (oPrevNumPr
-				&& undefined !== oPrevNumPr.NumId
-				&& undefined !== oPrevNumPr.Lvl
-				&& 0 !== oPrevNumPr.NumId
-				&& "0" !== oPrevNumPr.NumId)))
+			if ((undefined === Para.Get_SectionPr() || true !== Para.IsEmpty()) && (NumPr || oPrevNumPr))
 			{
 				isHaveNumbering = true;
 			}
@@ -3086,6 +3092,10 @@ CParagraphRecalculateStateWrap.prototype =
 			}
 			else
 			{
+				var oSavedNumberingValues = this.Paragraph.GetSavedNumberingValues();
+				var arrSavedNumInfo       = oSavedNumberingValues ? oSavedNumberingValues.NumInfo : null;
+				var arrSavedPrevNumInfo   = oSavedNumberingValues ? oSavedNumberingValues.PrevNumInfo : null;
+
 				var oNumbering  = Para.Parent.GetNumbering();
 
 				var oNumLvl     = null;
@@ -3104,7 +3114,7 @@ CParagraphRecalculateStateWrap.prototype =
 				// Здесь измеряется только ширина символов нумерации, без суффикса
 				if ((!isHavePrChange && NumPr) || (oPrevNumPr && NumPr && oPrevNumPr.NumId === NumPr.NumId && oPrevNumPr.Lvl === NumPr.Lvl))
 				{
-					var arrNumInfo  = Para.Parent.CalculateNumberingValues(Para, NumPr, true);
+					var arrNumInfo  = arrSavedNumInfo ? arrSavedNumInfo : Para.Parent.CalculateNumberingValues(Para, NumPr, true);
 					var nLvl = NumPr.Lvl;
 
 					var arrRelatedLvls = oNumLvl.GetRelatedLvlList();
@@ -3151,7 +3161,7 @@ CParagraphRecalculateStateWrap.prototype =
 				}
 				else if (oPrevNumPr && !NumPr)
 				{
-					var arrNumInfo2 = Para.Parent.CalculateNumberingValues(Para, oPrevNumPr, true);
+					var arrNumInfo2 = arrSavedPrevNumInfo ? arrSavedPrevNumInfo : Para.Parent.CalculateNumberingValues(Para, oPrevNumPr, true);
 					NumberingItem.Measure(g_oTextMeasurer, oNumbering, oNumTextPr, Para.Get_Theme(), undefined, undefined, arrNumInfo2[1], oPrevNumPr);
 				}
 				else if (isHavePrChange && !oPrevNumPr && NumPr)
@@ -3162,14 +3172,14 @@ CParagraphRecalculateStateWrap.prototype =
 					}
 					else
 					{
-						var arrNumInfo = Para.Parent.CalculateNumberingValues(Para, NumPr, true);
+						var arrNumInfo = arrSavedNumInfo ? arrSavedNumInfo : Para.Parent.CalculateNumberingValues(Para, NumPr, true);
 						NumberingItem.Measure(g_oTextMeasurer, oNumbering, oNumTextPr, Para.Get_Theme(), arrNumInfo[0], NumPr, undefined, undefined);
 					}
 				}
 				else if (oPrevNumPr && NumPr)
 				{
-					var arrNumInfo  = Para.Parent.CalculateNumberingValues(Para, NumPr, true);
-					var arrNumInfo2 = Para.Parent.CalculateNumberingValues(Para, oPrevNumPr, true);
+					var arrNumInfo  = arrSavedNumInfo ? arrSavedNumInfo : Para.Parent.CalculateNumberingValues(Para, NumPr, true);
+					var arrNumInfo2 = arrSavedPrevNumInfo ? arrSavedPrevNumInfo : Para.Parent.CalculateNumberingValues(Para, oPrevNumPr, true);
 
 					var isEqual = false;
 					if (arrNumInfo[0][NumPr.Lvl] === arrNumInfo[1][oPrevNumPr.Lvl])
@@ -3291,15 +3301,15 @@ CParagraphRecalculateStateWrap.prototype =
             var Level = Para.PresentationPr.Level;
             var Bullet = Para.PresentationPr.Bullet;
 
-            var BulletNum = 0;
+            var BulletNum = 1;
             if (Bullet.Get_Type() >= numbering_presentationnumfrmt_ArabicPeriod)
             {
                 var Prev = Para.Prev;
+                BulletNum = Bullet.Get_StartAt();
                 while (null != Prev && type_Paragraph === Prev.GetType())
                 {
                     var PrevLevel = Prev.PresentationPr.Level;
                     var PrevBullet = Prev.Get_PresentationNumbering();
-
                     // Если предыдущий параграф более низкого уровня, тогда его не учитываем
                     if (Level < PrevLevel)
                     {
@@ -3308,7 +3318,7 @@ CParagraphRecalculateStateWrap.prototype =
                     }
                     else if (Level > PrevLevel)
                         break;
-                    else if (PrevBullet.Get_Type() === Bullet.Get_Type() && PrevBullet.Get_StartAt() === PrevBullet.Get_StartAt())
+                    else if (PrevBullet.Get_Type() === Bullet.Get_Type() && Bullet.Get_StartAt() === PrevBullet.Get_StartAt())
                     {
                         if (true != Prev.IsEmpty())
                             BulletNum++;
@@ -3316,15 +3326,21 @@ CParagraphRecalculateStateWrap.prototype =
                         Prev = Prev.Prev;
                     }
                     else
+                    {
                         break;
+                    }
                 }
             }
 
             // Найдем настройки для первого текстового элемента
             var FirstTextPr = Para.Get_FirstTextPr2();
 
+            if(BulletNum > 32767)
+            {
+                BulletNum -= 32767;
+            }
             NumberingItem.Bullet = Bullet;
-            NumberingItem.BulletNum = BulletNum + 1;
+            NumberingItem.BulletNum = BulletNum;
             NumberingItem.Measure(g_oTextMeasurer, FirstTextPr, Para.Get_Theme(), Para.Get_ColorMap());
 
 

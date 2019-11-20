@@ -2019,16 +2019,7 @@ function DrawingObjects() {
                             var range = printOptions.printPagesData.pageRange;
                             var printPagesData = printOptions.printPagesData;
                             var offsetCols = printPagesData.startOffsetPx;
-
-                            var left = worksheet.getCellLeft(range.c1, 3) - worksheet.getCellLeft(0, 3) - pxToMm(printPagesData.leftFieldInPx);
-                            var top = worksheet.getCellTop(range.r1, 3) - worksheet.getCellTop(0, 3) - pxToMm(printPagesData.topFieldInPx);
-
-                            _this.printGraphicObject(drawingObject.graphicObject, printOptions.ctx.DocumentRenderer, top, left);
-
-                            if ( printPagesData.pageHeadings ) {
-                                worksheet._drawColumnHeaders(printOptions.ctx, range.c1, range.c2, /*style*/ undefined, worksheet._getColLeft(range.c1) - printPagesData.leftFieldInPx + offsetCols, printPagesData.topFieldInPx - worksheet.cellsTop);
-                                worksheet._drawRowHeaders(printOptions.ctx, range.r1, range.r2, /*style*/ undefined, printPagesData.leftFieldInPx - worksheet.cellsLeft, worksheet._getRowTop(range.r1) - printPagesData.topFieldInPx);
-                            }
+                            _this.printGraphicObject(drawingObject.graphicObject, printOptions.ctx.DocumentRenderer);
                         }
                         else {
                             _this.drawingArea.drawObject(drawingObject);
@@ -2061,113 +2052,61 @@ function DrawingObjects() {
         return _this.drawingDocument;
     };
 
-    _this.printGraphicObject = function(graphicObject, ctx, top, left) {
+    _this.printGraphicObject = function(graphicObject, ctx) {
 
         if ( graphicObject && ctx ) {
             // Image
             if ( graphicObject instanceof AscFormat.CImageShape )
-                printImage(graphicObject, ctx, top, left);
+                printImage(graphicObject, ctx);
             // Shape
             else if ( graphicObject instanceof AscFormat.CShape )
-                printShape(graphicObject, ctx, top, left);
+                printShape(graphicObject, ctx);
             // Chart
             else if (graphicObject instanceof AscFormat.CChartSpace)
-                printChart(graphicObject, ctx, top, left);
+                printChart(graphicObject, ctx);
             // Group
             else if ( graphicObject instanceof AscFormat.CGroupShape )
-                printGroup(graphicObject, ctx, top, left);
+                printGroup(graphicObject, ctx);
         }
 
         // Print functions
-        function printImage(graphicObject, ctx, top, left) {
+        function printImage(graphicObject, ctx) {
 
             if ( (graphicObject instanceof AscFormat.CImageShape) && graphicObject && ctx ) {
                 // Save
-                var tx = graphicObject.transform.tx;
-                var ty = graphicObject.transform.ty;
-                graphicObject.transform.tx -= left;
-                graphicObject.transform.ty -= top;
-                // Print
                 graphicObject.draw( ctx );
-                // Restore
-                graphicObject.transform.tx = tx;
-                graphicObject.transform.ty = ty;
             }
         }
 
-        function printShape(graphicObject, ctx, top, left) {
+        function printShape(graphicObject, ctx) {
 
             if ( (graphicObject instanceof AscFormat.CShape) && graphicObject && ctx ) {
-                // Save
-                var tx = graphicObject.transform.tx;
-                var ty = graphicObject.transform.ty;
-                graphicObject.transform.tx -= left;
-                graphicObject.transform.ty -= top;
-                var txTxt, tyTxt, txWA, tyWA;
-                if ( graphicObject.txBody && graphicObject.transformText ) {
-                    txTxt = graphicObject.transformText.tx;
-                    tyTxt = graphicObject.transformText.ty;
-                    graphicObject.transformText.tx -= left;
-                    graphicObject.transformText.ty -= top;
-                }
-
-                if(graphicObject.transformTextWordArt)
-                {
-                    graphicObject.transformTextWordArt.tx -= left;
-                    graphicObject.transformTextWordArt.ty -= top;
-                }
-                // Print
                 graphicObject.draw( ctx );
-                // Restore
-                graphicObject.transform.tx = tx;
-                graphicObject.transform.ty = ty;
-                if ( graphicObject.txBody && graphicObject.transformText ) {
-                    graphicObject.transformText.tx = txTxt;
-                    graphicObject.transformText.ty = tyTxt;
-                }
-                if(graphicObject.transformTextWordArt)
-                {
-                    graphicObject.transformTextWordArt.tx += left;
-                    graphicObject.transformTextWordArt.ty += top;
-                }
             }
         }
 
-        function printChart(graphicObject, ctx, top, left) {
+        function printChart(graphicObject, ctx) {
 
             if ( (graphicObject instanceof AscFormat.CChartSpace) && graphicObject && ctx ) {
 
-                // Save
-                var tx = graphicObject.transform.tx;
-                var ty = graphicObject.transform.ty;
-                graphicObject.transform.tx -= left;
-                graphicObject.transform.ty -= top;
-
-                graphicObject.updateChildLabelsTransform(graphicObject.transform.tx, graphicObject.transform.ty);
-                // Print
                 graphicObject.draw( ctx );
-                // Restore
-                graphicObject.transform.tx = tx;
-                graphicObject.transform.ty = ty;
-                graphicObject.updateChildLabelsTransform(graphicObject.transform.tx, graphicObject.transform.ty);
-
             }
         }
 
-        function printGroup(graphicObject, ctx, top, left) {
+        function printGroup(graphicObject, ctx) {
 
             if ( (graphicObject instanceof AscFormat.CGroupShape) && graphicObject && ctx ) {
                 for ( var i = 0; i < graphicObject.arrGraphicObjects.length; i++ ) {
                     var graphicItem = graphicObject.arrGraphicObjects[i];
 
                     if ( graphicItem instanceof AscFormat.CImageShape )
-                        printImage(graphicItem, ctx, top, left);
+                        printImage(graphicItem, ctx);
 
                     else if ( graphicItem instanceof AscFormat.CShape )
-                        printShape(graphicItem, ctx, top, left);
+                        printShape(graphicItem, ctx);
 
                     else if (graphicItem instanceof AscFormat.CChartSpace )
-                        printChart(graphicItem, ctx, top, left);
+                        printChart(graphicItem, ctx);
                 }
             }
         }
@@ -2432,7 +2371,7 @@ function DrawingObjects() {
         _this.controller.setMathProps(MathProps);
     }
 
-    _this.setListType = function(type, subtype)
+    _this.setListType = function(type, subtype, size, unicolor, nNumStartAt)
     {
         var NumberInfo =
             {
@@ -2442,7 +2381,7 @@ function DrawingObjects() {
 
         NumberInfo.Type    = type;
         NumberInfo.SubType = subtype;
-        _this.controller.checkSelectedObjectsAndCallback(_this.controller.setParagraphNumbering, [AscFormat.fGetPresentationBulletByNumInfo(NumberInfo)], false, AscDFH.historydescription_Presentation_SetParagraphNumbering);
+        _this.controller.checkSelectedObjectsAndCallback(_this.controller.setParagraphNumbering, [AscFormat.fGetPresentationBulletByNumInfo(NumberInfo), size, unicolor, nNumStartAt], false, AscDFH.historydescription_Presentation_SetParagraphNumbering);
     };
 
     _this.editImageDrawingObject = function(imageUrl) {
@@ -2974,7 +2913,18 @@ function DrawingObjects() {
             var wsViews = Asc["editor"].wb.wsViews;
             var changedArr = [];
             for (var i = 0; i < data.length; ++i) {
-                changedArr.push(new BBoxInfo(worksheet.model, data[i]));
+                if(Array.isArray(data[i])) {
+                    var aData = data[i];
+                    for(var j = 0; j < aData.length; ++j) {
+                        var oRange = aData[j] && aData[j].range;
+                        if(oRange && oRange.worksheet && oRange.bbox){
+                            changedArr.push(new BBoxInfo(oRange.worksheet, oRange.bbox));
+                        }
+                    }
+                }
+                else {
+                    changedArr.push(new BBoxInfo(worksheet.model, data[i]));
+                }
             }
 
             for(i = 0; i < wsViews.length; ++i)
@@ -3272,34 +3222,23 @@ function DrawingObjects() {
                     if (bCheck) {
                         oGraphicObject = drawingObject.graphicObject;
                         if(oGraphicObject){
-                            if(oGraphicObject.handleUpdateExtents) {
-
-                                bRecalculate = true;
-                                if(oGraphicObject.recalculateTransform){
-                                    var oldX = oGraphicObject.x;
-                                    var oldY = oGraphicObject.y;
-                                    var oldExtX = oGraphicObject.extX;
-                                    var oldExtY = oGraphicObject.extY;
-                                    oGraphicObject.recalculateTransform();
-                                    var fDelta = 0.01;
-                                    bRecalculate = false;
-                                    if(!AscFormat.fApproxEqual(oldX, oGraphicObject.x, fDelta) || !AscFormat.fApproxEqual(oldY, oGraphicObject.y, fDelta)
-                                        || !AscFormat.fApproxEqual(oldExtX, oGraphicObject.extX, fDelta) || !AscFormat.fApproxEqual(oldExtY, oGraphicObject.extY, fDelta)){
-                                        bRecalculate = true;
-                                    }
-                                }
-                                if(bRecalculate){
-                                    oGraphicObject.handleUpdateExtents(true);
-                                    oGraphicObject.recalculate();
+                            bRecalculate = true;
+                            if(oGraphicObject.recalculateTransform){
+                                var oldX = oGraphicObject.x;
+                                var oldY = oGraphicObject.y;
+                                var oldExtX = oGraphicObject.extX;
+                                var oldExtY = oGraphicObject.extY;
+                                oGraphicObject.recalculateTransform();
+                                var fDelta = 0.01;
+                                bRecalculate = false;
+                                if(!AscFormat.fApproxEqual(oldX, oGraphicObject.x, fDelta) || !AscFormat.fApproxEqual(oldY, oGraphicObject.y, fDelta)
+                                    || !AscFormat.fApproxEqual(oldExtX, oGraphicObject.extX, fDelta) || !AscFormat.fApproxEqual(oldExtY, oGraphicObject.extY, fDelta)){
+                                    bRecalculate = true;
                                 }
                             }
-                            else {
-                                if(oGraphicObject.recalculateTransform){
-                                    oGraphicObject.recalculateTransform();
-                                }
-                                if(oGraphicObject.recalculateBounds){
-                                    oGraphicObject.recalculateBounds();
-                                }
+                            if(bRecalculate){
+                                oGraphicObject.handleUpdateExtents(true);
+                                oGraphicObject.recalculate();
                             }
                         }
                     }
@@ -3455,7 +3394,7 @@ function DrawingObjects() {
                     }
 
                     var sRef = (new Asc.Range(final_bbox.c1, final_bbox.r1, final_bbox.c2, final_bbox.r2)).getName(AscCommonExcel.referenceType.A);
-                    options.range = parserHelp.get3DRef(worksheet.model.sName, sRef);
+                    options.putRange(parserHelp.get3DRef(worksheet.model.sName, sRef));
 
 					var chartSeries = AscFormat.getChartSeries(worksheet.model, options, catHeadersBBox, serHeadersBBox);
 					drawingObject.rebuildSeriesFromAsc(chartSeries);
@@ -3730,20 +3669,9 @@ function DrawingObjects() {
             if(selectedObjects[0].isImage()){
                 var imageUrl = selectedObjects[0].getImageUrl();
 
-                var _image = api.ImageLoader.map_image_index[AscCommon.getFullImageSrc2(imageUrl)];
-                if (_image != undefined && _image.Image != null && _image.Status == AscFonts.ImageLoadStatus.Complete) {
-
-                    var _w = 1, _h = 1;
-                    var bIsCorrect = false;
-                    if (_image.Image != null) {
-
-                        bIsCorrect = true;
-                        _w = Math.max( pxToMm(_image.Image.width), 1 );
-                        _h = Math.max( pxToMm(_image.Image.height), 1 );
-                    }
-
-                    return new AscCommon.asc_CImageSize( _w, _h, bIsCorrect);
-                }
+                var oImagePr = new Asc.asc_CImgProperty();
+                oImagePr.asc_putImageUrl(imageUrl);
+                return oImagePr.asc_getOriginSize(api);
             }
         }
         return new AscCommon.asc_CImageSize( 50, 50, false );

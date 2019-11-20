@@ -187,7 +187,7 @@
 
         this.copyOutEnabled = (config['copyoutenabled'] !== false);
 
-		this.watermarkDraw = config['watermark_on_draw'] ? new AscCommon.CWatermarkOnDraw(config['watermark_on_draw']) : null;
+		this.watermarkDraw = config['watermark_on_draw'] ? new AscCommon.CWatermarkOnDraw(config['watermark_on_draw'], this) : null;
 
 		this.SaveAfterMacros = false;
 
@@ -556,7 +556,7 @@
 			{
 				rData["serverVersion"] = versionHistory.serverVersion;
                 rData["closeonerror"] = versionHistory.isRequested;
-				rData["jwt"] = versionHistory.token;
+				rData["tokenHistory"] = versionHistory.token;
 				//чтобы результат пришел только этому соединению, а не всем кто в документе
 				rData["userconnectionid"] = this.CoAuthoringApi.getUserConnectionId();
 			}
@@ -842,9 +842,20 @@
 	};
 	baseEditorsApi.prototype._onEndPermissions                   = function()
 	{
-		if (this.isOnFirstConnectEnd && this.isOnLoadLicense)
-		{
-			this.sendEvent('asc_onGetEditorPermissions', new AscCommon.asc_CAscEditorPermissions());
+		if (this.isOnFirstConnectEnd && this.isOnLoadLicense) {
+			var oResult = new AscCommon.asc_CAscEditorPermissions();
+			if (null !== this.licenseResult) {
+				var type = this.licenseResult['type'];
+				oResult.setLicenseType(type);
+				oResult.setCanBranding(this.licenseResult['branding']);
+				oResult.setCustomization(this.licenseResult['customization']);
+				oResult.setIsLight(this.licenseResult['light']);
+				oResult.setLicenseMode(this.licenseResult['mode']);
+				oResult.setRights(this.licenseResult['rights']);
+				oResult.setBuildVersion(this.licenseResult['buildVersion']);
+				oResult.setBuildNumber(this.licenseResult['buildNumber']);
+			}
+			this.sendEvent('asc_onGetEditorPermissions', oResult);
 		}
 	};
 	// GoTo
@@ -1362,7 +1373,7 @@
 		oAdditionalData["c"] = 'save';
 		oAdditionalData["id"] = this.documentId;
 		oAdditionalData["userid"] = this.documentUserId;
-		oAdditionalData["jwt"] = this.CoAuthoringApi.get_jwt();
+		oAdditionalData["tokenSession"] = this.CoAuthoringApi.get_jwt();
 		oAdditionalData["outputformat"] = options.fileType;
 		oAdditionalData["title"] = AscCommon.changeFileExtention(this.documentTitle, AscCommon.getExtentionByFormat(options.fileType), Asc.c_nMaxDownloadTitleLen);
 		oAdditionalData["nobase64"] = isNoBase64;
@@ -1622,9 +1633,43 @@
 	baseEditorsApi.prototype.asc_cropFill = function()
 	{
 	};
+
+
+	//Remove All comments
+	baseEditorsApi.prototype.asc_RemoveAllComments = function(isMine, isCurrent)
+	{};
+
 	// Version History
 	baseEditorsApi.prototype.asc_showRevision   = function(newObj)
 	{
+		if (!newObj.docId) {
+			return;
+		}
+		if (this.isCoAuthoringEnable) {
+			this.asc_coAuthoringDisconnect();
+		}
+
+		var bUpdate = true;
+		if (null === this.VersionHistory) {
+			this.VersionHistory = new window["Asc"].asc_CVersionHistory(newObj);
+		} else {
+			bUpdate = this.VersionHistory.update(newObj);
+		}
+		// ToDo должно быть все общее
+		if (bUpdate) {
+			this.asc_CloseFile();
+
+			this.DocInfo.put_Id(this.VersionHistory.docId);
+			this.DocInfo.put_Url(this.VersionHistory.url);
+			this.documentUrlChanges = this.VersionHistory.urlChanges;
+			this.asc_setDocInfo(this.DocInfo);
+			this.asc_LoadDocument(this.VersionHistory);
+		} else if (this.VersionHistory.currentChangeId < newObj.currentChangeId) {
+			// Нужно только добавить некоторые изменения
+			AscCommon.CollaborativeEditing.Clear_CollaborativeMarks();
+			editor.VersionHistory.applyChanges(editor);
+			AscCommon.CollaborativeEditing.Apply_Changes();
+		}
 	};
 	baseEditorsApi.prototype.asc_undoAllChanges = function()
 	{
@@ -1783,6 +1828,10 @@
 			arr[i].Id    = i;
 			arr[i].Image = AscCommon.g_oUserTexturePresets[i];
 			arrToDownload.push(AscCommon.g_oUserTexturePresets[i]);
+		}
+		if(this.editorId === c_oEditorId.Word)
+		{
+			arrToDownload.push(AscCommon.g_sWordPlaceholderImage);
 		}
 		this.ImageLoader.LoadImagesWithCallback(arrToDownload, function () {
 
@@ -1958,6 +2007,44 @@
     {
     };
 
+    baseEditorsApi.prototype["asc_insertSymbol"] = function(familyName, code)
+    {
+        AscFonts.FontPickerByCharacter.checkTextLight([code], true);
+
+        var fonts = [new AscFonts.CFont(AscFonts.g_fontApplication.GetFontInfoName(familyName), 0, "", 0, null)];
+        AscFonts.FontPickerByCharacter.extendFonts(fonts);
+
+        if (false === AscCommon.g_font_loader.CheckFontsNeedLoading(fonts))
+        {
+            this.Begin_CompositeInput();
+            this.Replace_CompositeText([code]);
+            this.End_CompositeInput();
+            return;
+        }
+
+        this.asyncMethodCallback = function() {
+            this.Begin_CompositeInput();
+            this.Replace_CompositeText([code]);
+            this.End_CompositeInput();
+        };
+        AscCommon.g_font_loader.LoadDocumentFonts2(fonts);
+    };
+
+    baseEditorsApi.prototype["asc_registerPlaceholderCallback"] = function(type, callback)
+    {
+    	if (this.WordControl && this.WordControl.m_oDrawingDocument && this.WordControl.m_oDrawingDocument.placeholders)
+		{
+            this.WordControl.m_oDrawingDocument.placeholders.registerCallback(type, callback);
+		}
+    };
+    baseEditorsApi.prototype["asc_uncheckPlaceholders"] = function()
+    {
+        if (this.WordControl && this.WordControl.m_oDrawingDocument && this.WordControl.m_oDrawingDocument.placeholders)
+        {
+            this.WordControl.m_oDrawingDocument.placeholders.closeAllActive();
+        }
+    };
+
     baseEditorsApi.prototype["pluginMethod_GetFontList"] = function()
     {
     	return AscFonts.g_fontApplication.g_fontSelections.SerializeList();
@@ -2031,7 +2118,7 @@
 		this.incrementCounterLongAction();
 		var b_old_save_format = AscCommon.g_clipboardBase.bSaveFormat;
         AscCommon.g_clipboardBase.bSaveFormat = true;
-		this.asc_PasteData(AscCommon.c_oAscClipboardDataFormat.HtmlElement, _elem, null, null, null, true);
+		this.asc_PasteData(AscCommon.c_oAscClipboardDataFormat.HtmlElement, _elem);
 		this.decrementCounterLongAction();
 
 		if (true)
@@ -2192,52 +2279,8 @@
 				}
 				case "watermark_on_draw":
 				{
-					this.watermarkDraw = obj[prop] ? new AscCommon.CWatermarkOnDraw(obj[prop]) : null;
-					if (this.watermarkDraw)
-						this.watermarkDraw.CheckParams(this);
-
-					// refresh!!!
-					switch (this.editorId)
-					{
-						case c_oEditorId.Word:
-						{
-							if (this.WordControl)
-							{
-								if (this.watermarkDraw)
-								{
-									this.watermarkDraw.zoom = this.WordControl.m_nZoomValue / 100;
-									this.watermarkDraw.Generate();
-								}
-
-								this.WordControl.OnRePaintAttack();
-							}
-
-							break;
-						}
-						case c_oEditorId.Presentation:
-						{
-							if (this.WordControl)
-							{
-								if (this.watermarkDraw)
-								{
-									this.watermarkDraw.zoom = this.WordControl.m_nZoomValue / 100;
-									this.watermarkDraw.Generate();
-								}
-
-								this.WordControl.OnRePaintAttack();
-							}
-							break;
-						}
-						case c_oEditorId.Spreadsheet:
-						{
-							var ws = this.wb && this.wb.getWorksheet();
-							if (ws && ws.objectRender && ws.objectRender) {
-								ws.objectRender.OnUpdateOverlay();
-							}
-							break;
-						}
-					}
-
+					this.watermarkDraw = obj[prop] ? new AscCommon.CWatermarkOnDraw(obj[prop], this) : null;
+					this.watermarkDraw.checkOnReady();
 					break;
 				}
 				case "hideContentControlTrack":
@@ -2955,6 +2998,7 @@
 
 	prot = baseEditorsApi.prototype;
 	prot['asc_selectSearchingResults'] = prot.asc_selectSearchingResults;
+	prot['asc_showRevision'] = prot.asc_showRevision;
 	prot['asc_getAdvancedOptions'] = prot.asc_getAdvancedOptions;
 	prot['asc_Print'] = prot.asc_Print;
 

@@ -20,7 +20,6 @@
 			"../cell/model/CollaborativeEditing.js",
 			"../common/macros.js",
 			"../common/apiBase.js",
-			"../common/Private/license.js",
 			"../word/apiCommon.js",
 			"../cell/api.js"
 		],
@@ -125,6 +124,7 @@
 			"../cell/model/Serialize.js",
 			"../cell/model/ConditionalFormatting.js",
 			"../cell/model/DataValidation.js",
+			"../cell/model/HeaderFooter.js",
 			"../cell/model/CellInfo.js",
 			"../cell/view/mobileTouch.js",
 			"../cell/view/StringRender.js",
@@ -239,7 +239,6 @@
 			"../common/plugins.js"
 		],
 		"private": [
-			"../cell/Private/comments.js"
 		],
 		"builder": [
 		],

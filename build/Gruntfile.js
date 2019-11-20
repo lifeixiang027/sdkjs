@@ -118,13 +118,10 @@ module.exports = function(grunt) {
 			banner: '',
 			footer: 'window["split"]="split";'
 		};
-		var optionsSdkAll = {};
-		if (!grunt.option('noclosure')) {
-			optionsSdkAll = {
-				banner: '(function(window, undefined) {',
-				footer: '})(window);'
-			};
-		}
+		var optionsSdkAll = {
+			banner: '(function(window, undefined) {',
+			footer: '})(window);'
+		};
 		var fontsWasmTmp = 'fonts-wasm-tmp.js';
 		var fontsJsTmp = 'fonts-js-tmp.js';
 		var sdkMinTmp = 'sdk-min-tmp.js';
@@ -327,7 +324,8 @@ module.exports = function(grunt) {
 						slideJs,
 						word + cache,
 						cell + cache,
-						slide + cache
+						slide + cache,
+						deploy
 					]
 				}
 			},
@@ -339,6 +337,8 @@ module.exports = function(grunt) {
 							cwd: '../common/',
 							src: [
 								'Images/*',
+								'Images/placeholders/*',
+								'Images/content_controls/*',
 								'Native/*.js',
 								'libfont/js/fonts.*',
 								'libfont/wasm/fonts.*'
