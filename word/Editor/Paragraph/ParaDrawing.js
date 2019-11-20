@@ -48,6 +48,8 @@ var WRAPPING_TYPE_TOP_AND_BOTTOM = 0x04;
 
 var WRAP_HIT_TYPE_POINT   = 0x00;
 var WRAP_HIT_TYPE_SECTION = 0x01;
+var c_oAscAlignH         = Asc.c_oAscAlignH;
+var c_oAscAlignV         = Asc.c_oAscAlignV;
 
 /**
  * Оберточный класс для автофигур и картинок. Именно он непосредственно лежит в ране.
@@ -247,12 +249,13 @@ ParaDrawing.prototype.canRotate = function()
 };
 ParaDrawing.prototype.GetParagraph = function()
 {
-	return this.Parent;
+	return this.Get_ParentParagraph();
 };
 ParaDrawing.prototype.Get_Run = function()
 {
-	if (this.Parent)
-		return this.Parent.Get_DrawingObjectRun(this.Id);
+	var oParagraph = this.Get_ParentParagraph();
+	if (oParagraph)
+		return oParagraph.Get_DrawingObjectRun(this.Id);
 
 	return null;
 };
@@ -602,7 +605,7 @@ ParaDrawing.prototype.Set_GraphicObject = function(graphicObject)
 
 	History.Add(new CChangesParaDrawingGraphicObject(this, oldId, newId));
 
-	if (graphicObject && graphicObject.handleUpdateExtents)
+	if (graphicObject)
 		graphicObject.handleUpdateExtents();
 
 	this.GraphicObj = graphicObject;
@@ -692,11 +695,24 @@ ParaDrawing.prototype.Set_Parent = function(oParent)
 };
 ParaDrawing.prototype.IsWatermark = function()
 {
+	if(!this.GraphicObj)
+	{
+		return false;
+	}
+	if(this.GraphicObj.getObjectType() !== AscDFH.historyitem_type_Shape && this.GraphicObj.getObjectType() !== AscDFH.historyitem_type_ImageShape)
+	{
+		return false;
+	}
 	if(this.Is_Inline())
 	{
 		return false;
 	}
-	var oContent = this.DocumentContent;
+	var oParagraph = this.GetParagraph();
+	if(!(oParagraph instanceof Paragraph))
+	{
+		return false;
+	}
+	var oContent = oParagraph.Parent;
 	if(!oContent || oContent.Is_DrawingShape(false))
 	{
 		return false;
@@ -706,11 +722,30 @@ ParaDrawing.prototype.IsWatermark = function()
 	{
 		return false;
 	}
-	if(oHdrFtr.Type === AscCommon.hdrftr_Footer)
-	{
+
+	var oRun = this.Get_Run();
+	if (!oRun)
 		return false;
+
+	var arrDocPos = oRun.GetDocumentPositionFromObject();
+	for (var nIndex = 0, nCount = arrDocPos.length; nIndex < nCount; ++nIndex)
+	{
+		var oClass = arrDocPos[nIndex].Class;
+		var oSdt   = null;
+		if (oClass instanceof CDocumentContent && oClass.Parent instanceof CBlockLevelSdt)
+			oSdt = oClass.Parent;
+		else if (oClass instanceof CInlineLevelSdt)
+			oSdt = oClass;
+
+		if (oSdt)
+		{
+			var oPr = oSdt.Pr;
+			if (AscCommon.isRealObject(oPr) && AscCommon.isRealObject(oPr.DocPartObj) && oPr.DocPartObj.Gallery === "Watermarks")
+				return true;
+		}
 	}
-	return this.GraphicObj.isWatermark();
+
+	return false;
 };
 ParaDrawing.prototype.Set_ParaMath = function(ParaMath)
 {
@@ -1149,13 +1184,15 @@ ParaDrawing.prototype.Can_AddNumbering = function()
 
 	return false;
 };
-ParaDrawing.prototype.Copy = function()
+ParaDrawing.prototype.Copy = function(oPr)
 {
 	var c = new ParaDrawing(this.Extent.W, this.Extent.H, null, editor.WordControl.m_oLogicDocument.DrawingDocument, null, null);
 	c.Set_DrawingType(this.DrawingType);
 	if (isRealObject(this.GraphicObj))
 	{
-		c.Set_GraphicObject(this.GraphicObj.copy());
+		var oCopyPr = new AscFormat.CCopyObjectProperties();
+		oCopyPr.contentCopyPr = oPr;
+		c.Set_GraphicObject(this.GraphicObj.copy(oCopyPr));
 		c.GraphicObj.setParent(c);
 	}
 
@@ -1194,6 +1231,10 @@ ParaDrawing.prototype.Copy = function()
 	return c;
 };
 ParaDrawing.prototype.Get_Id = function()
+{
+	return this.Id;
+};
+ParaDrawing.prototype.GetId = function()
 {
 	return this.Id;
 };
@@ -1354,11 +1395,12 @@ ParaDrawing.prototype.updatePosition3 = function(pageIndex, x, y, oldPageNum)
 	{
 		this.graphicObjects.removeById(oldPageNum, this.Get_Id());
 	}
+	var bChangePageIndex = this.pageIndex !== pageIndex;
 	this.setPageIndex(pageIndex);
 	if (typeof this.GraphicObj.setStartPage === "function")
 	{
 		var bIsHfdFtr = this.DocumentContent && this.DocumentContent.IsHdrFtr();
-		this.GraphicObj.setStartPage(pageIndex, bIsHfdFtr, bIsHfdFtr);
+		this.GraphicObj.setStartPage(pageIndex, bIsHfdFtr, bIsHfdFtr || bChangePageIndex);
 	}
 	if (!(this.DocumentContent && this.DocumentContent.IsHdrFtr() && this.DocumentContent.Get_StartPage_Absolute() !== pageIndex))
 	{
@@ -2536,13 +2578,23 @@ ParaDrawing.prototype.setParagraphStyle = function(style)
 	if (isRealObject(this.GraphicObj) && typeof  this.GraphicObj.setParagraphStyle === "function")
 		this.GraphicObj.setParagraphStyle(style);
 };
+
+ParaDrawing.prototype.CopyComments = function()
+{
+	if(!this.GraphicObj)
+	{
+		return;
+	}
+	this.GraphicObj.copyComments(this.LogicDocument);
+};
+
 ParaDrawing.prototype.copy = function()
 {
 	var c = new ParaDrawing(this.Extent.W, this.Extent.H, null, editor.WordControl.m_oLogicDocument.DrawingDocument, null, null);
 	c.Set_DrawingType(this.DrawingType);
 	if (isRealObject(this.GraphicObj))
 	{
-		var g = this.GraphicObj.copy(c);
+		var g = this.GraphicObj.copy(undefined);
 		c.Set_GraphicObject(g);
 		g.setParent(c);
 	}
@@ -2723,7 +2775,13 @@ ParaDrawing.prototype.CheckContentControlEditingLock = function(){
         this.DocumentContent.CheckContentControlEditingLock();
 	}
 };
-
+ParaDrawing.prototype.Document_Is_SelectionLocked = function(CheckType)
+{
+	if(CheckType === AscCommon.changestype_Drawing_Props)
+	{
+		this.Lock.Check(this.Get_Id());
+	}
+};
 
 ParaDrawing.prototype.CheckContentControlDeletingLock = function(){
 	if(this.DocumentContent && this.DocumentContent.CheckContentControlDeletingLock){
@@ -2737,6 +2795,14 @@ ParaDrawing.prototype.GetAllFields = function(isUseSelection, arrFields)
 		return this.GraphicObj.GetAllFields(isUseSelection, arrFields);
 	}
 	return arrFields ? arrFields : [];
+};
+
+ParaDrawing.prototype.GetAllSeqFieldsByType = function(sType, aFields)
+{
+	if(this.GraphicObj)
+	{
+		return this.GraphicObj.GetAllSeqFieldsByType(sType, aFields);
+	}
 };
 
 /**
@@ -2850,14 +2916,31 @@ CAnchorPosition.prototype.Calculate_X = function(bInline, RelativeFrom, bAlign, 
 	}
 	var Width = _W + this.EffectExtentL + this.EffectExtentR;
 	var Shift = this.EffectExtentL + _W / 2.0 - this.W / 2.0;
+
 	if (true === bInline)
 	{
-			this.CalcX = this.X + Shift;
+		this.CalcX = this.X + Shift;
 	}
 	else
 	{
+		var _RelativeFrom = RelativeFrom;
+		if (_RelativeFrom === c_oAscRelativeFromH.InsideMargin)
+		{
+			if (0 === this.PageNum % 2)
+				_RelativeFrom = c_oAscRelativeFromH.LeftMargin;
+			else
+				_RelativeFrom = c_oAscRelativeFromH.RightMargin;
+		}
+		else if (_RelativeFrom === c_oAscRelativeFromH.OutsideMargin)
+		{
+			if (0 === this.PageNum % 2)
+				_RelativeFrom = c_oAscRelativeFromH.RightMargin;
+			else
+				_RelativeFrom = c_oAscRelativeFromH.LeftMargin;
+		}
+
 		// Вычисляем координату по X
-		switch (RelativeFrom)
+		switch (_RelativeFrom)
 		{
 			case c_oAscRelativeFromH.Character:
 			{
@@ -2932,9 +3015,7 @@ CAnchorPosition.prototype.Calculate_X = function(bInline, RelativeFrom, bAlign, 
 				break;
 			}
 
-			case c_oAscRelativeFromH.InsideMargin:
 			case c_oAscRelativeFromH.LeftMargin:
-			case c_oAscRelativeFromH.OutsideMargin:
 			{
 				if (true === bAlign)
 				{

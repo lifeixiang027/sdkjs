@@ -1646,7 +1646,11 @@ parserHelp.setDigitSeparator(AscCommon.g_oDefaultCultureInfo.NumberDecimalSepara
 		}
 	};
 	cRef.prototype.toLocaleString = function () {
-		return this.range.getName();
+		if(this.range) {
+			return this.range.getName();
+		} else {
+			return this.value;
+		}
 	};
 	cRef.prototype.getRange = function () {
 		return this.range;
@@ -4075,72 +4079,90 @@ parserHelp.setDigitSeparator(AscCommon.g_oDefaultCultureInfo.NumberDecimalSepara
 		}
 		return list;
 	}
-	function getRangeByRef(ref, ws, onlyRanges, checkMultiSelection) {
-		// ToDo in parser formula
-		if (ref[0] === '(') {
-			ref = ref.slice(1);
-		}
-		if (ref[ref.length - 1] === ')') {
-			ref = ref.slice(0, -1);
-		}
+	function getRangeByRef(ref, ws, onlyRanges, checkMultiSelection, checkFormula) {
 		var activeCell = ws.selectionRange.activeCell;
 		var bbox = new Asc.Range(activeCell.col, activeCell.row, activeCell.col, activeCell.row);
 		// ToDo in parser formula
 		var ranges = [];
-		var arrRefs = ref.split(',');
-		arrRefs.forEach(function (refItem) {
-			// ToDo in parser formula
-			var currentWorkbook = '[0]!';
-			if (0 === refItem.indexOf(currentWorkbook)) {
-				refItem = refItem.slice(currentWorkbook.length);
-			}
 
-			var _f = new AscCommonExcel.parserFormula(refItem, null, ws);
-			var parseResult = new AscCommonExcel.ParseResult([]);
-			if (_f.parse(null, null, parseResult)) {
-				parseResult.refPos.forEach(function (item) {
-					var ref;
-					switch (item.oper.type) {
-						case cElementType.table:
-						case cElementType.name:
-						case cElementType.name3D:
-							ref = item.oper.toRef(bbox, (checkMultiSelection && (item.oper.type === cElementType.name || item.oper.type === cElementType.name3D)));
-							break;
+		var pushRanges = function(item) {
+			var ref;
+			switch (item.oper.type) {
+				case cElementType.table:
+				case cElementType.name:
+				case cElementType.name3D:
+					ref = item.oper.toRef(bbox, (checkMultiSelection && (item.oper.type === cElementType.name || item.oper.type === cElementType.name3D)));
+					break;
+				case cElementType.cell:
+				case cElementType.cell3D:
+				case cElementType.cellsRange:
+				case cElementType.cellsRange3D:
+					ref = item.oper;
+					break;
+			}
+			if (ref) {
+				var pushRange = function(curRef) {
+					switch(curRef.type) {
 						case cElementType.cell:
 						case cElementType.cell3D:
 						case cElementType.cellsRange:
 						case cElementType.cellsRange3D:
-							ref = item.oper;
+							ranges.push(curRef.getRange());
+							break;
+						case cElementType.array:
+							if (!onlyRanges) {
+								ranges = curRef.getMatrix();
+							}
 							break;
 					}
-					if (ref) {
-						var pushRange = function(curRef) {
-							switch(curRef.type) {
-								case cElementType.cell:
-								case cElementType.cell3D:
-								case cElementType.cellsRange:
-								case cElementType.cellsRange3D:
-									ranges.push(curRef.getRange());
-									break;
-								case cElementType.array:
-									if (!onlyRanges) {
-										ranges = curRef.getMatrix();
-									}
-									break;
-							}
-						};
+				};
 
-						if(ref.length) {
-							for(var i = 0; i < ref.length; i++) {
-								pushRange(ref[i]);
-							}
-						} else {
-							pushRange(ref);
-						}
+				if(ref.length) {
+					for(var i = 0; i < ref.length; i++) {
+						pushRange(ref[i]);
 					}
-				});
+				} else {
+					pushRange(ref);
+				}
 			}
-		});
+		};
+
+		//TODO вызываю проверку на то, что это может быть формула только для печати. необходимо проверить везде - для этого необходимо просмотреть весь смежный функционал
+		var isFormula;
+		if(checkFormula && ref) {
+			var parseResult = new AscCommonExcel.ParseResult([]);
+			var parsed = new AscCommonExcel.parserFormula(ref, null, ws);
+			parsed.parse(undefined, undefined, parseResult);
+			isFormula = parsed.calculate();
+		}
+
+		if (isFormula && isFormula.type !== cElementType.error) {
+			pushRanges({oper: isFormula});
+		} else {
+			// ToDo in parser formula
+			if (ref[0] === '(') {
+				ref = ref.slice(1);
+			}
+			if (ref[ref.length - 1] === ')') {
+				ref = ref.slice(0, -1);
+			}
+
+			var arrRefs = ref.split(',');
+			arrRefs.forEach(function (refItem) {
+				// ToDo in parser formula
+				var currentWorkbook = '[0]!';
+				if (0 === refItem.indexOf(currentWorkbook)) {
+					refItem = refItem.slice(currentWorkbook.length);
+				}
+
+				var _f = new AscCommonExcel.parserFormula(refItem, null, ws);
+				var parseResult = new AscCommonExcel.ParseResult([]);
+				if (_f.parse(null, null, parseResult)) {
+					parseResult.refPos.forEach(pushRanges);
+				}
+			});
+		}
+
 		return ranges;
 	}
 
@@ -4810,6 +4832,63 @@ _func.binarySearch = function ( sElem, arrTagert, regExp ) {
 
 };
 
+_func.binarySearchByRange = function ( sElem, area, regExp ) {
+	var bbox;
+	if (cElementType.cellsRange3D === area.type) {
+		bbox = area.bbox;
+	} else if (cElementType.cellsRange === area.type) {
+		bbox = area.range.bbox;
+	}
+	var bVertical = bbox.r2 - bbox.r1 >= bbox.c2 - bbox.c1;//r>=c
+	var first = 0, /* Номер первого элемента в массиве */
+		last = bVertical ? bbox.r2 - bbox.r1 : bbox.c2 - bbox.c1, /* Номер элемента в массиве, СЛЕДУЮЩЕГО ЗА последним */
+		/* Если просматриваемый участок непустой, first<last */
+		mid;
+
+	var getValue = function(n) {
+		var r, c;
+		if(bVertical) {
+			r = n;
+			c = 0;
+		} else {
+			r = 0;
+			c = n;
+		}
+		var res = area.getValueByRowCol(r, c);
+		return res ? res : new cEmpty();
+	};
+
+	if (last === 0) {
+		return -1;
+		/* массив пуст */
+	} else if (getValue(0).value > sElem.value) {
+		return -2;
+	} else if (getValue(last).value < sElem.value) {
+		return last;
+	}
+
+	var tempValue;
+	while (first < last) {
+		mid = Math.floor(first + (last - first) / 2);
+		tempValue = getValue(mid);
+		if (sElem.value <= tempValue.value || ( regExp && regExp.test(tempValue.value) )) {
+			last = mid;
+		} else {
+			first = mid + 1;
+		}
+	}
+
+	/* Если условный оператор if(n==0) и т.д. в начале опущен - значит, тут раскомментировать!    */
+	if (/* last<n &&*/ getValue(last).value === sElem.value) {
+		return last;
+		/* Искомый элемент найден. last - искомый индекс */
+	} else {
+		return last - 1;
+		/* Искомый элемент не найден. Но если вам вдруг надо его вставить со сдвигом, то его место - last.    */
+	}
+
+};
+
 _func[cElementType.number][cElementType.cell] = function ( arg0, arg1, what, bbox ) {
     var ar1 = arg1.tocNumber();
     switch ( what ) {
@@ -5009,8 +5088,26 @@ _func[cElementType.cell3D] = _func[cElementType.cell];
 	};
 	ParseResult.prototype.getElementByPos = function(pos) {
 		var curPos = 0;
+		var argCount = [], level = 0;
 		for (var i = 0; i < this.elems.length; ++i) {
 			curPos += this.elems[i].toLocaleString(/*AscCommonExcel.cFormulaFunctionToLocale*/).length;
+
+			//учитываем разделители аргументов
+			if("(" === this.elems[i].name) {
+				level++;
+			} else if(")" === this.elems[i].name) {
+				level--;
+			} else if (level){
+				if(!argCount[level]) {
+					argCount[level] = 1;
+				} else {
+					argCount[level]++;
+				}
+				if(argCount[level] > 1) {
+					curPos++;
+				}
+			}
+
 			if (curPos >= pos) {
 				return this.elems[i];
 			}
@@ -6364,9 +6461,8 @@ parserFormula.prototype.clone = function(formula, parent, ws) {
 		} else {
 			elem.range = AscCommonExcel.Range.prototype.createFromBBox(ws, bbox);
 		}
-		if (!AscCommonExcel.g_ProcessShared) {
+		//todo remove value at all
 		elem.value = bbox.getName();
-		}
 	};
 	parserFormula.prototype.changeDefName = function(from, to) {
 		var i, elem;
@@ -6767,6 +6863,14 @@ parserFormula.prototype.clone = function(formula, parent, ws) {
 		var currentElement = null, _count = this.outStack.length, elemArr = new Array(_count), res = undefined,
 			_count_arg, _numberPrevArg, _argDiff, onlyRangesElements = true, rangesStr;
 
+		//для получаения грамотного дипапазона, устанавливаем для формул массива g_activeCell главную ячейку
+		var formulaArray = this.getArrayFormulaRef();
+		var oldActiveCell;
+		if(AscCommonExcel.g_R1C1Mode && bLocale && formulaArray){
+			AscCommonExcel.g_ActiveCell = new Asc.Range(formulaArray.c1, formulaArray.r1, formulaArray.c1, formulaArray.r1);
+			oldActiveCell = AscCommonExcel.g_ActiveCell;
+		}
+
 		for (var i = 0, j = 0; i < _count; i++) {
 			currentElement = this.outStack[i];
 
@@ -6830,13 +6934,18 @@ parserFormula.prototype.clone = function(formula, parent, ws) {
 				//используется в областях печати
 				//формулы вида "Sheet1!$B$3:$C$4,Sheet1!$D$3:$E$5,Sheet1!$G$3:$G$6,Sheet1!$J$2"
 				//TODO рассмотреть вписание в общую схему
-				return rangesStr;
+				res = rangesStr;
 			} else {
-				return bLocale ? res.toLocaleString(digitDelim) : res.toString();
+				res = bLocale ? res.toLocaleString(digitDelim) : res.toString();
 			}
 		} else {
-			return this.Formula;
+			res = this.Formula;
 		}
+
+		if(oldActiveCell) {
+			AscCommonExcel.g_ActiveCell = oldActiveCell;
+		}
+		return res;
 	};
 
 	parserFormula.prototype.buildDependencies = function() {

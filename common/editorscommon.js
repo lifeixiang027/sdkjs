@@ -711,7 +711,7 @@
 
 	function sendSaveFile(docId, userId, title, jwt, data, fError, fsuccess)
 	{
-		var cmd = {'id': docId, "userid": userId, "jwt": jwt, 'outputpath': title};
+		var cmd = {'id': docId, "userid": userId, "tokenSession": jwt, 'outputpath': title};
 		asc_ajax({
 			type:        'POST',
 			url:         sSaveFileLocalUrl + '/' + docId + '?cmd=' + encodeURIComponent(JSON.stringify(cmd)),
@@ -770,6 +770,15 @@
 				break;
 			case c_oAscServerError.UploadURL :
 				nRes = Asc.c_oAscError.ID.UplImageUrl;
+				break;
+			case c_oAscServerError.UploadDocumentContentLength :
+				nRes = Asc.c_oAscError.ID.UplDocumentSize;
+				break;
+			case c_oAscServerError.UploadDocumentExtension :
+				nRes = Asc.c_oAscError.ID.UplDocumentExt;
+				break;
+			case c_oAscServerError.UploadDocumentCountFiles :
+				nRes = Asc.c_oAscError.ID.UplDocumentFileCount;
 				break;
 			case c_oAscServerError.VKey :
 				nRes = Asc.c_oAscError.ID.FileVKey;
@@ -1231,6 +1240,9 @@
 		UploadExtension:     -102,
 		UploadCountFiles:    -103,
 		UploadURL:           -104,
+		UploadDocumentContentLength: -105,
+		UploadDocumentExtension:     -106,
+		UploadDocumentCountFiles:    -107,
 
 		VKey:                -120,
 		VKeyEncrypt:         -121,
@@ -1238,9 +1250,15 @@
 		VKeyUserCountExceed: -123
 	};
 
+	//todo get from server config
 	var c_oAscImageUploadProp = {//Не все браузеры позволяют получить информацию о файле до загрузки(например ie9), меняя параметры здесь надо поменять аналогичные параметры в web.common
 		MaxFileSize:      25000000, //25 mb
 		SupportedFormats: ["jpg", "jpeg", "jpe", "png", "gif", "bmp"]
+	};
+
+	var c_oAscDocumentUploadProp = {
+		MaxFileSize:      104857600, //100 mb
+		SupportedFormats: ["docx", "doc", "docm", "dot", "dotm", "dotx", "epub", "fodt", "odt", "ott", "rtf"]
 	};
 
 	/**
@@ -1485,7 +1503,14 @@
 		}
 	}
 
-	function ShowImageFileDialog(documentId, documentUserId, jwt, callback, callbackOld)
+	function getAcceptByArray(arr){
+		var res = '.' + arr[0];
+		for (var i = 1; i < arr.length; ++i) {
+			res += ',.' + arr[i];
+		}
+		return res;
+	}
+	function _ShowFileDialog(accept, allowEncryption, fValidate, callback)
 	{
 		if (AscCommon.AscBrowser.isNeedEmulateUpload && window["emulateUpload"])
 		{
@@ -1500,26 +1525,25 @@
 				blob.name = name;
 				blob.fileName = name;
 
-                var nError = ValidateUploadImage([blob]);
+                var nError = fValidate([blob]);
                 callback(mapAscServerErrorToAscError(nError), [blob]);
             }, ":<iframe><image>");
 			return;
 		}
 
-        if (AscCommon.EncryptionWorker && AscCommon.EncryptionWorker.isCryptoImages())
+        if (allowEncryption && AscCommon.EncryptionWorker && AscCommon.EncryptionWorker.isCryptoImages())
 		{
 			AscCommon.EncryptionWorker.addCryproImagesFromDialog(callback);
 			return;
 		}
 
-		var fileName;
 		if ("undefined" != typeof(FileReader))
 		{
-			fileName = GetUploadInput(function (e)
+			var fileName = GetUploadInput(accept, function (e)
 			{
 				if (e && e.target && e.target.files)
 				{
-					var nError = ValidateUploadImage(e.target.files);
+					var nError = fValidate(e.target.files);
 					callback(mapAscServerErrorToAscError(nError), e.target.files);
 				}
 				else
@@ -1527,9 +1551,17 @@
 					callback(Asc.c_oAscError.ID.Unknown);
 				}
 			});
+			fileName.click();
 		}
 		else
 		{
+			return false;
+		}
+	}
+	function ShowImageFileDialog(documentId, documentUserId, jwt, callback, callbackOld)
+	{
+		if (false === _ShowFileDialog("image/*", true, ValidateUploadImage, callback)) {
+			//todo remove this compatibility
 			var frameWindow = GetUploadIFrame();
 			var url = sUploadServiceLocalUrlOld + '/' + documentId + '/' + documentUserId + '/' + g_oDocumentUrls.getMaxIndex();
 			if (jwt)
@@ -1541,7 +1573,7 @@
 			frameWindow.document.write(content);
 			frameWindow.document.close();
 
-			fileName = frameWindow.document.getElementById("apiiuFile");
+			var fileName = frameWindow.document.getElementById("apiiuFile");
 			var fileSubmit = frameWindow.document.getElementById("apiiuSubmit");
 
 			fileName.onchange = function (e)
@@ -1558,16 +1590,13 @@
 				callbackOld(Asc.c_oAscError.ID.No);
 				fileSubmit.click();
 			};
-		}
-
-		//todo пересмотреть opera
-		if (AscBrowser.isOpera)
-			setTimeout(function ()
-			{
-				fileName.click();
-			}, 0);
-		else
 			fileName.click();
+		}
+	}
+	function ShowDocumentFileDialog(callback) {
+		if (false === _ShowFileDialog(getAcceptByArray(c_oAscDocumentUploadProp.SupportedFormats), false, ValidateUploadDocument, callback)) {
+			callback(Asc.c_oAscError.ID.Unknown);
+		}
 	}
 
 	function InitDragAndDrop(oHtmlElement, callback)
@@ -1787,7 +1816,7 @@
         }
     }
 
-	function ValidateUploadImage(files)
+	function ValidateUpload(files, eUploadExtension, eUploadContentLength, eUploadCountFiles, c_oAscUploadProp)
 	{
 		var nRes = c_oAscServerError.NoError;
 		if (files.length > 0)
@@ -1796,16 +1825,16 @@
 			{
 				var file = files[i];
 				//проверяем расширение файла
-				var sName = file.fileName || file.name;
+				var sName = file.name;
 				if (sName)
 				{
 					var bSupported = false;
 					var ext = GetFileExtension(sName);
 					if (null !== ext)
 					{
-						for (var j = 0, length2 = c_oAscImageUploadProp.SupportedFormats.length; j < length2; j++)
+						for (var j = 0, length2 = c_oAscUploadProp.SupportedFormats.length; j < length2; j++)
 						{
-							if (c_oAscImageUploadProp.SupportedFormats[j] == ext)
+							if (c_oAscUploadProp.SupportedFormats[j] == ext)
 							{
 								bSupported = true;
 								break;
@@ -1813,21 +1842,29 @@
 						}
 					}
 					if (false == bSupported)
-						nRes = c_oAscServerError.UploadExtension;
+						nRes = eUploadExtension;
 				}
 				if (Asc.c_oAscError.ID.No == nRes)
 				{
-					var nSize = file.fileSize || file.size;
-					if (nSize && c_oAscImageUploadProp.MaxFileSize < nSize)
-						nRes = c_oAscServerError.UploadContentLength;
+					var nSize = file.size;
+					if (nSize && c_oAscUploadProp.MaxFileSize < nSize)
+						nRes = eUploadContentLength;
 				}
 				if (c_oAscServerError.NoError != nRes)
 					break;
 			}
 		}
 		else
-			nRes = c_oAscServerError.UploadCountFiles;
+			nRes = eUploadCountFiles;
 		return nRes;
+	}
+	function ValidateUploadImage(files)
+	{
+		return ValidateUpload(files, c_oAscServerError.UploadExtension, c_oAscServerError.UploadContentLength, c_oAscServerError.UploadCountFiles, c_oAscImageUploadProp);
+	}
+	function ValidateUploadDocument(files)
+	{
+		return ValidateUpload(files, c_oAscServerError.UploadDocumentExtension, c_oAscServerError.UploadDocumentContentLength, c_oAscServerError.UploadDocumentCountFiles, c_oAscDocumentUploadProp);
 	}
 
 	function CanDropFiles(event)
@@ -1895,7 +1932,7 @@
 		return window.frames[sIFrameName];
 	}
 
-	function GetUploadInput(onchange)
+	function GetUploadInput(accept, onchange)
 	{
 		var inputName = 'apiiuFile';
 		var input = document.getElementById(inputName);
@@ -1908,7 +1945,7 @@
 		input.setAttribute('id', inputName);
 		input.setAttribute('name', inputName);
 		input.setAttribute('type', 'file');
-		input.setAttribute('accept', 'image/*');
+		input.setAttribute('accept', accept);
 		input.setAttribute('style', 'position:absolute;left:-2px;top:-2px;width:1px;height:1px;z-index:-1000;cursor:pointer;');
 		input.onchange = onchange;
 		document.body.appendChild(input);
@@ -2126,6 +2163,35 @@
 	{
 		var activeCell = AscCommonExcel.g_ActiveCell;
 		var colStr, rowStr, res = "";
+
+		var getColStr = function() {
+			var col;
+			if(c < 0) {
+				var tempCol = !isAbsCol && activeCell ? activeCell.c1 + 1 + c : c;
+				if(tempCol <= 0) {
+					tempCol = AscCommon.gc_nMaxCol + tempCol;
+				}
+				col = g_oCellAddressUtils.colnumToColstrFromWsView(tempCol);
+			} else {
+				col = g_oCellAddressUtils.colnumToColstrFromWsView(!isAbsCol && activeCell ? activeCell.c1 + 1 + c : c);
+			}
+			return col;
+		};
+
+		var getRowStr = function() {
+			var row;
+			if(r < 0) {
+				var tempRow = !isAbsRow && activeCell ? activeCell.r1 + 1 + r : r;
+				if(tempRow <= 0) {
+					tempRow = AscCommon.gc_nMaxRow + tempRow;
+				}
+				row = tempRow + "";
+			} else {
+				row = !isAbsRow && activeCell ? activeCell.r1 + 1 + r + "" : r + "";
+			}
+			return row;
+		};
+
 		if(r !== null && c !== null) {
 			if(isNaN(r)) {
 				r = 0;
@@ -2136,8 +2202,10 @@
 				isAbsCol = false;
 			}
 
-			colStr = g_oCellAddressUtils.colnumToColstrFromWsView(!isAbsCol && activeCell ? activeCell.c1 + 1 + c : c);
-			rowStr = !isAbsRow && activeCell ? activeCell.r1 + 1 + r : r;
+			colStr = getColStr();
+			rowStr = getRowStr();
+
+
 			if(isAbsCol) {
 				colStr = "$" + colStr;
 			}
@@ -2150,7 +2218,10 @@
 				c = 0;
 				isAbsCol = false;
 			}
-			colStr = g_oCellAddressUtils.colnumToColstrFromWsView(!isAbsCol && activeCell ? activeCell.c1 + 1 + c : c);
+
+			//colStr = g_oCellAddressUtils.colnumToColstrFromWsView(!isAbsCol && activeCell ? activeCell.c1 + 1 + c : c);
+			colStr = getColStr();
+
 			if(isAbsCol) {
 				colStr = "$" + colStr;
 			}
@@ -2160,7 +2231,10 @@
 				r = 0;
 				isAbsRow = false;
 			}
-			rowStr = !isAbsRow && activeCell ? activeCell.r1 + 1 + r + "" : r + "";
+
+			//rowStr = !isAbsRow && activeCell ? activeCell.r1 + 1 + r + "" : r + "";
+			rowStr = getRowStr();
+
 			if(isAbsRow) {
 				rowStr = "$" + rowStr;
 			}
@@ -4720,6 +4794,9 @@
 	if (typeof Float64Array !== 'undefined' && !Float64Array.prototype.fill) {
 		Float64Array.prototype.fill = Array.prototype.fill;
 	}
+	if (typeof Uint8Array !== 'undefined' && !Uint8Array.prototype.slice) {
+		Uint8Array.prototype.slice = Array.prototype.slice;
+	}
 
 	function parseText(text, options, bTrimSpaces) {
 		var delimiterChar;
@@ -4807,6 +4884,7 @@
 	window["AscCommon"].getExtentionByFormat = getExtentionByFormat;
 	window["AscCommon"].InitOnMessage = InitOnMessage;
 	window["AscCommon"].ShowImageFileDialog = ShowImageFileDialog;
+	window["AscCommon"].ShowDocumentFileDialog = ShowDocumentFileDialog;
 	window["AscCommon"].InitDragAndDrop = InitDragAndDrop;
 	window["AscCommon"].UploadImageFiles = UploadImageFiles;
     window["AscCommon"].UploadImageUrls = UploadImageUrls;
@@ -5084,7 +5162,7 @@ window["buildCryptoFile_End"] = function(url, error, hash, password)
 			AscCommon.sendSaveFile(_editor.documentId, _editor.documentUserId, "output" + ext, _editor.asc_getSessionToken(), fileData, function(err) {
 
                 _editor.sync_EndAction(Asc.c_oAscAsyncActionType.BlockInteraction, Asc.c_oAscAsyncAction.Save);
-                _editor.sendEvent("asc_onError", Asc.c_oAscError.ID.ConvertationOpenError, Asc.c_oAscError.Level.Critical);
+                _editor.sendEvent("asc_onError", Asc.c_oAscError.ID.ConvertationSaveError, Asc.c_oAscError.Level.Critical);
 
                 window["AscDesktopEditor"]["buildCryptedEnd"](false);
 

@@ -136,7 +136,7 @@ CTableCell.prototype =
     },
 
 
-    Copy : function(Row)
+    Copy : function(Row, oPr)
     {
         var Cell = new CTableCell(Row);
 
@@ -144,7 +144,7 @@ CTableCell.prototype =
         Cell.Copy_Pr( this.Pr.Copy(), false );
 
         // Копируем содержимое ячейки
-        Cell.Content.Copy2( this.Content );
+		Cell.Content.Copy2(this.Content, oPr);
 
         // Скопируем BorderInfo и метрики, чтобы при копировании строки целиком не надо было их пересчитывать
         Cell.BorderInfo.Top                = this.BorderInfo.Top;
@@ -1444,15 +1444,7 @@ CTableCell.prototype =
 
     Get_Borders : function()
     {
-        var CellBorders =
-            {
-                Top    : this.Get_Border( 0 ),
-                Right  : this.Get_Border( 1 ),
-                Bottom : this.Get_Border( 2 ),
-                Left   : this.Get_Border( 3 )
-            };
-
-        return CellBorders;
+    	return this.GetBorders();
     },
 
     // 0 - Top, 1 - Right, 2- Bottom, 3- Left
@@ -1794,20 +1786,23 @@ CTableCell.prototype =
     },
 
     Read_FromBinary2 : function(Reader)
-    {
-        // String   : Id ячейки
-        // Variable : TableCell.Pr
-        // String   : Id DocumentContent
+	{
+		// String   : Id ячейки
+		// Variable : TableCell.Pr
+		// String   : Id DocumentContent
 
-        this.Id = Reader.GetString2();
-        this.Pr = new CTableCellPr();
-        this.Pr.Read_FromBinary( Reader );
-        this.Recalc_CompiledPr();
+		this.Id = Reader.GetString2();
+		this.Pr = new CTableCellPr();
+		this.Pr.Read_FromBinary(Reader);
+		this.Recalc_CompiledPr();
 
-        this.Content = AscCommon.g_oTableId.Get_ById( Reader.GetString2() );
+		this.Content = AscCommon.g_oTableId.Get_ById(Reader.GetString2());
 
-        AscCommon.CollaborativeEditing.Add_NewObject( this );
-    },
+		if (this.Content)
+			this.Content.Parent = this;
+
+		AscCommon.CollaborativeEditing.Add_NewObject(this);
+	},
 
     Load_LinkData : function(LinkData)
     {
@@ -2320,7 +2315,24 @@ CTableCell.prototype.IsMergedCell = function()
 
 	return false;
 };
-
+/**
+ * Получаем границы данной ячейки
+ * @returns {{Top: *, Right: *, Bottom: *, Left: *}}
+ */
+CTableCell.prototype.GetBorders = function()
+{
+	return {
+		Top    : this.GetBorder(0),
+		Right  : this.GetBorder(1),
+		Bottom : this.GetBorder(2),
+		Left   : this.GetBorder(3)
+	};
+};
+CTableCell.prototype.CheckContentControlEditingLock = function()
+{
+    if (this.Row && this.Row.Table && this.Row.Table.Parent && this.Row.Table.Parent.CheckContentControlEditingLock)
+        this.Row.Table.Parent.CheckContentControlEditingLock();
+};
 
 function CTableCellRecalculateObject()
 {
