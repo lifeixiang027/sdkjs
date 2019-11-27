@@ -2791,6 +2791,7 @@ var  EFFECT_TYPE_BLEND			=	30;
     function fReadEffect(r) {
         var type = r.GetLong();
         var ret = fCreateEffectByType(type);
+        ret.Read_FromBinary(r);
         return ret;
     }
 
@@ -4801,6 +4802,19 @@ CUniFill.prototype =
         this.transparent = transparent;
     },
 
+    getUniColor: function()
+    {
+        if(this.fill && this.fill instanceof CSolidFill &&  this.fill.color)
+        {
+            return this.fill.color;
+        }
+        else
+        {
+            var RGBA = this.getRGBAColor();
+            return CreateUniColorRGB(RGBA.R, RGBA.G, RGBA.B);
+        }
+    },
+
     Set_FromObject: function(o)
     {
         //TODO:
@@ -4870,8 +4884,6 @@ CUniFill.prototype =
             }
         }
     },
-
-
 
     calculate : function(theme, slide, layout, masterSlide, RGBA, colorMap)
     {
@@ -5292,6 +5304,15 @@ function CompareShapeProperties(shapeProp1, shapeProp2)
     else
     {
         _result_shape_prop.flipV = null;
+    }
+
+    if(shapeProp1.anchor === shapeProp2.anchor)
+    {
+        _result_shape_prop.anchor = shapeProp1.anchor;
+    }
+    else
+    {
+        _result_shape_prop.anchor = null;
     }
 
     if(shapeProp1.stroke == null || shapeProp2.stroke == null)
@@ -5867,6 +5888,11 @@ CLn.prototype =
     setW: function(w)
     {
         this.w = w;
+    },
+
+    isVisible: function()
+    {
+        return this.Fill && this.Fill.fill && this.Fill.fill.type !== AscFormat.FILL_TYPE_NONE && this.Fill.fill.type !== AscFormat.FILL_TYPE_NOFILL;
     },
 
     Write_ToBinary: function(w)
@@ -7719,23 +7745,29 @@ ClrScheme.prototype =
 {
     isIdentical: function(clrScheme)
     {
-        if(clrScheme == null)
-        {
-            return false;
-        }
         if(!(clrScheme instanceof ClrScheme) )
         {
             return false;
         }
-        if(clrScheme.name != this.name)
+        if(clrScheme.name !== this.name)
         {
             return false;
         }
         for(var _clr_index = g_clr_MIN; _clr_index <= g_clr_MAX; ++_clr_index)
         {
-            if(this.colors[_clr_index] != clrScheme.colors[_clr_index])
+            if(this.colors[_clr_index])
             {
-                return false;
+                if(!this.colors[_clr_index].IsIdentical(clrScheme.colors[_clr_index]))
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                if(clrScheme.colors[_clr_index])
+                {
+                    return false;
+                }
             }
         }
         return true;
@@ -7747,7 +7779,10 @@ ClrScheme.prototype =
         _duplicate.name = this.name;
         for(var _clr_index = 0; _clr_index <= this.colors.length; ++_clr_index)
         {
-            _duplicate.colors[_clr_index] = this.colors[_clr_index];
+            if(this.colors[_clr_index])
+            {
+                _duplicate.colors[_clr_index] = this.colors[_clr_index].createDuplicate();
+            }
         }
         return _duplicate;
     },
@@ -7931,6 +7966,8 @@ ExtraClrScheme.prototype =
         this.Id = r.GetString2();
     }
 };
+
+drawingConstructorsMap[AscDFH.historyitem_ExtraClrScheme_SetClrScheme                 ] = ClrScheme;
 
 function FontCollection(fontScheme)
 {
@@ -8310,7 +8347,7 @@ CTheme.prototype =
     {
         var oTheme = new CTheme();
         oTheme.setName(this.name);
-        oTheme.changeColorScheme(this.themeElements.clrScheme.createDuplicate());
+        oTheme.setColorScheme(this.themeElements.clrScheme.createDuplicate());
         oTheme.setFontScheme(this.themeElements.fontScheme.createDuplicate());
         oTheme.setFormatScheme(this.themeElements.fmtScheme.createDuplicate());
         if(this.spDef){
@@ -8392,7 +8429,35 @@ CTheme.prototype =
         return new CLn();
     },
 
+    getExtraClrScheme: function(sName)
+    {
+        for(var i = 0; i < this.extraClrSchemeLst.length; ++i)
+        {
+            if(this.extraClrSchemeLst[i].clrScheme && this.extraClrSchemeLst[i].clrScheme.name === sName)
+            {
+                return this.extraClrSchemeLst[i].clrScheme.createDuplicate();
+            }
+        }
+        return null;
+    },
+
     changeColorScheme: function(clrScheme)
+    {
+        var oCurClrScheme = this.themeElements.clrScheme;
+        this.setColorScheme(clrScheme);
+        if(!AscCommon.getColorSchemeByName(oCurClrScheme.name))
+        {
+            var oExtraClrScheme = new ExtraClrScheme();
+            if(this.clrMap)
+            {
+                oExtraClrScheme.setClrMap(this.clrMap.createDuplicate());
+            }
+            oExtraClrScheme.setClrScheme(oCurClrScheme.createDuplicate());
+            this.addExtraClrSceme(oExtraClrScheme, 0);
+        }
+    },
+
+    setColorScheme: function(clrScheme)
     {
         History.Add(new CChangesDrawingsObjectNoId(this, AscDFH.historyitem_ThemeSetColorScheme, this.themeElements.clrScheme,  clrScheme));
         this.themeElements.clrScheme = clrScheme;
@@ -8787,6 +8852,29 @@ CTextStyles.prototype =
     Get_Id: function()
     {
         return this.Id;
+    },
+
+    getStyleByPhType: function(phType)
+    {
+        switch (phType) {
+            case AscFormat.phType_ctrTitle:
+            case AscFormat.phType_title:
+            {
+                return this.titleStyle;
+            }
+            case AscFormat.phType_body:
+            case AscFormat.phType_subTitle:
+            case AscFormat.phType_obj:
+            case null:
+            {
+                return this.bodyStyle;
+            }
+            default:
+            {
+                break;
+            }
+        }
+        return this.otherStyle;
     },
 
     createDuplicate: function()
@@ -10106,6 +10194,24 @@ function CompareBullets(bullet1, bullet2)
                 break;
             }
         }
+
+        if(bullet1.bulletSize && bullet2.bulletSize
+        && bullet1.bulletSize.val === bullet2.bulletSize.val
+        && bullet1.bulletSize.type === bullet2.bulletSize.type)
+        {
+            ret.bulletSize = bullet1.bulletSize;
+        }
+        if(bullet1.bulletColor && bullet2.bulletColor
+        && bullet1.bulletColor.type ===  bullet2.bulletColor.type)
+        {
+            ret.bulletColor = new CBulletColor()
+            ret.bulletColor.type =  bullet2.bulletColor.type;
+            ret.bulletColor.UniColor = bullet1.bulletColor.UniColor.compare(bullet2.bulletColor.UniColor);
+            if(!ret.bulletColor.UniColor.color)
+            {
+                ret.bulletColor = null;
+            }
+        }
         return ret;
     }
     else
@@ -11085,7 +11191,7 @@ function CorrectUniFill(asc_fill, unifill, editorId)
 
                 if (undefined != _colors && undefined != _positions)
                 {
-                    if (_colors.length == _positions.length)
+                    if (_colors.length === _positions.length)
                     {
                         if(ret.fill.colors.length === _colors.length){
                             for (var i = 0; i < _colors.length; i++){
@@ -11096,6 +11202,7 @@ function CorrectUniFill(asc_fill, unifill, editorId)
                             }
                         }
                         else{
+                            ret.fill.colors.length = 0;
                             for (var i = 0; i < _colors.length; i++){
                                 var _gs = new CGs();
                                 _gs.color = CorrectUniColor(_colors[i], _gs.color, editorId);
@@ -11170,7 +11277,35 @@ function CorrectUniFill(asc_fill, unifill, editorId)
 
     var _alpha = asc_fill.transparent;
     if (null != _alpha)
-        ret.transparent = _alpha;
+	{
+		ret.transparent = _alpha;
+		
+		
+	}
+	
+	if(ret.transparent != null)
+	{
+		
+		if(ret.fill && ret.fill.type === c_oAscFill.FILL_TYPE_BLIP)
+		{
+			
+			for(var i = 0; i < ret.fill.Effects.length; ++i)
+			{
+				if(ret.fill.Effects[i].Type = EFFECT_TYPE_ALPHAMODFIX)
+				{
+					ret.fill.Effects[i].amt = ((ret.transparent * 100000 / 255) >> 0);
+					break;
+				}  
+			}
+			if(i === ret.fill.Effects.length)
+			{
+				var oEffect = new CAlphaModFix();
+				oEffect.amt = ((ret.transparent * 100000 / 255) >> 0);
+				ret.fill.Effects.push(oEffect);
+			}
+		}
+	}
+        
 
     return ret;
 }

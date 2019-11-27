@@ -466,6 +466,9 @@ CDocumentContentElementBase.prototype.GetCursorPosXY = function()
 CDocumentContentElementBase.prototype.StartSelectionFromCurPos = function()
 {
 };
+CDocumentContentElementBase.prototype.SetParagraphPr = function(oParaPr)
+{
+};
 CDocumentContentElementBase.prototype.SetParagraphAlign = function(Align)
 {
 };
@@ -649,6 +652,19 @@ CDocumentContentElementBase.prototype.LoadRecalculateObject = function(RecalcObj
 };
 CDocumentContentElementBase.prototype.Set_ApplyToAll = function(bValue)
 {
+	this.SetApplyToAll(bValue);
+};
+CDocumentContentElementBase.prototype.Get_ApplyToAll = function()
+{
+	return this.IsApplyToAll();
+};
+CDocumentContentElementBase.prototype.SetApplyToAll = function(isApplyAll)
+{
+	this.ApplyToAll = isApplyAll;
+};
+CDocumentContentElementBase.prototype.IsApplyToAll = function()
+{
+	return this.ApplyToAll;
 };
 CDocumentContentElementBase.prototype.RecalculateAllTables = function()
 {
@@ -790,6 +806,10 @@ CDocumentContentElementBase.prototype.Get_CurrentPage_Relative = function()
 {
 	return this.private_GetRelativePageIndex(0);
 };
+CDocumentContentElementBase.prototype.GetCurrentPageAbsolute = function()
+{
+	return this.Get_CurrentPage_Absolute();
+};
 CDocumentContentElementBase.prototype.GetAbsolutePage = function(CurPage)
 {
 	return this.private_GetAbsolutePageIndex(CurPage);
@@ -883,6 +903,16 @@ CDocumentContentElementBase.prototype.GetAllComments = function(AllComments)
 CDocumentContentElementBase.prototype.GetAllMaths = function(AllMaths)
 {
 };
+
+/**
+ * Find all SEQ complex fields with specified type
+ * @param {String} sType - field type
+ * @param {Array} aFields - array which accumulates complex fields
+ */
+CDocumentContentElementBase.prototype.GetAllSeqFieldsByType = function(sType, aFields)
+{
+};
+
 CDocumentContentElementBase.prototype.UpdateBookmarks = function(oManager)
 {
 };
@@ -1001,7 +1031,7 @@ CDocumentContentElementBase.prototype.SetIsRecalculated = function(isRecalculate
 	this.Recalculated = isRecalculated;
 };
 /**
- * Узнаем рассчитан ли данный параграф
+ * Узнаем рассчитан ли данный элемент
  * @returns {boolean}
  */
 CDocumentContentElementBase.prototype.IsRecalculated = function()
@@ -1089,6 +1119,14 @@ CDocumentContentElementBase.prototype.CheckRunContent = function(fCheck)
 CDocumentContentElementBase.prototype.GetStartPageForRecalculate = function(nPageAbs)
 {
 	return nPageAbs;
+};
+/**
+ * Проверяем выделено ли сейчас какое-либо презентационное поле, если да, то возвращаем управляющий объект
+ * @returns {?Object}
+ */
+CDocumentContentElementBase.prototype.GetPresentationField = function()
+{
+	return null;
 };
 
 //--------------------------------------------------------export--------------------------------------------------------

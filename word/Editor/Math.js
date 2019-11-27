@@ -37,6 +37,7 @@ var align_Right = AscCommon.align_Right;
 var align_Left = AscCommon.align_Left;
 var align_Center = AscCommon.align_Center;
 var align_Justify = AscCommon.align_Justify;
+var c_oAscRevisionsChangeType = Asc.c_oAscRevisionsChangeType;
 var g_oTableId = AscCommon.g_oTableId;
 var History = AscCommon.History;
 
@@ -1563,9 +1564,9 @@ ParaMath.prototype.GetSelectContent = function()
     return this.Root.GetSelectContent();
 };
 
-ParaMath.prototype.Get_CurrentParaPos = function()
+ParaMath.prototype.GetCurrentParaPos = function()
 {
-    return this.Root.Get_CurrentParaPos();
+    return this.Root.GetCurrentParaPos();
 };
 
 ParaMath.prototype.Apply_TextPr = function(TextPr, IncFontSize, ApplyToAll)
@@ -1670,32 +1671,33 @@ ParaMath.prototype.GetSelectedElementsInfo = function(Info, ContentPos, Depth)
 
 ParaMath.prototype.GetSelectedText = function(bAll, bClearText, oPr)
 {
-	if (true === bAll || true === this.IsSelectionUse())
-	{
+	if (true === bAll || true === this.IsSelectionUse()) {
 		if (true === bClearText)
 			return null;
 
 		var res = "";
-
-		//TODO проверить!!! +  пересмотреть работу функции GetTextContent
-		//включаю эту ветку только для copy/paste
-		if(window['AscCommon'].g_clipboardBase && window['AscCommon'].g_clipboardBase.CopyPasteFocus)
-		{
-			var selectedContent = this.GetSelectContent();
-			if(selectedContent && selectedContent.Content && selectedContent.Content.GetTextContent)
-			{
-				var textContent = selectedContent.Content.GetTextContent(!bAll);
-				if(textContent && textContent.str)
-				{
-					res = textContent.str;
-				}
-			}
-		}
-
+        var selectedContent = this.GetSelectContent();
+        if (selectedContent && selectedContent.Content && selectedContent.Content.GetTextContent) {
+            var textContent = selectedContent.Content.GetTextContent(!bAll);
+            if (textContent && textContent.str) {
+                res = textContent.str;
+            }
+        }
 		return res;
 	}
-
 	return "";
+};
+
+ParaMath.prototype.GetText = function()
+{
+    var res = "";
+    if (this.Root && this.Root.GetTextContent) {
+        var textContent = this.Root.GetTextContent();
+        if (textContent && textContent.str) {
+            res = textContent.str;
+        }
+    }
+    return res;
 };
 
 ParaMath.prototype.GetSelectDirection = function()
@@ -1707,7 +1709,7 @@ ParaMath.prototype.Clear_TextFormatting = function( DefHyper )
 {
 };
 
-ParaMath.prototype.Can_AddDropCap = function()
+ParaMath.prototype.CanAddDropCap = function()
 {
     return false;
 };
@@ -2747,7 +2749,7 @@ ParaMath.prototype.Draw_HighLights = function(PDSH)
             var CommentsFlag  = PDSH.CommentsFlag;
 
             var Bounds = this.Root.Get_LineBound(PDSH.Line, PDSH.Range);
-            Comm.Add(Bounds.Y, Bounds.Y + Bounds.H, Bounds.X, Bounds.X + Bounds.W, 0, 0, 0, 0, { Active : CommentsFlag === comments_ActiveComment ? true : false, CommentId : CommentId } );
+            Comm.Add(Bounds.Y, Bounds.Y + Bounds.H, Bounds.X, Bounds.X + Bounds.W, 0, 0, 0, 0, { Active : CommentsFlag === AscCommon.comments_ActiveComment ? true : false, CommentId : CommentId } );
         }
 
         if (null !== CollFirst)
@@ -2837,7 +2839,7 @@ ParaMath.prototype.Draw_Lines = function(PDSL)
 //-----------------------------------------------------------------------------------
 // Функции для работы с курсором
 //-----------------------------------------------------------------------------------
-ParaMath.prototype.Is_CursorPlaceable = function()
+ParaMath.prototype.IsCursorPlaceable = function()
 {
     return true;
 };

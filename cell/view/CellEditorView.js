@@ -407,6 +407,10 @@
 		// Сброс состояния редактора
 		this.m_nEditorState = c_oAscCellEditorState.editEnd;
 		this.handlers.trigger("closed");
+		if(callback) {
+			callback(true);
+		}
+
 		return true;
 	};
 
@@ -1040,14 +1044,14 @@
 						continue;
 				}
 
-				if (ret && t.cursorPos > _s && t.cursorPos <= _s + r.oper.value.length) {
+				if (ret && t.cursorPos > _s && t.cursorPos <= _s + refStr.length) {
 					range = t._parseRangeStr(refStr);
 					if (range) {
 						if (this.handlers.trigger("getActiveWS") && this.handlers.trigger("getActiveWS").getName() != wsName) {
 							return {index: -1, length: 0, range: null};
 						}
 						range.isName = isName;
-						return {index: _s, length: r.oper.value.length, range: range, wsName: wsName};
+						return {index: _s, length: refStr.length, range: range, wsName: wsName};
 					}
 				}
 			}
@@ -1725,10 +1729,13 @@
 	};
 
 	CellEditor.prototype._topLineMouseUp = function () {
-		var t = this;
 		this.callTopLineMouseup = false;
 		// при такой комбинации ctrl+a, click, ctrl+a, click не обновляется selectionStart
 		// поэтому выполняем обработку после обработчика системы
+		this._delayedUpdateCursorByTopLine();
+	};
+	CellEditor.prototype._delayedUpdateCursorByTopLine = function () {
+		var t = this;
 		setTimeout(function () {
 			t._updateCursorByTopLine();
 		});
@@ -2409,6 +2416,7 @@
 
 			case 37:  // "left"
 				if (!this.enableKeyEvents) {
+					this._delayedUpdateCursorByTopLine();
 					break;
 				}
 
@@ -2426,6 +2434,7 @@
 
 			case 39:  // "right"
 				if (!this.enableKeyEvents) {
+					this._delayedUpdateCursorByTopLine();
 					break;
 				}
 
@@ -2443,6 +2452,7 @@
 
 			case 38:  // "up"
 				if (!this.enableKeyEvents) {
+					this._delayedUpdateCursorByTopLine();
 					break;
 				}
 
@@ -2459,6 +2469,7 @@
 
 			case 40:  // "down"
 				if (!this.enableKeyEvents) {
+					this._delayedUpdateCursorByTopLine();
 					break;
 				}
 

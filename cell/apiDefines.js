@@ -86,6 +86,14 @@ var c_oAscCleanOptions = {
   SparklineGroups: 8
 };
 
+// ToDo Add including cells not marked as needing to be calculated
+var c_oAscCalculateType = {
+  WorkbookOnlyChanged: 1,
+  ActiveSheet: 2,
+  Workbook: 3,
+  All: 4
+};
+
 var c_oAscDrawDepOptions = {
   Master: 0,
   Slave: 1,
@@ -144,13 +152,6 @@ var c_oAscLockTypeElemSubType = {
 var c_oAscRecalcIndexTypes = {
   RecalcIndexAdd: 1,
   RecalcIndexRemove: 2
-};
-
-// Тип печати
-var c_oAscPrintType = {
-  ActiveSheets: 0,	// Активные листы
-  EntireWorkbook: 1,	// Всю книгу
-  Selection: 2		// Выделенный фрагмент
 };
 
 /** @enum */
@@ -339,6 +340,7 @@ var c_oAscFormulaRangeBorderColor = [
   var c_oAscLockAddSheet = "addSheet";
   var c_oAscLockLayoutOptions = "layoutOptions";
   var c_oAscHeaderFooterEdit = "headerFooterEdit";
+  var c_oAscLockPrintScaleOptions = "printScaleOptions";
 
 var c_oAscGetDefinedNamesList = {
   Worksheet: 0,
@@ -469,6 +471,8 @@ var c_oAscPopUpSelectorType = {
   window['AscCommonExcel'].c_oAscLockAddSheet = c_oAscLockAddSheet;
   window['AscCommonExcel'].c_oAscLockLayoutOptions = c_oAscLockLayoutOptions;
   window['AscCommonExcel'].c_oAscHeaderFooterEdit = c_oAscHeaderFooterEdit;
+  window['AscCommonExcel'].c_oAscLockPrintScaleOptions = c_oAscLockPrintScaleOptions;
+
 
   window['AscCommonExcel'].c_kMaxPrintPages = c_kMaxPrintPages;
   window['AscCommonExcel'].filteringMode = true;
@@ -516,6 +520,12 @@ var c_oAscPopUpSelectorType = {
   prot['Hyperlinks'] = prot.Hyperlinks;
   prot['Sparklines'] = prot.Sparklines;
   prot['SparklineGroups'] = prot.SparklineGroups;
+  window['Asc']['c_oAscCalculateType'] = window['Asc'].c_oAscCalculateType = c_oAscCalculateType;
+  prot = c_oAscCalculateType;
+  prot['WorkbookOnlyChanged'] = prot.WorkbookOnlyChanged;
+  prot['ActiveSheet'] = prot.ActiveSheet;
+  prot['Workbook'] = prot.Workbook;
+  prot['All'] = prot.All;
   window['Asc']['c_oAscSelectionDialogType'] = window['Asc'].c_oAscSelectionDialogType = c_oAscSelectionDialogType;
   prot = c_oAscSelectionDialogType;
   prot['None'] = prot.None;
@@ -541,11 +551,6 @@ var c_oAscPopUpSelectorType = {
   prot['Range'] = prot.Range;
   prot['TableProperties'] = prot.TableProperties;
   prot['Sheet'] = prot.Sheet;
-  window['Asc']['c_oAscPrintType'] = window['Asc'].c_oAscPrintType = c_oAscPrintType;
-  prot = c_oAscPrintType;
-  prot['ActiveSheets'] = prot.ActiveSheets;
-  prot['EntireWorkbook'] = prot.EntireWorkbook;
-  prot['Selection'] = prot.Selection;
   window['Asc']['c_oAscCustomAutoFilter'] = window['Asc'].c_oAscCustomAutoFilter = c_oAscCustomAutoFilter;
   prot = c_oAscCustomAutoFilter;
   prot['equals'] = prot.equals;

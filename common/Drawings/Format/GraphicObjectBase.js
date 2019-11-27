@@ -57,6 +57,7 @@
     drawingsChangesMap[AscDFH.historyitem_AutoShapes_SetDrawingBaseType] = function(oClass, value){
         if(oClass.drawingBase){
             oClass.drawingBase.Type = value;
+            oClass.handleUpdateExtents();
         }
     };
 
@@ -81,6 +82,7 @@
             if(oClass.drawingBase && oClass.drawingBase.Pos){
                 oClass.drawingBase.Pos.X = value.a;
                 oClass.drawingBase.Pos.Y = value.b;
+                oClass.handleUpdatePosition();
             }
         }
     };
@@ -90,6 +92,7 @@
             if(oClass.drawingBase && oClass.drawingBase.ext){
                 oClass.drawingBase.ext.cx = value.a;
                 oClass.drawingBase.ext.cy = value.b;
+                oClass.handleUpdateExtents();
             }
         }
     };
@@ -108,6 +111,7 @@
                 oClass.drawingBase.Pos.Y = value.posY;
                 oClass.drawingBase.ext.cx = value.cx ;
                 oClass.drawingBase.ext.cy = value.cy ;
+                oClass.handleUpdateExtents();
             }
         }
     };
@@ -346,6 +350,15 @@
        }
        return true;
     };
+
+
+    function CCopyObjectProperties()
+    {
+        this.drawingDocument = null;
+        this.idMap = null;
+        this.bSaveSourceFormatting = null;
+        this.contentCopyPr = null;
+    }
 
     /**
      * Base class for all graphic objects
@@ -700,6 +713,10 @@
                 if(this.pen)
                 {
                     penW = this.pen.w ? this.pen.w / 36000.0 : 12700.0 / 36000.0;
+                    if(this.getObjectType() !== AscDFH.historyitem_type_ImageShape)
+                    {
+                        penW /= 2.0;
+                    }
                 }
                 if(outerShdw.sx)
                 {
@@ -738,17 +755,17 @@
         var outerShdw = this.getOuterShdw && this.getOuterShdw();
         if(this.shdwSp && outerShdw && !graphics.IsSlideBoundsCheckerType)
         {
-            graphics.SaveGrState();
             var oTransform =  new AscCommon.CMatrix();
             var dist = outerShdw.dist ? outerShdw.dist /36000 : 0;
             var dir = outerShdw.dir ? outerShdw.dir : 0;
             oTransform.tx = dist*Math.cos(AscFormat.cToRad*dir) - (this.shdwSp.extX - this.extX) / 2.0;
             oTransform.ty = dist*Math.sin(AscFormat.cToRad*dir) - (this.shdwSp.extY - this.extY) / 2.0;
             global_MatrixTransformer.MultiplyAppend(oTransform, this.transform);
+			this.shdwSp.bounds.x = this.bounds.x + this.shdwSp.bounds.l;
+			this.shdwSp.bounds.y = this.bounds.y + this.shdwSp.bounds.t;
             this.shdwSp.transform = oTransform;
             this.shdwSp.pen = null;
             this.shdwSp.draw(graphics);
-            graphics.RestoreGrState();
         }
     };
 
@@ -802,11 +819,15 @@
     CGraphicObjectBase.prototype.checkTypeCorrect = function(){
         return true;
     };
-
+    CGraphicObjectBase.prototype.handleUpdateExtents = function(){
+    };
+    CGraphicObjectBase.prototype.handleUpdatePosition = function(){
+    };
     CGraphicObjectBase.prototype.setDrawingBaseType = function(nType){
         if(this.drawingBase){
             History.Add(new AscDFH.CChangesDrawingsLong(this, AscDFH.historyitem_AutoShapes_SetDrawingBaseType, this.drawingBase.Type, nType));
             this.drawingBase.Type = nType;
+            this.handleUpdateExtents();
         }
     };
     CGraphicObjectBase.prototype.setDrawingBasePos = function(fPosX, fPosY){
@@ -814,6 +835,7 @@
             History.Add(new AscDFH.CChangesDrawingsObjectNoId(this, AscDFH.historyitem_AutoShapes_SetDrawingBasePos, new CDrawingBaseCoordsWritable(this.drawingBase.Pos.X, this.drawingBase.Pos.Y), new CDrawingBaseCoordsWritable(fPosX, fPosY)));
             this.drawingBase.Pos.X = fPosX;
             this.drawingBase.Pos.Y = fPosY;
+            this.handleUpdatePosition();
         }
     };
     CGraphicObjectBase.prototype.setDrawingBaseExt = function(fExtX, fExtY){
@@ -821,6 +843,7 @@
             History.Add(new AscDFH.CChangesDrawingsObjectNoId(this, AscDFH.historyitem_AutoShapes_SetDrawingBaseExt, new CDrawingBaseCoordsWritable(this.drawingBase.ext.cx, this.drawingBase.ext.cy), new CDrawingBaseCoordsWritable(fExtX, fExtY)));
             this.drawingBase.ext.cx = fExtX;
             this.drawingBase.ext.cy = fExtY;
+            this.handleUpdateExtents();
         }
     };
 
@@ -842,6 +865,10 @@
     CGraphicObjectBase.prototype.getPhIndex = function()
     {
         return null;
+    };
+    CGraphicObjectBase.prototype.getDrawingBaseType = function()
+    {
+        return this.drawingBase ? this.drawingBase.Type : null;
     };
 
     CGraphicObjectBase.prototype.checkDrawingBaseCoords = function()
@@ -905,6 +932,7 @@
                     cx: this.drawingBase.ext.cx,
                     cy: this.drawingBase.ext.cy
                 })));
+            this.handleUpdateExtents();
         }
 };
 
@@ -956,6 +984,8 @@
             this.drawingBase.Pos.Y  = posY;
             this.drawingBase.ext.cx = extX;
             this.drawingBase.ext.cy = extY;
+
+        this.handleUpdateExtents();
 }
 };
 
@@ -976,10 +1006,18 @@
         return this.nvSpPr || this.nvPicPr || this.nvGrpSpPr || this.nvGraphicFramePr || null;
     };
 
-    CGraphicObjectBase.prototype.getNvProps = function(){
+    CGraphicObjectBase.prototype.getCNvProps = function(){
         var oUniNvPr = this.getUniNvProps();
         if(oUniNvPr){
             return oUniNvPr.cNvPr;
+        }
+        return null;
+    };
+
+    CGraphicObjectBase.prototype.getNvProps = function(){
+        var oUniNvPr = this.getUniNvProps();
+        if(oUniNvPr){
+            return oUniNvPr.nvPr;
         }
         return null;
     };
@@ -989,7 +1027,7 @@
         if(undefined === sTitle || null === sTitle){
             return;
         }
-        var oNvPr = this.getNvProps();
+        var oNvPr = this.getCNvProps();
         if(oNvPr){
             oNvPr.setTitle(sTitle ? sTitle : null);
         }
@@ -999,14 +1037,14 @@
         if(undefined === sDescription || null === sDescription){
             return;
         }
-        var oNvPr = this.getNvProps();
+        var oNvPr = this.getCNvProps();
         if(oNvPr){
             oNvPr.setDescr(sDescription ? sDescription : null);
         }
     };
 
     CGraphicObjectBase.prototype.getTitle = function(){
-        var oNvPr = this.getNvProps();
+        var oNvPr = this.getCNvProps();
         if(oNvPr){
             return oNvPr.title ? oNvPr.title : undefined;
         }
@@ -1014,7 +1052,7 @@
     };
 
     CGraphicObjectBase.prototype.getDescription = function(){
-        var oNvPr = this.getNvProps();
+        var oNvPr = this.getCNvProps();
         if(oNvPr){
             return oNvPr.descr ? oNvPr.descr : undefined;
         }
@@ -1044,6 +1082,10 @@
     CGraphicObjectBase.prototype.GetAllFields = function(isUseSelection, arrFields)
     {
         return arrFields ? arrFields : [];
+    };
+
+    CGraphicObjectBase.prototype.GetAllSeqFieldsByType = function(sType, aFields)
+    {
     };
 
     CGraphicObjectBase.prototype.convertToConnectionParams = function(rot, flipH, flipV, oTransform, oBounds, oConnectorInfo){
@@ -1651,6 +1693,15 @@
         return  CalculateSrcRect(this.transform, oShapeDrawer, this.cropObject.invertTransform, this.cropObject.extX, this.cropObject.extY);
     };
 
+    CGraphicObjectBase.prototype.getLogicDocument = function()
+    {
+        var oApi = editor || Asc['editor'];
+        if(oApi && oApi.WordControl)
+        {
+            return oApi.WordControl.m_oLogicDocument;
+        }
+        return null;
+    };
 
 
     CGraphicObjectBase.prototype.updatePosition = function(x, y) {
@@ -1669,6 +1720,136 @@
         }
     };
 
+    CGraphicObjectBase.prototype.copyComments = function(oLogicDocument)
+    {
+        if(!oLogicDocument)
+        {
+            return;
+        }
+
+        var aDocContents = [];
+        this.getAllDocContents(aDocContents);
+        for(var i = 0; i < aDocContents.length; ++i)
+        {
+        	aDocContents[i].CreateDuplicateComments();
+        }
+    };
+
+    CGraphicObjectBase.prototype.createPlaceholderControl = function()
+    {
+        var phType = this.getPhType();
+        var aButtons = [];
+        var isLocalDesktop = window["AscDesktopEditor"] && window["AscDesktopEditor"]["IsLocalFile"] && window["AscDesktopEditor"]["IsLocalFile"]();
+        switch (phType)
+        {
+            case null:
+            {
+                aButtons.push(AscCommon.PlaceholderButtonType.Table);
+                aButtons.push(AscCommon.PlaceholderButtonType.Chart);
+                aButtons.push(AscCommon.PlaceholderButtonType.Image);
+                aButtons.push(AscCommon.PlaceholderButtonType.ImageUrl);
+                if(isLocalDesktop)
+                {
+                    aButtons.push(AscCommon.PlaceholderButtonType.Video);
+                    aButtons.push(AscCommon.PlaceholderButtonType.Audio);
+                }
+                break;
+            }
+            case AscFormat.phType_body:
+            {
+                break;
+            }
+            case AscFormat.phType_chart:
+            {
+                aButtons.push(AscCommon.PlaceholderButtonType.Chart);
+                break;
+            }
+            case AscFormat.phType_clipArt:
+            {
+                aButtons.push(AscCommon.PlaceholderButtonType.Image);
+                aButtons.push(AscCommon.PlaceholderButtonType.ImageUrl);
+                break;
+            }
+            case AscFormat.phType_ctrTitle:
+            {
+                break;
+            }
+            case AscFormat.phType_dgm:
+            {
+                break;
+            }
+            case AscFormat.phType_dt:
+            {
+                break;
+            }
+            case AscFormat.phType_ftr:
+            {
+                break;
+            }
+            case AscFormat.phType_hdr:
+            {
+                break;
+            }
+            case AscFormat.phType_media:
+            {
+                if(isLocalDesktop)
+                {
+                    aButtons.push(AscCommon.PlaceholderButtonType.Video);
+                    aButtons.push(AscCommon.PlaceholderButtonType.Audio);
+                }
+                break;
+            }
+            case AscFormat.phType_obj:
+            {
+                aButtons.push(AscCommon.PlaceholderButtonType.Table);
+                aButtons.push(AscCommon.PlaceholderButtonType.Chart);
+                aButtons.push(AscCommon.PlaceholderButtonType.Image);
+                aButtons.push(AscCommon.PlaceholderButtonType.ImageUrl);
+                if(isLocalDesktop)
+                {
+                    aButtons.push(AscCommon.PlaceholderButtonType.Video);
+                    aButtons.push(AscCommon.PlaceholderButtonType.Audio);
+                }
+                break;
+            }
+            case AscFormat.phType_pic:
+            {
+
+                aButtons.push(AscCommon.PlaceholderButtonType.Image);
+                aButtons.push(AscCommon.PlaceholderButtonType.ImageUrl);
+                break;
+            }
+            case AscFormat.phType_sldImg:
+            {
+                aButtons.push(AscCommon.PlaceholderButtonType.Image);
+                aButtons.push(AscCommon.PlaceholderButtonType.ImageUrl);
+                break;
+            }
+            case AscFormat.phType_sldNum:
+            {
+                break;
+            }
+            case AscFormat.phType_subTitle:
+            {
+                break;
+            }
+            case AscFormat.phType_tbl:
+            {
+                aButtons.push(AscCommon.PlaceholderButtonType.Table);
+                break;
+            }
+            case AscFormat.phType_title:
+            {
+                break;
+            }
+        }
+        var nSlideNum = 0;
+        if(this.parent.getObjectType && this.parent.getObjectType() === AscDFH.historyitem_type_Slide)
+        {
+            nSlideNum = this.parent.num;
+        }
+        return  AscCommon.CreateDrawingPlaceholder(this.Id, aButtons, nSlideNum, { x : 0, y : 0, w : this.extX, h : this.extY }, this.transform);
+    };
 
 
     function CRelSizeAnchor(){
@@ -1725,11 +1906,11 @@
         this.parent = object;
     };
 
-    CRelSizeAnchor.prototype.copy = function(drawingDocument){
+    CRelSizeAnchor.prototype.copy = function(oPr){
         var copy = new CRelSizeAnchor();
         copy.setFromTo(this.fromX, this.fromY, this.toX, this.toY);
         if(this.object){
-            copy.setObject(this.object.copy(drawingDocument));
+            copy.setObject(this.object.copy(oPr));
         }
         return copy;
     };
@@ -1813,11 +1994,11 @@
         this.parent = object;
     };
 
-    CAbsSizeAnchor.prototype.copy = function(drawingDocument){
+    CAbsSizeAnchor.prototype.copy = function(oPr){
         var copy = new CRelSizeAnchor();
         copy.setFromTo(this.fromX, this.fromY, this.toX, this.toY);
         if(this.object){
-            copy.setObject(this.object.copy(drawingDocument));
+            copy.setObject(this.object.copy(oPr));
         }
         return copy;
     };
@@ -1876,12 +2057,13 @@
 
 
     window['AscFormat'] = window['AscFormat'] || {};
-    window['AscFormat'].CGraphicObjectBase = CGraphicObjectBase;
-    window['AscFormat'].CGraphicBounds     = CGraphicBounds;
-    window['AscFormat'].checkNormalRotate  = checkNormalRotate;
-    window['AscFormat'].normalizeRotate    = normalizeRotate;
-    window['AscFormat'].CRelSizeAnchor    = CRelSizeAnchor;
-    window['AscFormat'].CAbsSizeAnchor    = CAbsSizeAnchor;
-    window['AscFormat'].CalculateSrcRect    = CalculateSrcRect;
-    window['AscFormat'].LOCKS_MASKS        = LOCKS_MASKS;
+    window['AscFormat'].CGraphicObjectBase    = CGraphicObjectBase;
+    window['AscFormat'].CGraphicBounds        = CGraphicBounds;
+    window['AscFormat'].checkNormalRotate     = checkNormalRotate;
+    window['AscFormat'].normalizeRotate       = normalizeRotate;
+    window['AscFormat'].CRelSizeAnchor        = CRelSizeAnchor;
+    window['AscFormat'].CAbsSizeAnchor        = CAbsSizeAnchor;
+    window['AscFormat'].CalculateSrcRect      = CalculateSrcRect;
+    window['AscFormat'].CCopyObjectProperties = CCopyObjectProperties;
+    window['AscFormat'].LOCKS_MASKS           = LOCKS_MASKS;
 })(window);

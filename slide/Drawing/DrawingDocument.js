@@ -995,6 +995,9 @@ function CDrawingDocument()
 
 	this.isTabButtonShow = true;
 
+    // placeholders
+    this.placeholders = new AscCommon.DrawingPlaceholders(this);
+
 	this.MoveTargetInInputContext = function()
 	{
 		if (AscCommon.g_inputContext)
@@ -1106,6 +1109,9 @@ function CDrawingDocument()
 			this.m_oWordControl.MobileTouchManager.ClearContextMenu();
 		}
 
+        if (this.TransitionSlide && this.TransitionSlide.IsPlaying())
+			this.TransitionSlide.End(true);
+
 		editor.sendEvent("asc_onDocumentChanged");
 
 		if (true === this.m_bIsSearching)
@@ -1207,7 +1213,7 @@ function CDrawingDocument()
 		this.m_oWordControl.m_oApi.ShowParaMarks = old_marks;
 		return ret;
 	}
-	this.ToRendererPart = function(noBase64)
+	this.ToRendererPart = function(noBase64, isSelection)
 	{
 		var watermark = this.m_oWordControl.m_oApi.watermarkDraw;
 
@@ -1236,6 +1242,11 @@ function CDrawingDocument()
 
 		for (var i = start; i <= end; i++)
 		{
+			if (true === isSelection)
+			{
+				if (!this.m_oWordControl.Thumbnails.isSelectedPage(i))
+					continue;
+			}
 			renderer.BeginPage(this.m_oLogicDocument.Width, this.m_oLogicDocument.Height);
 			this.m_oLogicDocument.DrawPage(i, renderer);
 			renderer.EndPage();
@@ -2551,16 +2562,12 @@ function CDrawingDocument()
 
 		for (var i = 0; i < _len; i++)
 		{
-			if (__tabs[i].Value == tab_Left)
-				_ar[i] = new CTab(__tabs[i].Pos, AscCommon.g_tabtype_left);
-			else if (__tabs[i].Value == tab_Center)
-				_ar[i] = new CTab(__tabs[i].Pos, AscCommon.g_tabtype_center);
-			else if (__tabs[i].Value == tab_Right)
-				_ar[i] = new CTab(__tabs[i].Pos, AscCommon.g_tabtype_right);
+			if (__tabs[i].Value == tab_Left || __tabs[i].Value == tab_Center || __tabs[i].Value == tab_Right)
+				_ar[i] = new CTab(__tabs[i].Pos, __tabs[i].Value);
 			else
 			{
 				// не должно такого быть. но приходит
-				_ar[i] = new CTab(__tabs[i].Pos, AscCommon.g_tabtype_left);
+				_ar[i] = new CTab(__tabs[i].Pos, tab_Left);
 			}
 		}
 
@@ -3431,11 +3438,9 @@ function CDrawingDocument()
 	// mouse events
 	this.checkMouseDown_Drawing = function (pos)
 	{
-		return false;
-	};
+        if (this.placeholders.onPointerDown(pos, this.SlideCurrectRect, this.m_oLogicDocument.Width, this.m_oLogicDocument.Height))
+            return true;
 
-	this.checkMouseDown_DrawingOnUp = function (pos)
-	{
 		return false;
 	};
 
@@ -3461,6 +3466,9 @@ function CDrawingDocument()
 			return true;
 		}
 
+		if (this.placeholders.onPointerMove(pos, this.SlideCurrectRect, this.m_oLogicDocument.Width, this.m_oLogicDocument.Height))
+            return true;
+
 		return false;
 	};
 
@@ -3480,6 +3488,9 @@ function CDrawingDocument()
 			oWordControl.EndUpdateOverlay();
 			return true;
 		}
+
+        if (this.placeholders.onPointerUp(pos, this.SlideCurrectRect, this.m_oLogicDocument.Width, this.m_oLogicDocument.Height))
+            return true;
 
 		return false;
 	};
@@ -3964,6 +3975,13 @@ function CThumbnailsManager()
 		{
 			this.m_oWordControl.m_oScrollThumbApi.scrollByY(y2 - this.m_oWordControl.m_oThumbnails.HtmlElement.height);
 		}
+	};
+
+	this.isSelectedPage = function(pageNum)
+	{
+		if (this.m_arrPages[pageNum] && this.m_arrPages[pageNum].IsSelected)
+			return true;
+		return false;
 	};
 
 	this.SelectPage = function(pageNum)

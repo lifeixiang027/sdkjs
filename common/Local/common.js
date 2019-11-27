@@ -32,6 +32,26 @@
 
 "use strict";
 
+(function (window, undefined)
+{
+	AscCommon.baseEditorsApi.prototype._openChartOrLocalDocument = function ()
+	{
+		if (this.isChartEditor)
+		{
+			return this._openEmptyDocument();
+		}
+
+		this.asc_registerCallback('asc_onDocumentContentReady', function(){
+			DesktopOfflineUpdateLocalName(Asc.editor || editor);
+
+			setTimeout(function(){window["UpdateInstallPlugins"]();}, 10);
+		});
+
+		AscCommon.History.UserSaveMode = true;
+		window["AscDesktopEditor"]["LocalStartOpen"]();
+	};
+})(window);
+
 /////////////////////////////////////////////////////////
 //////////////       FONTS       ////////////////////////
 /////////////////////////////////////////////////////////
@@ -92,56 +112,39 @@ AscFonts.CFontFileLoader.prototype.LoadFontAsync = function(basePath, _callback,
 	xhr.send(null);
 };
 
-window["DesktopUploadFileToUrl"] = function(url, dst, hash, pass)
+window["DesktopOfflineAppDocumentEndLoad"] = function(_url, _data, _len)
 {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', "ascdesktop://fonts/" + url, true);
-    xhr.responseType = 'arraybuffer';
+	var editor = Asc.editor || window.editor;
+	AscCommon.g_oDocumentUrls.documentUrl = _url;
+	if (AscCommon.g_oDocumentUrls.documentUrl.indexOf("file:") != 0)
+	{
+		if (AscCommon.g_oDocumentUrls.documentUrl.indexOf("/") != 0)
+			AscCommon.g_oDocumentUrls.documentUrl = "/" + AscCommon.g_oDocumentUrls.documentUrl;
+		AscCommon.g_oDocumentUrls.documentUrl = "file://" + AscCommon.g_oDocumentUrls.documentUrl;
+	}
 
-    if (xhr.overrideMimeType)
-        xhr.overrideMimeType('text/plain; charset=x-user-defined');
-    else
-        xhr.setRequestHeader('Accept-Charset', 'x-user-defined');
+	AscCommon.g_oIdCounter.m_sUserId = window["AscDesktopEditor"]["CheckUserId"]();
+	if (_data == "")
+	{
+		this.sendEvent("asc_onError", c_oAscError.ID.ConvertationOpenError, c_oAscError.Level.Critical);
+		return;
+	}
 
-    xhr.onload = function()
-    {
-        if (this.status != 200)
-        {
-            // error
-            return;
-        }
+	var file = new AscCommon.OpenFileResult();
+	file.data = getBinaryArray(_data, _len);
+	file.bSerFormat = AscCommon.checkStreamSignature(file.data, AscCommon.c_oSerFormat.Signature);
+	file.url = _url;
+	editor.openDocument(file);
 
-        var fileData = new Uint8Array(this.response);
+	editor.asc_SetFastCollaborative(false);
+	DesktopOfflineUpdateLocalName(editor);
 
-        var req = new XMLHttpRequest();
-        req.open("PUT", dst, true);
+	window["DesktopAfterOpen"](editor);
 
-        req.onload = function()
-		{
-			if (this.response && this.status == 200)
-			{
-				try
-				{
-					var data = {
-						"accounts": this.response ? JSON.parse(this.response) : undefined,
-						"hash": hash,
-						"password" : pass,
-						"type": "share"
-					};
+	// why?
+	// this.onUpdateDocumentModified(AscCommon.History.Have_Changes());
 
-					window["AscDesktopEditor"]["sendSystemMessage"](data);
-					window["AscDesktopEditor"]["CallInAllWindows"]("function(){ if (window.DesktopUpdateFile) { window.DesktopUpdateFile(undefined); } }");
-				}
-				catch (err)
-				{
-				}
-			}
-        };
-
-        req.send(fileData);
-    };
-
-    xhr.send(null);
+	editor.sendEvent("asc_onDocumentPassword", ("" != editor.currentPassword) ? true : false);
 };
 
 /////////////////////////////////////////////////////////
@@ -211,6 +214,36 @@ AscCommon.sendImgUrls = function(api, images, callback)
 		_data[i] = { url: images[i], path : AscCommon.g_oDocumentUrls.getImageUrl(_url) };
 	}
 	callback(_data);
+};
+
+window['Asc']["CAscWatermarkProperties"].prototype["showFileDialog"] = function () {
+    if(!this.Api || !this.DivId){
+        return;
+    }
+    var t = this.Api;
+    var _this = this;
+
+    window["AscDesktopEditor"]["OpenFilenameDialog"]("images", false, function(_file) {
+        var file = _file;
+        if (Array.isArray(file))
+            file = file[0];
+
+        if (!file)
+			return;
+
+        var url = window["AscDesktopEditor"]["LocalFileGetImageUrl"](file);
+        var urls = [AscCommon.g_oDocumentUrls.getImageUrl(url)];
+
+        t.ImageLoader.LoadImagesWithCallback(urls, function(){
+            if(urls.length > 0)
+            {
+                _this.ImageUrl = urls[0];
+                _this.Type = Asc.c_oAscWatermarkType.Image;
+                _this.drawTexture();
+                t.sendEvent("asc_onWatermarkImageLoaded");
+            }
+        });
+    });
 };
 
 /////////////////////////////////////////////////////////
