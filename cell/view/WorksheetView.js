@@ -2079,7 +2079,7 @@
 		}
 	};
 
-WorksheetView.prototype.drawForPrint = function (drawingCtx, printPagesData, indexPrintPage, countPrintPages) {
+	WorksheetView.prototype.drawForPrint = function (drawingCtx, printPagesData, indexPrintPage, countPrintPages) {
 
 		var t = this;
 		this.stringRender.fontNeedUpdate = true;
@@ -2112,23 +2112,27 @@ WorksheetView.prototype.drawForPrint = function (drawingCtx, printPagesData, ind
 			//draw header/footer
 			this._drawHeaderFooter(drawingCtx, printPagesData, indexPrintPage, countPrintPages);
 
+			//отступы с учётом заголовков
 			var clipLeft, clipTop, clipWidth, clipHeight;
+			//отступы без учёта загаловков
+			var clipLeftShape, clipTopShape, clipWidthShape, clipHeightShape;
+
 			var doDraw = function(range, titleWidth, titleHeight) {
-				//TODO пересмотреть условие printScale < 1 ? printScale
-				//drawingCtx.AddClipRect(clipLeft, clipTop, clipWidth / (printScale < 1 ? printScale : 1), clipHeight / (printScale < 1 ? printScale : 1));
+				drawingCtx.AddClipRect(clipLeft, clipTop, clipWidth, clipHeight);
 
+				var transformMatrix;
+				if (printScale !== 1 && drawingCtx.Transform) {
+					var mmToPx = asc_getcvt(3/*mm*/, 0/*px*/, t._getPPIX());
+					var leftDiff = printPagesData.pageClipRectLeft * (1 - printScale);
+					var topDiff = printPagesData.pageClipRectTop * (1 - printScale);
+					transformMatrix = drawingCtx.Transform.CreateDublicate();
 
-				//pageClipRectWidth - ширина страницы без учёта измененного(*scale) хеадера - как при 100%
-				//поэтому при расчтетах из него вычетаем размер заголовка как при 100%
-				//смещение слева/сверху рассчитывается с учётом измененной ширины заголовков - поэтому домножаем её на printScale
-				var headerWidth = printPagesData.pageHeadings ? t.cellsLeft : 0;/*printPagesData.leftFieldInPx - printPagesData.pageClipRectLeft*/
-				var headerHeight = printPagesData.pageHeadings ? t.cellsTop : 0;/*printPagesData.topFieldInPx - printPagesData.pageClipRectTop*/
-				var _clipWidth = printPagesData.pageClipRectWidth - (headerWidth - headerWidth*printScale);
-				var _clipHeight = printPagesData.pageClipRectHeight - (headerHeight - headerHeight*printScale);
-				drawingCtx.AddClipRect(printPagesData.pageClipRectLeft, printPagesData.pageClipRectTop, _clipWidth, _clipHeight);
+					drawingCtx.setTransform(printScale, drawingCtx.Transform.shy, drawingCtx.Transform.shx, printScale,
+						leftDiff / mmToPx, topDiff / mmToPx);
+				}
 
 				var offsetCols = printPagesData.startOffsetPx;
-				var range = printPagesData.pageRange;
+				range = printPagesData.pageRange;
 				var offsetX = t._getColLeft(range.c1) - printPagesData.leftFieldInPx + offsetCols - titleWidth;
 				var offsetY = t._getRowTop(range.r1) - printPagesData.topFieldInPx - titleHeight;
 
@@ -2180,10 +2184,7 @@ WorksheetView.prototype.drawForPrint = function (drawingCtx, printPagesData, ind
 				oBaseTransform.tx = asc_getcvt(0/*mm*/, 3/*px*/, t._getPPIX()) * ( -offsetCols * printScale  +  printPagesData.pageClipRectLeft + (printPagesData.leftFieldInPx - printPagesData.pageClipRectLeft) * printScale) - (t.getCellLeft(range.c1, 3) - t.getCellLeft(0, 3)) * printScale;
 				oBaseTransform.ty = asc_getcvt(0/*mm*/, 3/*px*/, t._getPPIX()) * (printPagesData.pageClipRectTop + (printPagesData.topFieldInPx - printPagesData.pageClipRectTop) * printScale) - (t.getCellTop(range.r1, 3) - t.getCellTop(0, 3)) * printScale;
 
-
-				drawingCtx.AddClipRect(printPagesData.pageClipRectLeft + headerWidth*printScale,
-					printPagesData.pageClipRectTop + headerHeight*printScale, printPagesData.pageClipRectWidth - headerWidth,
-					printPagesData.pageClipRectHeight - headerHeight);
+				drawingCtx.AddClipRect(clipLeftShape, clipTopShape, clipWidthShape, clipHeightShape);
 
 				drawingCtx.DocumentRenderer.SetBaseTransform(oBaseTransform);
 				t.objectRender.showDrawingObjectsEx(false, null, drawingPrintOptions);
@@ -2195,18 +2196,9 @@ WorksheetView.prototype.drawForPrint = function (drawingCtx, printPagesData, ind
 
 			this.usePrintScale = true;
 			var printScale = printPagesData.scale ? printPagesData.scale : this.getPrintScale();
-			var transformMatrix;
-			if (printScale !== 1 && drawingCtx.Transform) {
-				var mmToPx = asc_getcvt(3/*mm*/, 0/*px*/, this._getPPIX());
-				var leftDiff = printPagesData.pageClipRectLeft * (1 - printScale);
-				var topDiff = printPagesData.pageClipRectTop * (1 - printScale);
-				transformMatrix = drawingCtx.Transform.CreateDublicate();
 
-				//drawingCtx.Transform.Scale(printScale, printScale);
-				drawingCtx.setTransform(printScale, drawingCtx.Transform.shy, drawingCtx.Transform.shx, printScale,
-					leftDiff / mmToPx, topDiff / mmToPx);
-			}
-
+			var headerWidth = printPagesData.pageHeadings ? t.cellsLeft : 0;
+			var headerHeight = printPagesData.pageHeadings ? t.cellsTop : 0;
 
 			if(printPagesData.titleRowRange || printPagesData.titleColRange) {
 				var cellsLeft = printPagesData.pageHeadings ? this.cellsLeft : 0;
@@ -2239,17 +2231,23 @@ WorksheetView.prototype.drawForPrint = function (drawingCtx, printPagesData, ind
 				clipHeight = printPagesData.pageClipRectHeight - (printPagesData.titleHeight ? cellsTop : 0);
 				doDraw(printPagesData.pageRange, printPagesData.titleWidth, printPagesData.titleHeight);
 			} else {
+				//pageClipRectWidth - ширина страницы без учёта измененного(*scale) хеадера - как при 100%
+				//поэтому при расчтетах из него вычетаем размер заголовка как при 100%
+				//смещение слева/сверху рассчитывается с учётом измененной ширины заголовков - поэтому домножаем её на printScale
+				
 				clipLeft = printPagesData.pageClipRectLeft;
 				clipTop =  printPagesData.pageClipRectTop;
-				clipWidth = printPagesData.pageClipRectWidth;
-				clipHeight = printPagesData.pageClipRectHeight;
+				clipWidth = printPagesData.pageClipRectWidth - (headerWidth - headerWidth*printScale);
+				clipHeight = printPagesData.pageClipRectHeight - (headerHeight - headerHeight*printScale);
+
+				clipLeftShape = printPagesData.pageClipRectLeft + headerWidth*printScale;
+				clipTopShape = printPagesData.pageClipRectTop + headerHeight*printScale;
+				clipWidthShape = printPagesData.pageClipRectWidth - headerWidth;
+				clipHeightShape = printPagesData.pageClipRectHeight - headerHeight;
+
 				doDraw(printPagesData.pageRange, 0, 0);
 			}
 
-			if (transformMatrix) {
-				drawingCtx.setTransform(transformMatrix.sx, transformMatrix.shy, transformMatrix.shx,
-					transformMatrix.sy, transformMatrix.tx, transformMatrix.ty);
-			}
 			this.usePrintScale = false;
 
 			if(this.groupWidth || this.groupHeight) {
