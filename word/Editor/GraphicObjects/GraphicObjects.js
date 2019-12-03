@@ -384,6 +384,7 @@ CGraphicObjects.prototype =
             oContent.AddToParagraph(new ParaTextPr(oTextPr));
             oContent.SetParagraphAlign(AscCommon.align_Center);
             oContent.SetParagraphSpacing({Before : 0, After: 0,  LineRule : Asc.linerule_Auto, Line : 1.0});
+            oContent.SetParagraphIndent({FirstLine:0, Left:0, Right:0});
             oContent.Set_ApplyToAll(false);
             var oBodyPr = oDrawing.getBodyPr().createDuplicate();
             oBodyPr.rot = 0;
@@ -444,7 +445,7 @@ CGraphicObjects.prototype =
         }
         if (TrackRevisions)
         {
-            this.document.SetTrackRevisions(false);
+            this.document.SetTrackRevisions(true);
         }
         return oParaDrawing;
     },
@@ -1870,21 +1871,7 @@ CGraphicObjects.prototype =
             var theme = this.document.Get_Theme();
             if(theme && theme.themeElements && theme.themeElements.fontScheme)
             {
-                if(TextPr.FontFamily)
-                {
-                    TextPr.FontFamily.Name =  theme.themeElements.fontScheme.checkFont(TextPr.FontFamily.Name);
-                }
-                if(TextPr.RFonts)
-                {
-                    if(TextPr.RFonts.Ascii)
-                        TextPr.RFonts.Ascii.Name     = theme.themeElements.fontScheme.checkFont(TextPr.RFonts.Ascii.Name);
-                    if(TextPr.RFonts.EastAsia)
-                        TextPr.RFonts.EastAsia.Name  = theme.themeElements.fontScheme.checkFont(TextPr.RFonts.EastAsia.Name);
-                    if(TextPr.RFonts.HAnsi)
-                        TextPr.RFonts.HAnsi.Name     = theme.themeElements.fontScheme.checkFont(TextPr.RFonts.HAnsi.Name);
-                    if(TextPr.RFonts.CS)
-                        TextPr.RFonts.CS.Name        = theme.themeElements.fontScheme.checkFont(TextPr.RFonts.CS.Name);
-                }
+                TextPr.ReplaceThemeFonts(theme.themeElements.fontScheme);
             }
             editor.UpdateTextPr(TextPr);
         }
@@ -1959,21 +1946,7 @@ CGraphicObjects.prototype =
                 var theme = this.document.Get_Theme();
                 if(theme && theme.themeElements && theme.themeElements.fontScheme)
                 {
-                    if(TextPr.FontFamily)
-                    {
-                        TextPr.FontFamily.Name =  theme.themeElements.fontScheme.checkFont(TextPr.FontFamily.Name);
-                    }
-                    if(TextPr.RFonts)
-                    {
-                        if(TextPr.RFonts.Ascii)
-                            TextPr.RFonts.Ascii.Name     = theme.themeElements.fontScheme.checkFont(TextPr.RFonts.Ascii.Name);
-                        if(TextPr.RFonts.EastAsia)
-                            TextPr.RFonts.EastAsia.Name  = theme.themeElements.fontScheme.checkFont(TextPr.RFonts.EastAsia.Name);
-                        if(TextPr.RFonts.HAnsi)
-                            TextPr.RFonts.HAnsi.Name     = theme.themeElements.fontScheme.checkFont(TextPr.RFonts.HAnsi.Name);
-                        if(TextPr.RFonts.CS)
-                            TextPr.RFonts.CS.Name        = theme.themeElements.fontScheme.checkFont(TextPr.RFonts.CS.Name);
-                    }
+                    TextPr.ReplaceThemeFonts(theme.themeElements.fontScheme);
                 }
                 editor.UpdateParagraphProp(para_pr);
                 editor.UpdateTextPr(TextPr);
@@ -3586,6 +3559,7 @@ CGraphicObjects.prototype =
 
             for(i = 0; i < this.arrTrackObjects.length; ++i)
                 this.arrTrackObjects[i].track(Pos - arrBounds[i].minX, 0, this.arrTrackObjects[i].originalObject.selectStartPage);
+            move_state.bSamePos = false;
             move_state.onMouseUp({}, 0, 0, 0);
         }
     },
@@ -3605,6 +3579,7 @@ CGraphicObjects.prototype =
 
             for(i = 0; i < this.arrTrackObjects.length; ++i)
                 this.arrTrackObjects[i].track(Pos - arrBounds[i].maxX, 0, this.arrTrackObjects[i].originalObject.selectStartPage);
+            move_state.bSamePos = false;
             move_state.onMouseUp({}, 0, 0, 0);
         }
     },
@@ -3624,6 +3599,7 @@ CGraphicObjects.prototype =
 
             for(i = 0; i < this.arrTrackObjects.length; ++i)
                 this.arrTrackObjects[i].track(0, Pos - arrBounds[i].minY, this.arrTrackObjects[i].originalObject.selectStartPage);
+            move_state.bSamePos = false;
             move_state.onMouseUp({}, 0, 0, 0);
         }
     },
@@ -3643,6 +3619,7 @@ CGraphicObjects.prototype =
 
             for(i = 0; i < this.arrTrackObjects.length; ++i)
                 this.arrTrackObjects[i].track(0, Pos - arrBounds[i].maxY, this.arrTrackObjects[i].originalObject.selectStartPage);
+            move_state.bSamePos = false;
             move_state.onMouseUp({}, 0, 0, 0);
         }
     },
@@ -3662,6 +3639,7 @@ CGraphicObjects.prototype =
 
             for(i = 0; i < this.arrTrackObjects.length; ++i)
                 this.arrTrackObjects[i].track(Pos - (arrBounds[i].maxX - arrBounds[i].minX)/2 - arrBounds[i].minX, 0, this.arrTrackObjects[i].originalObject.selectStartPage);
+            move_state.bSamePos = false;
             move_state.onMouseUp({}, 0, 0, 0);
         }
     },
@@ -3681,6 +3659,7 @@ CGraphicObjects.prototype =
 
             for(i = 0; i < this.arrTrackObjects.length; ++i)
                 this.arrTrackObjects[i].track(0, Pos - (arrBounds[i].maxY - arrBounds[i].minY)/2 - arrBounds[i].minY, this.arrTrackObjects[i].originalObject.selectStartPage);
+            move_state.bSamePos = false;
             move_state.onMouseUp({}, 0, 0, 0);
         }
     },
@@ -3752,6 +3731,7 @@ CGraphicObjects.prototype =
                 sortObjects[i].trackObject.track(lastPos -  sortObjects[i].trackObject.originalObject.x, 0, sortObjects[i].trackObject.originalObject.selectStartPage);
                 lastPos += (gap + (sortObjects[i].boundsObject.maxX - sortObjects[i].boundsObject.minX));
             }
+            move_state.bSamePos = false;
             move_state.onMouseUp({}, 0, 0, 0);
         }
     },
@@ -3821,6 +3801,7 @@ CGraphicObjects.prototype =
                 sortObjects[i].trackObject.track(0, lastPos -  sortObjects[i].trackObject.originalObject.y, sortObjects[i].trackObject.originalObject.selectStartPage);
                 lastPos += (gap + (sortObjects[i].boundsObject.maxY - sortObjects[i].boundsObject.minY));
             }
+            move_state.bSamePos = false;
             move_state.onMouseUp({}, 0, 0, 0);
         }
     },

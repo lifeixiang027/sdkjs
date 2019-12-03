@@ -69,7 +69,14 @@ function CInlineLevelSdt()
 CInlineLevelSdt.prototype = Object.create(CParagraphContentWithParagraphLikeContent.prototype);
 CInlineLevelSdt.prototype.constructor = CInlineLevelSdt;
 
-
+CInlineLevelSdt.prototype.IsInlineLevel = function()
+{
+	return true;
+};
+CInlineLevelSdt.prototype.IsBlockLevel = function()
+{
+	return false;
+};
 CInlineLevelSdt.prototype.Get_Id = function()
 {
 	return this.Id;
@@ -120,9 +127,6 @@ CInlineLevelSdt.prototype.Copy = function(isUseSelection, oPr)
 		}
 	}
 
-	if (oContentControl.IsEmpty())
-		oContentControl.ReplaceContentWithPlaceHolder();
-
 	oContentControl.SetLabel(this.GetLabel());
 	oContentControl.SetTag(this.GetTag());
 	oContentControl.SetAlias(this.GetAlias());
@@ -140,25 +144,60 @@ CInlineLevelSdt.prototype.Copy = function(isUseSelection, oPr)
 		oContentControl.SetPicturePr(this.Pr.Picture);
 
 	if (undefined !== this.Pr.ComboBox)
+	{
 		oContentControl.SetComboBoxPr(this.Pr.ComboBox);
+		oContentControl.private_UpdatePlaceHolderListContent();
+	}
 
 	if (undefined !== this.Pr.DropDown)
+	{
 		oContentControl.SetDropDownListPr(this.Pr.DropDown);
+		oContentControl.private_UpdatePlaceHolderListContent();
+	}
 
 	if (undefined !== this.Pr.Date)
 		oContentControl.SetDatePickerPr(this.Pr.Date);
+
+	if (oContentControl.IsEmpty())
+		oContentControl.ReplaceContentWithPlaceHolder();
 
 	return oContentControl;
 };
 CInlineLevelSdt.prototype.GetSelectedContent = function(oSelectedContent)
 {
+	var oNewElement = new CInlineLevelSdt();
 	if (this.IsPlaceHolder())
 	{
-		return new CInlineLevelSdt();
+		return oNewElement;
 	}
 	else
 	{
-		return CParagraphContentWithParagraphLikeContent.prototype.GetSelectedContent.apply(this, arguments);
+		oNewElement.ReplacePlaceHolderWithContent();
+
+		var nStartPos = this.State.Selection.StartPos;
+		var nEndPos   = this.State.Selection.EndPos;
+
+		if (nStartPos > nEndPos)
+		{
+			nStartPos = this.State.Selection.EndPos;
+			nEndPos   = this.State.Selection.StartPos;
+		}
+
+		var nItemPos = 0;
+		for (var nPos = nStartPos, nItemPos = 0; nPos <= nEndPos; ++nPos)
+		{
+			var oNewItem = this.Content[nPos].GetSelectedContent(oSelectedContent);
+			if (oNewItem)
+			{
+				oNewElement.AddToContent(nItemPos, oNewItem);
+				nItemPos++;
+			}
+		}
+
+		if (0 === nItemPos)
+			return null;
+
+		return oNewElement;
 	}
 };
 CInlineLevelSdt.prototype.GetSelectedElementsInfo = function(Info)
@@ -375,15 +414,11 @@ CInlineLevelSdt.prototype.DrawContentControlsTrack = function(isHover)
 
 	if (Asc.c_oAscSdtAppearance.Hidden === this.GetAppearance() || this.Paragraph.LogicDocument.IsForceHideContentControlTrack())
 	{
-		oDrawingDocument.OnDrawContentControl(null, isHover ? c_oContentControlTrack.Hover : c_oContentControlTrack.In);
+		oDrawingDocument.OnDrawContentControl(null, isHover ? AscCommon.ContentControlTrack.Hover : AscCommon.ContentControlTrack.In);
 		return;
 	}
 
-	var sName      = this.GetAlias();
-	var isBuiltIn  = false;
-	var arrButtons = [];
-
-	oDrawingDocument.OnDrawContentControl(this.GetId(), isHover ? c_oContentControlTrack.Hover : c_oContentControlTrack.In, this.GetBoundingPolygon(), this.Paragraph.Get_ParentTextTransform(), sName, isBuiltIn, arrButtons, this.GetColor());
+	oDrawingDocument.OnDrawContentControl(this, isHover ? AscCommon.ContentControlTrack.Hover : AscCommon.ContentControlTrack.In, this.GetBoundingPolygon());
 };
 CInlineLevelSdt.prototype.SelectContentControl = function()
 {
@@ -490,6 +525,17 @@ CInlineLevelSdt.prototype.Apply_TextPr = function(TextPr, IncFontSize, ApplyToAl
 		CParagraphContentWithParagraphLikeContent.prototype.Apply_TextPr.call(this, TextPr, IncFontSize, true);
 	else
 		CParagraphContentWithParagraphLikeContent.prototype.Apply_TextPr.call(this, TextPr, IncFontSize, ApplyToAll);
+};
+CInlineLevelSdt.prototype.CanAddDropCap = function()
+{
+	if (!this.CanBeEdited() || this.IsPlaceHolder())
+		return false;
+
+	return CParagraphContentWithParagraphLikeContent.prototype.CanAddDropCap.apply(this, arguments);
+};
+CInlineLevelSdt.prototype.CheckSelectionForDropCap = function(isUsePos, oEndPos, nDepth)
+{
+	return false;
 };
 /**
  * Активен PlaceHolder сейчас или нет
@@ -677,36 +723,19 @@ CInlineLevelSdt.prototype.SetContentControlPr = function(oPr)
 	if (!oPr)
 		return;
 
-	if (undefined !== oPr.Tag)
-		this.SetTag(oPr.Tag);
+	if (oPr && !(oPr instanceof CContentControlPr))
+	{
+		var oTemp = new CContentControlPr(c_oAscSdtLockType.Inline);
+		oTemp.FillFromObject(oPr);
+		oPr = oTemp;
+	}
 
-	if (undefined !== oPr.Id)
-		this.SetContentControlId(oPr.Id);
-
-	if (undefined !== oPr.Lock)
-		this.SetContentControlLock(oPr.Lock);
-
-	if (undefined !== oPr.Alias)
-		this.SetAlias(oPr.Alias);
-
-	if (undefined !== oPr.Appearance)
-		this.SetAppearance(oPr.Appearance);
-
-	if (undefined !== oPr.Color)
-		this.SetColor(oPr.Color);
+	oPr.SetToContentControl(this);
 };
 CInlineLevelSdt.prototype.GetContentControlPr = function()
 {
 	var oPr = new CContentControlPr(c_oAscSdtLevelType.Inline);
-
-	oPr.Tag        = this.GetTag();
-	oPr.Id         = this.Pr.Id;
-	oPr.Lock       = this.Pr.Lock;
-	oPr.InternalId = this.GetId();
-	oPr.Alias      = this.GetAlias();
-	oPr.Appearance = this.GetAppearance();
-	oPr.Color      = this.GetColor();
-
+	oPr.FillFromContentControl(this);
 	return oPr;
 };
 /**
@@ -861,6 +890,14 @@ CInlineLevelSdt.prototype.SetCheckBoxPr = function(oCheckBoxPr)
 	}
 };
 /**
+ * Получаем настройки для чекбокса
+ * @returns {?CSdtCheckBoxPr}
+ */
+CInlineLevelSdt.prototype.GetCheckBoxPr = function()
+{
+	return this.Pr.CheckBox;
+};
+/**
  * Выставляем состояние чекбокса
  */
 CInlineLevelSdt.prototype.ToggleCheckBox = function()
@@ -947,7 +984,7 @@ CInlineLevelSdt.prototype.private_UpdatePictureContent = function()
 	var nH = 50;
 
 	var oDrawing = new ParaDrawing(nW, nH, null, oDrawingObjects, this.Paragraph.LogicDocument, null);
-	var oImage   = oDrawingObjects.createImage("", 0, 0, nW, nH);
+	var oImage   = oDrawingObjects.createImage(AscCommon.g_sWordPlaceholderImage, 0, 0, nW, nH);
 	oImage.setParent(oDrawing);
 	oDrawing.Set_GraphicObject(oImage);
 
@@ -999,6 +1036,13 @@ CInlineLevelSdt.prototype.SetComboBoxPr = function(oPr)
 	}
 };
 /**
+ * @returns {?CSdtComboBoxPr}
+ */
+CInlineLevelSdt.prototype.GetComboBoxPr = function()
+{
+	return this.Pr.ComboBox;
+};
+/**
  * Проверяем является ли данный контейнер специальным для выпадающего списка
  * @returns {boolean}
  */
@@ -1017,6 +1061,13 @@ CInlineLevelSdt.prototype.SetDropDownListPr = function(oPr)
 		History.Add(new CChangesSdtPrDropDownList(this, this.Pr.DropDown, _oPr));
 		this.Pr.DropDown = _oPr;
 	}
+};
+/**
+ * @returns {?CSdtComboBoxPr}
+ */
+CInlineLevelSdt.prototype.GetDropDownListPr = function()
+{
+	return this.Pr.DropDown;
 };
 /**
  * Применяем к данному контейнеру настройки того, что это специальный контйенер для поля со списком
@@ -1074,9 +1125,6 @@ CInlineLevelSdt.prototype.private_UpdateListContent = function()
 };
 CInlineLevelSdt.prototype.private_UpdatePlaceHolderListContent = function()
 {
-	if (!this.IsPlaceHolder())
-		return;
-
 	this.PlaceHolder.ClearContent();
 	this.PlaceHolder.AddText(AscCommon.translateManager.getValue("Choose an item."));
 };
@@ -1099,6 +1147,13 @@ CInlineLevelSdt.prototype.SetDatePickerPr = function(oPr)
 		History.Add(new CChangesSdtPrDatePicker(this, this.Pr.Date, _oPr));
 		this.Pr.Date = _oPr;
 	}
+};
+/**
+ * @returns {?CSdtDatePickerPr}
+ */
+CInlineLevelSdt.prototype.GetDatePickerPr = function()
+{
+	return this.Pr.Date;
 };
 /**
  * Применяем к данному контейнеру настройки того, что это специальный контйенер для даты
@@ -1179,6 +1234,33 @@ CInlineLevelSdt.prototype.Document_Is_SelectionLocked = function(CheckType)
 	{
 		return AscCommon.CollaborativeEditing.Add_CheckLock(true);
 	}
+};
+/**
+ * Получаем типа данного контейнера
+ * @returns {Asc.c_oAscContentControlSpecificType}
+ */
+CInlineLevelSdt.prototype.GetSpecificType = function()
+{
+	if (this.IsCheckBox())
+		return Asc.c_oAscContentControlSpecificType.CheckBox;
+
+	if (this.IsPicture())
+		return Asc.c_oAscContentControlSpecificType.Picture;
+
+	if (this.IsComboBox())
+		return Asc.c_oAscContentControlSpecificType.ComboBox;
+
+	if (this.IsDropDownList())
+		return Asc.c_oAscContentControlSpecificType.DropDownList;
+
+	if (this.IsDatePicker())
+		return Asc.c_oAscContentControlSpecificType.DateTime;
+
+	return Asc.c_oAscContentControlSpecificType.None;
+};
+CInlineLevelSdt.prototype.Get_ParentTextTransform = function()
+{
+	return this.Paragraph.Get_ParentTextTransform();
 };
 //--------------------------------------------------------export--------------------------------------------------------
 window['AscCommonWord'] = window['AscCommonWord'] || {};
