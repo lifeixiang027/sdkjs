@@ -2197,12 +2197,10 @@
 			this.usePrintScale = true;
 			var printScale = printPagesData.scale ? printPagesData.scale : this.getPrintScale();
 
-			var headerWidth = printPagesData.pageHeadings ? t.cellsLeft : 0;
-			var headerHeight = printPagesData.pageHeadings ? t.cellsTop : 0;
 
+			var cellsLeft = printPagesData.pageHeadings ? this.cellsLeft : 0;
+			var cellsTop = printPagesData.pageHeadings ? this.cellsTop : 0;
 			if(printPagesData.titleRowRange || printPagesData.titleColRange) {
-				var cellsLeft = printPagesData.pageHeadings ? this.cellsLeft : 0;
-				var cellsTop = printPagesData.pageHeadings ? this.cellsTop : 0;
 				if(printPagesData.titleRowRange && printPagesData.titleColRange){
 					clipLeft = printPagesData.pageClipRectLeft;
 					clipTop =  printPagesData.pageClipRectTop;
@@ -2227,7 +2225,7 @@
 					clipWidthShape = printPagesData.pageClipRectWidth - (printPagesData.titleWidth ? cellsLeft : 0);
 					clipHeightShape = printPagesData.titleHeight + cellsTop;
 
-					doDraw(printPagesData.titleRowRange, printPagesData.titleWidth, 0);
+					doDraw(printPagesData.titleRowRange, printPagesData.titleWidth/printScale, 0);
 				}
 				if(printPagesData.titleColRange){
 					clipLeft = printPagesData.pageClipRectLeft;
@@ -2240,7 +2238,7 @@
 					clipWidthShape = printPagesData.titleWidth + cellsLeft;
 					clipHeightShape = printPagesData.pageClipRectHeight - (printPagesData.titleHeight ? cellsTop : 0);
 
-					doDraw(printPagesData.titleColRange, 0, printPagesData.titleHeight);
+					doDraw(printPagesData.titleColRange, 0, printPagesData.titleHeight/printScale);
 				}
 
 				clipLeft = printPagesData.pageClipRectLeft + printPagesData.titleWidth + (printPagesData.titleWidth ? cellsLeft : 0);
@@ -2253,7 +2251,7 @@
 				clipWidthShape = printPagesData.pageClipRectWidth - (printPagesData.titleWidth ? cellsLeft : 0);
 				clipHeightShape = printPagesData.pageClipRectHeight - (printPagesData.titleHeight ? cellsTop : 0);
 
-				doDraw(printPagesData.pageRange, printPagesData.titleWidth, printPagesData.titleHeight);
+				doDraw(printPagesData.pageRange, printPagesData.titleWidth/printScale, printPagesData.titleHeight/printScale);
 			} else {
 				//pageClipRectWidth - ширина страницы без учёта измененного(*scale) хеадера - как при 100%
 				//поэтому при расчтетах из него вычетаем размер заголовка как при 100%
@@ -2261,13 +2259,13 @@
 				
 				clipLeft = printPagesData.pageClipRectLeft;
 				clipTop =  printPagesData.pageClipRectTop;
-				clipWidth = printPagesData.pageClipRectWidth - (headerWidth - headerWidth*printScale);
-				clipHeight = printPagesData.pageClipRectHeight - (headerHeight - headerHeight*printScale);
+				clipWidth = printPagesData.pageClipRectWidth - (cellsLeft - cellsLeft*printScale);
+				clipHeight = printPagesData.pageClipRectHeight - (cellsTop - cellsTop*printScale);
 
-				clipLeftShape = printPagesData.pageClipRectLeft + headerWidth*printScale;
-				clipTopShape = printPagesData.pageClipRectTop + headerHeight*printScale;
-				clipWidthShape = printPagesData.pageClipRectWidth - headerWidth;
-				clipHeightShape = printPagesData.pageClipRectHeight - headerHeight;
+				clipLeftShape = printPagesData.pageClipRectLeft + cellsLeft*printScale;
+				clipTopShape = printPagesData.pageClipRectTop + cellsTop*printScale;
+				clipWidthShape = printPagesData.pageClipRectWidth - cellsLeft;
+				clipHeightShape = printPagesData.pageClipRectHeight - cellsTop;
 
 				doDraw(printPagesData.pageRange, 0, 0);
 			}
@@ -2279,8 +2277,6 @@
 				this._calcHeaderColumnWidth();
 				this._calcHeaderRowHeight();
 			}
-
-			drawingCtx.RemoveClipRect();
 
 			if(window['Asc']['editor'].watermarkDraw)
 			{
