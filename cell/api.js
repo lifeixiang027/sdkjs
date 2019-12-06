@@ -4096,6 +4096,91 @@ var editor;
       }
     }
 
+
+    if(_param && false) {
+	   var layoutOptions = JSON.parse(_param);
+	   var spreadsheetLayout = layoutOptions ? layoutOptions["spreadsheetLayout"] : null;
+		var _ignorePrintArea = spreadsheetLayout && (true === spreadsheetLayout["ignorePrintArea"] || false === spreadsheetLayout["ignorePrintArea"])? spreadsheetLayout["ignorePrintArea"] : null;
+	   if(null !== _ignorePrintArea) {
+		   _adjustPrint.asc_setIgnorePrintArea(_ignorePrintArea);
+       }
+
+	   _adjustPrint.asc_setPrintType(Asc.c_oAscPrintType.EntireWorkbook);
+
+       var ws, newPrintOptions;
+	   var _orientation = spreadsheetLayout ? spreadsheetLayout["orientation"] : null;
+	   if(_orientation === "portrait") {
+		   _orientation = Asc.c_oAscPageOrientation.PagePortrait;
+       } else if(_orientation === "landscape") {
+		   _orientation = Asc.c_oAscPageOrientation.PageLandscape;
+       } else {
+		   _orientation = null;
+       }
+       //need number
+	   var _fitToWidth = spreadsheetLayout && AscCommon.isNumber( spreadsheetLayout["fitToWidth"]) ? spreadsheetLayout["fitToWidth"] : null;
+	   var _fitToHeight = spreadsheetLayout && AscCommon.isNumber( spreadsheetLayout["fitToHeight"]) ? spreadsheetLayout["fitToHeight"] : null;
+	   var _scale = spreadsheetLayout && AscCommon.isNumber( spreadsheetLayout["scale"]) ? spreadsheetLayout["scale"] : null;
+	   //need true/false
+	   var _headings = spreadsheetLayout && (true === spreadsheetLayout["headings"] || false === spreadsheetLayout["headings"])? spreadsheetLayout["headings"] : null;
+	   var _gridLines = spreadsheetLayout && (true === spreadsheetLayout["gridLines"] || false === spreadsheetLayout["gridLines"])? spreadsheetLayout["headings"] : null;
+       //convert to mm
+	   var _pageSize = spreadsheetLayout ? spreadsheetLayout["pageSize"] : null;
+	   if(_pageSize) {
+	     var width = AscCommon.valueToMm(_pageSize["width"]);
+	     var height = AscCommon.valueToMm(_pageSize["height"]);
+	     _pageSize = null !== width && null !== height ? {width: width, height: height} : null;
+       }
+	   var _margins = spreadsheetLayout ? spreadsheetLayout["margins"] : null;
+	   if(_margins) {
+         var left = AscCommon.valueToMm(_margins["left"]);
+         var right = AscCommon.valueToMm(_margins["right"]);
+         var top = AscCommon.valueToMm(_margins["top"]);
+         var bottom = AscCommon.valueToMm(_margins["bottom"]);
+         _margins = null !== left && null !== right && null !== top && null !== bottom ? {left: left, right: right, top: top, bottom: bottom} : null;
+       }
+
+	   for (var index = 0; index < this.wbModel.getWorksheetCount(); ++index) {
+		   ws = this.wbModel.getWorksheet(index);
+           newPrintOptions = ws.PagePrintOptions.clone();
+           //regionalSettings ?
+
+		   var _pageSetup = newPrintOptions.pageSetup;
+           if(null !== _orientation) {
+               _pageSetup.orientation = _orientation;
+           }
+           if(_fitToWidth || _fitToHeight) {
+               _pageSetup.fitToWidth = _fitToWidth;
+               _pageSetup.fitToHeight = _fitToHeight;
+           } else if(_scale) {
+               _pageSetup.scale = _scale;
+			   _pageSetup.fitToWidth = 0;
+			   _pageSetup.fitToHeight = 0;
+           }
+		   if(null !== _headings) {
+			   newPrintOptions.headings = _headings;
+		   }
+		   if(null !== _gridLines) {
+			   newPrintOptions.gridLines = _gridLines;
+		   }
+		   if(_pageSize) {
+			   _pageSetup.width = _pageSize.width;
+			   _pageSetup.height = _pageSize.height;
+           }
+           var pageMargins = newPrintOptions.pageMargins;
+           if(_margins) {
+			   pageMargins.left = _margins.left;
+			   pageMargins.right = _margins.right;
+			   pageMargins.top = _margins.top;
+			   pageMargins.bottom = _margins.bottom;
+           }
+
+           if(!_adjustPrint.pageOptionsMap) {
+              _adjustPrint.pageOptionsMap = [];
+           }
+		   _adjustPrint.pageOptionsMap[index] = newPrintOptions;
+	   }
+    }
+
     var _printPagesData = this.wb.calcPagesPrint(_adjustPrint);
 
     if (undefined === _printer && _page === undefined) {

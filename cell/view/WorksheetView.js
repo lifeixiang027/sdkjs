@@ -1977,8 +1977,6 @@
 	};
 
     WorksheetView.prototype.calcPagesPrint = function (pageOptions, printOnlySelection, indexWorksheet, arrPages, arrRanges, ignorePrintArea, doNotRecalc) {
-		//this.fitToPages(1, 1);
-
 		var range, maxCell, t = this;
 		var _printArea = this.model.workbook.getDefinesNames("Print_Area", this.model.getId());
 		var printArea = !ignorePrintArea && _printArea;
@@ -2005,6 +2003,30 @@
 		var pageSetup = pageOptions.asc_getPageSetup();
 		var fitToWidth = pageSetup.asc_getFitToWidth();
 		var fitToHeight = pageSetup.asc_getFitToHeight();
+		var _scale = pageSetup.asc_getScale();
+
+		//проверяем, не пришли ли настройки масштабирование, отличные от тех, которые лежат в модели
+		var checkCustomScaleProps = function() {
+			var _res = null;
+
+			var _pageOptions = t.model.PagePrintOptions;
+			var _pageSetup = _pageOptions.asc_getPageSetup();
+			var width = _pageSetup.asc_getFitToWidth();
+			var height = _pageSetup.asc_getFitToHeight();
+			var modelScale = _pageSetup.asc_getScale();
+
+			if(width !== fitToWidth || height !== fitToHeight) {
+				if(fitToWidth || fitToHeight) {
+					_res = t.calcPrintScale(fitToWidth, fitToHeight);
+				} else if(_scale !== modelScale) {
+					_res = _scale;
+				}
+			} else if(_scale !== modelScale) {
+				_res = _scale;
+			}
+			return _res;
+		};
+
 		if (printOnlySelection) {
 			var tempPrintScale;
 			//подменяем scale на временный для печати выделенной области
@@ -2030,6 +2052,7 @@
 			//когда printArea мультиселект - при отрисовке областей печати в специальном режиме
 			// необходимо возвращать массив из фрагментов
 			//для этого добавил arrRanges
+			tempPrintScale = checkCustomScaleProps();
 			for(var j = 0; j < printAreaRanges.length; j++) {
 				range = printAreaRanges[j];
 				if(range && range.bbox) {
@@ -2045,7 +2068,7 @@
 				if(!doNotRecalc) {
 					this._prepareCellTextMetricsCache(range);
 				}
-				this._calcPagesPrint(range, pageOptions, indexWorksheet, arrPages);
+				this._calcPagesPrint(range, pageOptions, indexWorksheet, arrPages, tempPrintScale);
 			}
 		} else {
 			range = new asc_Range(0, 0, this.model.getColsCount() - 1, this.model.getRowsCount() - 1);
@@ -2067,6 +2090,8 @@
 			//подменяем scale на временный для печати выделенной области
 			if(_printArea && ignorePrintArea && (fitToWidth || fitToHeight)) {
 				tempPrintScale = this.calcPrintScale(fitToWidth, fitToHeight, null, ignorePrintArea);
+			} else {
+				tempPrintScale = checkCustomScaleProps();
 			}
 
 			this._calcPagesPrint(range, pageOptions, indexWorksheet, arrPages, tempPrintScale);
@@ -2156,7 +2181,7 @@
 						vector_koef /= AscCommon.AscBrowser.retinaPixelRatio;
 					}
 					t._drawGrid(drawingCtx, range, offsetX, offsetY, printPagesData.pageWidth / vector_koef,
-						printPagesData.pageHeight / vector_koef);
+					printPagesData.pageHeight / vector_koef, printPagesData.scale);
 				}
 
 				// Отрисовываем ячейки и бордеры
@@ -3259,7 +3284,7 @@
     };
 
 	/** Рисует сетку таблицы */
-	WorksheetView.prototype._drawGrid = function (drawingCtx, range, leftFieldInPx, topFieldInPx, width, height) {
+	WorksheetView.prototype._drawGrid = function (drawingCtx, range, leftFieldInPx, topFieldInPx, width, height, printScale) {
 		//отрисовку для режима предварительного просмотра страниц
 		//добавлено сюда потому что отрисовка проиходит одновеременно с отрисовкой сетки
 		//и отрисовка происходит в два этапа - сначала текст - до линий сетки, потом линии печати - после линий сетки
@@ -3274,7 +3299,9 @@
 		if (range === undefined) {
 			range = this.visibleRange;
 		}
-		var printScale = this.getPrintScale();
+		if(!printScale) {
+			printScale = this.getPrintScale();
+		}
 		var ctx = drawingCtx || this.drawingCtx;
 		var widthCtx = (width) ? width / printScale : ctx.getWidth() / printScale;
 		var heightCtx = (height) ? height / printScale : ctx.getHeight() / printScale;
@@ -6062,7 +6089,6 @@
 		var rowInfo = this.rows[cell.nRow];
 		var updateDescender = (va === Asc.c_oAscVAlign.Bottom && !angle);
 		var d = this._getRowDescender(cell.nRow);
-		var th = this.updateRowHeightValuePx || AscCommonExcel.convertPtToPx(this._getRowHeightReal(cell.nRow));
 		if (cell.getValueMultiText()) {
 			fr = cell.getValue2();
 		} else {
@@ -6070,13 +6096,15 @@
 			fr[0].format = cell.getFont();
 		}
 
+		var th;
 		var cellType = cell.getType();
 		// Автоподбор делается по любому типу (кроме строки)
 		var isNumberFormat = !cell.isEmptyTextString() && (null === cellType || CellValueType.String !== cellType);
 		if (angle || isNumberFormat || align.getWrap()) {
 			this._addCellTextToCache(cell.nCol, cell.nRow);
-			th = AscCommonExcel.convertPtToPx(this._getRowHeightReal(cell.nRow));
+			th = this.updateRowHeightValuePx || AscCommonExcel.convertPtToPx(this._getRowHeightReal(cell.nRow));
 		} else {
+			th = this.updateRowHeightValuePx || AscCommonExcel.convertPtToPx(this._getRowHeightReal(cell.nRow));
 			// ToDo with angle and wrap
 			for (var i = 0; i < fr.length; ++i) {
 				f = fr[i].format;
@@ -6127,6 +6155,9 @@
 
 			newHeight = Math.min(this.maxRowHeightPx, Math.max(oldHeight, newHeight));
 			if (newHeight !== oldHeight) {
+				if (this.updateRowHeightValuePx) {
+					this.updateRowHeightValuePx = newHeight;
+				}
 				rowInfo.height = Asc.round(newHeight * this.getZoom());
 				History.TurnOff();
 				res = newHeight;
@@ -11078,7 +11109,7 @@
 		var selectData;
 
 		var callbackLoadFonts = function() {
-			selectData = selectData.selectData;
+			selectData = selectData ? selectData.selectData : null;
 			if(!selectData) {
 				return;
 			}
@@ -11174,7 +11205,7 @@
 			}
 
             History.EndTransaction();
-			if(selectData.adjustFormatArr && selectData.adjustFormatArr.length) {
+			if(selectData && selectData.adjustFormatArr && selectData.adjustFormatArr.length) {
 				for(i = 0; i < selectData.adjustFormatArr.length; i++) {
 					selectData.adjustFormatArr[i]._foreach(function(cell){
 						cell._adjustCellFormat();

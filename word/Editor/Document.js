@@ -3730,7 +3730,7 @@ CDocument.prototype.Recalculate_PageColumn                   = function()
                 this.CurPage = PageIndex; // TODO: переделать
         }
 
-        if (docpostype_Content === this.GetDocPosType() && ((true !== this.Selection.Use && Index > this.CurPos.ContentPos) || (true === this.Selection.Use && Index > this.Selection.EndPos && Index > this.Selection.StartPos)))
+        if (docpostype_Content === this.GetDocPosType() && ((true !== this.Selection.Use && Index === this.CurPos.ContentPos + 1) || (true === this.Selection.Use && Index === (Math.max(this.Selection.EndPos, this.Selection.StartPos) + 1))))
             this.private_UpdateCursorXY(true, true);
     }
 
@@ -9516,7 +9516,7 @@ CDocument.prototype.OnMouseUp = function(e, X, Y, PageIndex)
 	{
 		var oCC = (oInlineSdt && oInlineSdt.IsCheckBox()) ? oInlineSdt : oBlockSdt;
 		oCC.SkipSpecialContentControlLock(true);
-		if (!this.IsSelectionLocked(AscCommon.changestype_Paragraph_Content))
+		if (!this.IsSelectionLocked(AscCommon.changestype_Paragraph_Content, null, true, this.IsFillingFormMode()))
 		{
 			this.StartAction();
 			oCC.ToggleCheckBox();
@@ -14202,7 +14202,7 @@ CDocument.prototype.IsSdtGlobalSettingsDefault = function()
  */
 CDocument.prototype.AddContentControlCheckBox = function(oPr)
 {
-	this.RemoveSelection();
+	this.RemoveTextSelection();
 
 	if (!oPr)
 		oPr = new CSdtCheckBoxPr();
@@ -14218,7 +14218,7 @@ CDocument.prototype.AddContentControlCheckBox = function(oPr)
  */
 CDocument.prototype.AddContentControlPicture = function()
 {
-	this.RemoveSelection();
+	this.RemoveTextSelection();
 
 	var oCC = this.AddContentControl(c_oAscSdtLevelType.Inline);
 	oCC.ApplyPicturePr(true);
@@ -14230,7 +14230,7 @@ CDocument.prototype.AddContentControlPicture = function()
  */
 CDocument.prototype.AddContentControlComboBox = function(oPr)
 {
-	this.RemoveSelection();
+	this.RemoveTextSelection();
 
 	if (!oPr)
 	{
@@ -14248,7 +14248,7 @@ CDocument.prototype.AddContentControlComboBox = function(oPr)
  */
 CDocument.prototype.AddContentControlDropDownList = function(oPr)
 {
-	this.RemoveSelection();
+	this.RemoveTextSelection();
 
 	if (!oPr)
 	{
@@ -14266,7 +14266,7 @@ CDocument.prototype.AddContentControlDropDownList = function(oPr)
  */
 CDocument.prototype.AddContentControlDatePicker = function(oPr)
 {
-	this.RemoveSelection();
+	this.RemoveTextSelection();
 
 	if (!oPr)
 		oPr = new CSdtDatePickerPr();

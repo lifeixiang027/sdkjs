@@ -49,6 +49,12 @@ module.exports = function(grunt) {
 			arrPaths[index] = path.join(basePath, element);
 		});
 	}
+	function fixUrl(arrPaths, basePath = '') {
+		const url = require('url');
+		arrPaths.forEach((element, index) => {
+			arrPaths[index] = url.resolve(basePath, element);
+		});
+	}
 	function getConfigs() {
 		const configs = new CConfig(grunt.option('src') || '../');
 
@@ -63,9 +69,10 @@ module.exports = function(grunt) {
 	function writeScripts(config, name) {
 		const develop = '../develop/sdkjs/';
 		const fileName = 'scripts.js';
-		const files = getFilesMin(config).concat(getFilesAll(config));
-		fixPath(files, '../../../../sdkjs/build/');
-		grunt.file.write(path.join(develop, name, fileName), 'var scrpipts = [\n\t"' + files.join('",\n\t"') + '"\n];');
+		const files = ['../common/applyDocumentChanges.js', '../common/AllFonts.js'].concat(getFilesMin(config), getFilesAll(config));
+		fixUrl(files, '../../../../sdkjs/build/');
+
+		grunt.file.write(path.join(develop, name, fileName), 'var sdk_scripts = [\n\t"' + files.join('",\n\t"') + '"\n];');
 	}
 
 	function CConfig(pathConfigs) {
@@ -402,9 +409,9 @@ module.exports = function(grunt) {
 					files: [
 						{src: [fontsWasm], dest: path.join(fonts, 'wasm', fontFile)},
 						{src: [fontsJs], dest: path.join(fonts, 'js', fontFile)},
-						{src: [getSdkPath(true, word), getSdkPath(false, word)], dest: word + '/'},
-						{src: [getSdkPath(true, cell), getSdkPath(false, cell)], dest: cell + '/'},
-						{src: [getSdkPath(true, slide), getSdkPath(false, slide)], dest: slide + '/'}
+						{expand: true, flatten: true, src: [getSdkPath(true, word), getSdkPath(false, word)], dest: word + '/'},
+						{expand: true, flatten: true, src: [getSdkPath(true, cell), getSdkPath(false, cell)], dest: cell + '/'},
+						{expand: true, flatten: true, src: [getSdkPath(true, slide), getSdkPath(false, slide)], dest: slide + '/'}
 					]
 				}
 			},
@@ -442,15 +449,15 @@ module.exports = function(grunt) {
 						},
 						{
 							expand: true,
-							cwd: path.join(cell, 'css'),
+							cwd: '../cell/css',
 							src: '*.css',
-							dest: path.join(deploy, 'cell', 'css')
+							dest: path.join(cell, 'css')
 						},
 						{
 							expand: true,
-							cwd: path.join(slide, 'themes'),
+							cwd: '../slide/themes',
 							src: '**/**',
-							dest: path.join(deploy, 'slide', 'themes')
+							dest: path.join(slide, 'themes')
 						}
 					]
 				}
