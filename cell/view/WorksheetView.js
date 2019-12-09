@@ -2224,12 +2224,14 @@
 
 			var cellsLeft = printPagesData.pageHeadings ? this.cellsLeft : 0;
 			var cellsTop = printPagesData.pageHeadings ? this.cellsTop : 0;
+			var changedCellLeft = cellsLeft - cellsLeft*printScale;
+			var changedCellTop = cellsTop - cellsTop*printScale;
 			if(printPagesData.titleRowRange || printPagesData.titleColRange) {
 				if(printPagesData.titleRowRange && printPagesData.titleColRange){
 					clipLeft = printPagesData.pageClipRectLeft;
 					clipTop =  printPagesData.pageClipRectTop;
-					clipWidth = printPagesData.titleWidth + cellsLeft;
-					clipHeight = printPagesData.titleHeight + cellsTop;
+					clipWidth = printPagesData.titleWidth + cellsLeft - changedCellLeft;
+					clipHeight = printPagesData.titleHeight + cellsTop - changedCellTop;
 
 					clipLeftShape = printPagesData.pageClipRectLeft;
 					clipTopShape =  printPagesData.pageClipRectTop;
@@ -2239,12 +2241,12 @@
 					doDraw(new asc_Range(printPagesData.titleColRange.c1, printPagesData.titleRowRange.r1, printPagesData.titleColRange.c2, printPagesData.titleRowRange.r2), 0, 0);
 				}
 				if(printPagesData.titleRowRange){
-					clipLeft = printPagesData.pageClipRectLeft + printPagesData.titleWidth + (printPagesData.titleWidth ? cellsLeft : 0);
+					clipLeft = printPagesData.pageClipRectLeft + printPagesData.titleWidth + (printPagesData.titleWidth ? (cellsLeft - changedCellLeft) : 0);
 					clipTop =  printPagesData.pageClipRectTop;
-					clipWidth = printPagesData.pageClipRectWidth - (printPagesData.titleWidth ? cellsLeft : 0);
-					clipHeight = printPagesData.titleHeight + cellsTop;
+					clipWidth = printPagesData.pageClipRectWidth + cellsLeft - changedCellLeft;
+					clipHeight = printPagesData.titleHeight + cellsTop - changedCellTop;
 
-					clipLeftShape = printPagesData.pageClipRectLeft + printPagesData.titleWidth + (printPagesData.titleWidth ? cellsLeft : 0);
+					clipLeftShape = printPagesData.pageClipRectLeft + printPagesData.titleWidth + (printPagesData.titleWidth ? (cellsLeft - changedCellLeft) : 0);
 					clipTopShape =  printPagesData.pageClipRectTop;
 					clipWidthShape = printPagesData.pageClipRectWidth - (printPagesData.titleWidth ? cellsLeft : 0);
 					clipHeightShape = printPagesData.titleHeight + cellsTop;
@@ -2253,22 +2255,22 @@
 				}
 				if(printPagesData.titleColRange){
 					clipLeft = printPagesData.pageClipRectLeft;
-					clipTop =  printPagesData.pageClipRectTop + printPagesData.titleHeight + (printPagesData.titleHeight ? cellsTop : 0);
-					clipWidth = printPagesData.titleWidth + cellsLeft;
-					clipHeight = printPagesData.pageClipRectHeight - (printPagesData.titleHeight ? cellsTop : 0);
+					clipTop =  printPagesData.pageClipRectTop + printPagesData.titleHeight + (printPagesData.titleHeight ? (cellsTop - changedCellTop) : 0);
+					clipWidth = printPagesData.titleWidth + cellsLeft - changedCellLeft;
+					clipHeight = printPagesData.pageClipRectHeight + (printPagesData.titleHeight ? cellsTop : 0) - changedCellTop;
 
 					clipLeftShape = printPagesData.pageClipRectLeft;
 					clipTopShape =  printPagesData.pageClipRectTop + printPagesData.titleHeight + (printPagesData.titleHeight ? cellsTop : 0);
 					clipWidthShape = printPagesData.titleWidth + cellsLeft;
-					clipHeightShape = printPagesData.pageClipRectHeight - (printPagesData.titleHeight ? cellsTop : 0);
+					clipHeightShape = printPagesData.pageClipRectHeight + (printPagesData.titleHeight ? cellsTop : 0);
 
 					doDraw(printPagesData.titleColRange, 0, printPagesData.titleHeight/printScale);
 				}
 
-				clipLeft = printPagesData.pageClipRectLeft + printPagesData.titleWidth + (printPagesData.titleWidth ? cellsLeft : 0);
-				clipTop =  printPagesData.pageClipRectTop + printPagesData.titleHeight + (printPagesData.titleHeight ? cellsTop : 0);
-				clipWidth = printPagesData.pageClipRectWidth - (printPagesData.titleWidth ? cellsLeft : 0);
-				clipHeight = printPagesData.pageClipRectHeight - (printPagesData.titleHeight ? cellsTop : 0);
+				clipLeft = printPagesData.pageClipRectLeft + printPagesData.titleWidth + (printPagesData.titleWidth ? (cellsLeft - changedCellLeft) : 0);
+				clipTop =  printPagesData.pageClipRectTop + printPagesData.titleHeight + (printPagesData.titleHeight ? (cellsTop - changedCellTop) : 0);
+				clipWidth = printPagesData.pageClipRectWidth + cellsLeft - changedCellLeft;
+				clipHeight = printPagesData.pageClipRectHeight + (printPagesData.titleHeight ? cellsTop : 0) - changedCellTop;
 
 				clipLeftShape = printPagesData.pageClipRectLeft + printPagesData.titleWidth + (printPagesData.titleWidth ? cellsLeft : 0);
 				clipTopShape =  printPagesData.pageClipRectTop + printPagesData.titleHeight + (printPagesData.titleHeight ? cellsTop : 0);
@@ -2283,8 +2285,8 @@
 				
 				clipLeft = printPagesData.pageClipRectLeft;
 				clipTop =  printPagesData.pageClipRectTop;
-				clipWidth = printPagesData.pageClipRectWidth - (cellsLeft - cellsLeft*printScale);
-				clipHeight = printPagesData.pageClipRectHeight - (cellsTop - cellsTop*printScale);
+				clipWidth = printPagesData.pageClipRectWidth - changedCellLeft;
+				clipHeight = printPagesData.pageClipRectHeight - changedCellTop;
 
 				clipLeftShape = printPagesData.pageClipRectLeft + cellsLeft*printScale;
 				clipTopShape = printPagesData.pageClipRectTop + cellsTop*printScale;
