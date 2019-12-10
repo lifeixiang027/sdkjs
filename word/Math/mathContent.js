@@ -5433,7 +5433,7 @@ CMathContent.prototype.Process_AutoCorrect = function(ActionElement) {
             CanMakeAutoCorrect = this.private_CanAutoCorrectText(AutoCorrectEngine, false);
         }
         if (!CanMakeAutoCorrect && g_aMathAutoCorrectTextFunc[ActionElement.value]) { 
-            CanMakeAutoCorrectFunc = this.private_CanAutoCorrectTextFunc(AutoCorrectEngine, true);
+            CanMakeAutoCorrectFunc = this.private_CanAutoCorrectTextFunc(AutoCorrectEngine);
         }
         AutoCorrectEngine.CurPos = AutoCorrectEngine.Elements.length - AutoCorrectEngine.Remove.total - 1;
         // Пробуем сделать формульную автозамену
@@ -6555,27 +6555,28 @@ CMathAutoCorrectEngine.prototype.private_CorrectEquation = function(Param, Eleme
             break;
     }
 };
-CMathContent.prototype.private_CanAutoCorrectTextFunc = function(AutoCorrectEngine, bSkipLast) {
-    var IndexAdd = 1; // (true === bSkipLast ? 1 : 0);
+CMathContent.prototype.private_CanAutoCorrectTextFunc = function(AutoCorrectEngine) {
+    var bActionIsSpace = (AutoCorrectEngine.ActionElement.value == 0x20) ? true : false;
+    var foundedEl = null;
     var ElCount = AutoCorrectEngine.Elements.length;
-    if (ElCount < 2 + IndexAdd) {
+    if (ElCount < 2 + 1) {
         return false;
     }
     var Result = false;
     var FlagEnd = false;
-    var Start = AutoCorrectEngine.Elements.length - 1;
-    var RemoveCount = (AutoCorrectEngine.ActionElement.value == 0x20) ? 1 : 0;
+    var Start = ElCount - 1;
+    var RemoveCount = (bActionIsSpace) ? 1 : 0;
     var AutoCorrectCount = g_aAutoCorrectMathFuncSymbols.length;
     for (var nIndex = 0; nIndex < AutoCorrectCount; nIndex++) {
         var AutoCorrectElement = g_aAutoCorrectMathFuncSymbols[nIndex];
         var CheckStringLen = AutoCorrectElement.length;
-        if (ElCount < CheckStringLen + IndexAdd) {
+        if (ElCount < CheckStringLen + 1) {
             continue;
         }
         var Found = true;
         // Начинаем проверять с конца строки
         for (var nStringPos = 0; nStringPos < CheckStringLen; nStringPos++) {
-            var LastEl = AutoCorrectEngine.Elements[ElCount - nStringPos - 1 - IndexAdd];
+            var LastEl = AutoCorrectEngine.Elements[ElCount - nStringPos - 1 - 1];
             if (!LastEl.Element.IsText()) {
                 FlagEnd = true;
                 Found = false;
@@ -6585,15 +6586,16 @@ CMathContent.prototype.private_CanAutoCorrectTextFunc = function(AutoCorrectEngi
                 Found = false;
                 break;
             }
-            if (nStringPos === (CheckStringLen - 1) && (ElCount - (CheckStringLen + IndexAdd)) > 0) {
-                LastEl = AutoCorrectEngine.Elements[ElCount - nStringPos - 2 - IndexAdd];
+            if (nStringPos === (CheckStringLen - 1) && (ElCount - (CheckStringLen + 1)) > 0) {
+                LastEl = AutoCorrectEngine.Elements[ElCount - nStringPos - 2 - 1];
                 if ((LastEl.Element.IsText() && LastEl.Element.value !== 32)) {
                     Found = false;
                 }
             }
         }
         if (Found === true) {
-           FlagEnd = true;
+            foundedEl = AutoCorrectElement;
+            FlagEnd = true;
         }
         if (FlagEnd) {
             break;
@@ -6610,16 +6612,40 @@ CMathContent.prototype.private_CanAutoCorrectTextFunc = function(AutoCorrectEngi
                 History.Create_NewPoint(AscDFH.historydescription_Document_MathAutoCorrect);
             }
         }
-        var MathRun = new ParaRun(this.Paragraph, true);
-        var Symbol = new CMathText(false);
-        Symbol.add(0x2061);
-        MathRun.Add(Symbol, true);
-        MathRun.Apply_Pr(AutoCorrectEngine.TextPr);
-        MathRun.Set_MathPr(AutoCorrectEngine.MathPr);
-        AutoCorrectEngine.Remove.unshift({Count:RemoveCount, Start:Start});
-        AutoCorrectEngine.ReplaceContent.unshift(MathRun);
-        if (AutoCorrectEngine.ActionElement.value !== 0x20 && AutoCorrectEngine.ActionElement.value !== 0x29)
-            AutoCorrectEngine.Elements[Start].ContPos++;
+        if (bActionIsSpace && foundedEl !== "lim") {
+            Start = ElCount - foundedEl.length - 1;
+            RemoveCount = foundedEl.length + 1;
+            var Pr = {ctrPrp: new CTextPr()};	
+            var MathFunc = new CMathFunc(Pr);	
+            var MathContent = MathFunc.getFName();	
+            var MathRun = new ParaRun(this.Paragraph, true);
+            for (var nCharPos = 0, nTextLen = foundedEl.length; nCharPos < nTextLen; nCharPos++) {
+                var oText = null;
+                if (0x0026 == foundedEl.charCodeAt(nCharPos)) {
+                    oText = new CMathAmp();
+                } else {
+                    oText = new CMathText(false);
+                    oText.addTxt(foundedEl[nCharPos]);
+                }
+                MathRun.Add(oText, true);
+            }	
+            MathRun.Math_Apply_Style(STY_PLAIN);	
+            MathContent.Internal_Content_Add(0, MathRun);	
+            AutoCorrectEngine.Remove.push({Count:RemoveCount, Start:Start});	
+            AutoCorrectEngine.Remove.total += RemoveCount;	
+            AutoCorrectEngine.ReplaceContent.push(MathFunc);
+        } else {
+            var MathRun = new ParaRun(this.Paragraph, true);
+            var Symbol = new CMathText(false);
+            Symbol.add(0x2061);
+            MathRun.Add(Symbol, true);
+            MathRun.Apply_Pr(AutoCorrectEngine.TextPr);
+            MathRun.Set_MathPr(AutoCorrectEngine.MathPr);
+            AutoCorrectEngine.Remove.unshift({Count:RemoveCount, Start:Start});
+            AutoCorrectEngine.ReplaceContent.unshift(MathRun);
+            if (AutoCorrectEngine.ActionElement.value !== 0x20 && AutoCorrectEngine.ActionElement.value !== 0x29)
+                AutoCorrectEngine.Elements[Start].ContPos++;
+        }
         Result = true;
     }
     return Result;
