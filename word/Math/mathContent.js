@@ -5661,8 +5661,9 @@ CMathAutoCorrectEngine.prototype.private_FindBracketsSkip = function(Elements) {
     return [BracketsL,BracketsR];
 };
 CMathAutoCorrectEngine.prototype.private_AutoCorrectEquation = function(Elements) {
-    this.private_AutoCorrectText(Elements);
-    this.private_AutoCorrectTextFunc(Elements);
+    //пока закоментил вызов этих функции, так как в ворде они не вызываются
+    // this.private_AutoCorrectText(Elements);
+    // this.private_AutoCorrectTextFunc(Elements);
     var Brackets = [];
     var CurPos = Elements.length - 1;
     var Param = {
@@ -7326,65 +7327,62 @@ CMathAutoCorrectEngine.prototype.private_AutoCorrectAboveBelow = function(buff) 
     this.Remove.push({Count:RemoveCount, Start:Start});
     this.ReplaceContent.unshift(Limit);
 };
-// CMathAutoCorrectEngine.prototype.private_AutoCorrectFunction = function(buff) {
-//     var RemoveCount = buff[0].length + buff[1].length + 1;
-//     if (this.ActionElement.value == 0x20) {
-//         RemoveCount++;
-//     }
-
-//     var Pr = {ctrPrp: this.TextPr.Copy()};
-//     var MathFunc = new CMathFunc(Pr);
-//     MathFunc.SetParagraph(this.Paragraph);
-//     var MathContent = MathFunc.getArgument();
-//     this.private_PackTextToContent(MathContent, buff[1], true);
-    
-//     //если здесь лимит, то создать просто лимит и добавить его сюда, если не лимит, то его создавать не надо, а сразу private_PackTextToContent
-//     var MathContent = MathFunc.getFName();
-
-//     var Limit = MathContent.Add_Limit({ctrPrp : Pr.ctrPrp, type : LIMIT_LOW}, null, LimitText);
-//     MathContent = Limit.getFName();
-//     MathContent.Add_Text(FName, this.Paragraph, STY_PLAIN);
-
-//     MathContent = MathFunc.getArgument();
-//     MathContent.Add_Text(BaseText, this.Paragraph);
-
-
-
-//             var MathFunc = new CMathFunc(Pr);
-//             var MathContent = MathFunc.getFName();
-//             var MathRun = new ParaRun(this.Paragraph, true);
-//             for (var nCharPos = 0, nTextLen = AutoCorrectElement.length; nCharPos < nTextLen; nCharPos++) {
-//                 var oText = null;
-//                 if (0x0026 == AutoCorrectElement.charCodeAt(nCharPos)) {
-//                     oText = new CMathAmp();
-//                 } else {
-//                     oText = new CMathText(false);
-//                     oText.addTxt(AutoCorrectElement[nCharPos]);
-//                 }
-//                 MathRun.Add(oText, true);
-//             }
-//             MathRun.Math_Apply_Style(STY_PLAIN);
-//             MathContent.Internal_Content_Add(0, MathRun);
-
-
-
-
-
-
-
-//     var props = {
-//         ctrPrp : this.TextPr.Copy(),
-//         // type : this.props.type
-//     };
-//     var Limit = new CLimit(props);
-//     var MathContent = Limit.getFName();
-//     this.private_PackTextToContent(MathContent, buff[1], true);
-//     MathContent = Limit.getIterator();
-//     this.private_PackTextToContent(MathContent, buff[0], true);
-//     var Start = this.Elements.length - RemoveCount - this.Shift;
-//     this.Remove.push({Count:RemoveCount, Start:Start});
-//     this.ReplaceContent.unshift(Limit);
-// };
+CMathAutoCorrectEngine.prototype.private_AutoCorrectFunction = function(buff) {
+    var Pr = {ctrPrp: this.TextPr.Copy()};
+    var MathFunc = new CMathFunc(Pr);
+    MathFunc.SetParagraph(this.Paragraph);
+    var MathContent = MathFunc.getFName();
+    var arrName = buff[buff.length-1],
+        arrSup = null,
+        arrSub = null,
+        RemoveCount = arrName.length + 1,
+        arrArg = null;
+    for (var i = 0; i < buff.length - 1; i++) {
+        RemoveCount += buff[i].length;
+        if (buff[i].Type == 1) {
+            RemoveCount ++;
+            arrSup = buff[i];
+        } else if (buff[i].Type == -1) {
+            RemoveCount ++;
+            arrSub = buff[i];
+        } else {
+            arrArg = buff[i];
+        }
+    }
+    if (this.ActionElement.value == 0x20) {
+        RemoveCount++;
+    }
+    var funcName = "";
+    for (var i = 0; i < arrName.length; i++) {
+        funcName += String.fromCharCode(arrName[i].value);
+    }
+    var arrFunc = ["lim", "inf", "det", "gcd", "Pr", "min", "max", "sup"];
+    //maybe add flag in private_PackTextToContent for skip private_AutoCorrectEquation inside function
+    if (arrSup && arrSub) {
+        var tmpText = new CMathText(false);
+        tmpText.add(0x5E);
+        arrSup.unshift(tmpText);
+        tmpText = new CMathText(false);
+        tmpText.add(0x5F);
+        arrSub.unshift(tmpText);
+        arrName = arrName.concat(arrSup, arrSub);
+        this.private_PackTextToContent(MathContent, arrName, true);
+    } else if (arrSup || arrSub && !arrFunc.indexOf(funcName)) {
+        var type = (arrSup) ? 1 : 0;
+        var Limit = MathContent.Add_Limit({ctrPrp : Pr.ctrPrp, type : type}, funcName, null);
+        MathContent = Limit.getIterator();
+        this.private_PackTextToContent(MathContent, (arrSup || arrSub), true);
+    } else {
+        this.private_PackTextToContent(MathContent, arrName, true);
+    }
+    if (arrArg) {
+        MathContent = MathFunc.getArgument();
+        this.private_PackTextToContent(MathContent, arrArg, true);
+    }
+    var Start = this.Elements.length - RemoveCount - this.Shift;
+    this.Remove.push({Count:RemoveCount, Start:Start});
+    this.ReplaceContent.unshift(MathFunc);
+};
 
 // CMathAutoCorrectEngine.prototype.private_AutoCorrectPhantom = function(buff) {
 //     var RemoveCount = buff[0].length + 1;
@@ -7546,23 +7544,29 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
             }
             continue;  
         } else if  (Elem.value === 0x005E) { // ^
-            if (this.Type == MATH_LIMIT) {
+            if (this.Type == MATH_DEGREE && (buffer[CurLvBuf-1] && buffer[CurLvBuf-1].Type == DEGREE_SUPERSCRIPT)) {
                 break;
+                //remove this if you need work with ^^^...
             }
             if (Elem === this.ActionElement) {
                 this.Shift = 1;
                 this.CurPos--;
                 continue;
             }
-            if (this.Type == MATH_FRACTION) {
-                buffer[CurLvBuf].splice(0,0,Elem);
-                this.CurPos--;
-                continue;
+            var bSkip = false;
+            if (this.CurPos - 1 >= 0 && this.Type != MATH_DEGREESubSup) {
+                var tmp = this.Elements[this.CurPos-1].Element;
+                if (tmp.value === 0x2061)
+                    bSkip = true;
+                if (this.Type == MATH_DEGREE) {
+                    this.Type = null;
+                }
+                buffer[CurLvBuf].Type = DEGREE_SUPERSCRIPT;
             }
-            if (g_aMathAutoCorrectDoNotDegree[this.ActionElement.value]) {
-                // return false;
+            if (this.Type == MATH_FRACTION || g_aMathAutoCorrectDoNotDegree[this.ActionElement.value] || bSkip) {
+                if (!bSkip)
+                    buffer[CurLvBuf].splice(0,0,Elem);
                 this.CurPos--;
-                buffer[CurLvBuf].splice(0, 0, Elem);
                 continue;
             }
             //если скобки одинаковые - то степень, разные - delimiter
@@ -7589,20 +7593,29 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
             }
             continue;
         } else if (Elem.value === 0x005F) { // _
+            if (this.Type == MATH_DEGREE && (buffer[CurLvBuf-1] && buffer[CurLvBuf-1].Type == DEGREE_SUBSCRIPT)) {
+                break;
+                //remove this if you need work with ___...
+            }
             if (Elem === this.ActionElement) {
                 this.Shift = 1;
                 this.CurPos--;
                 continue;
             }
-            if (this.Type == MATH_FRACTION) {
-                buffer[CurLvBuf].splice(0,0,Elem);
-                this.CurPos--;
-                continue;
+            var bSkip = false;
+            if (this.CurPos - 1 >= 0 && this.Type != MATH_DEGREESubSup) {
+                var tmp = this.Elements[this.CurPos-1].Element;
+                if (tmp.value === 0x2061)
+                    bSkip = true;
+                if (this.Type == MATH_DEGREE) {
+                    this.Type = null;
+                }
+                buffer[CurLvBuf].Type = DEGREE_SUBSCRIPT;
             }
-            if (g_aMathAutoCorrectDoNotDegree[this.ActionElement.value]) {
-                // return false;
+            if (this.Type == MATH_FRACTION || g_aMathAutoCorrectDoNotDegree[this.ActionElement.value] || bSkip) {
+                if (!bSkip)
+                    buffer[CurLvBuf].splice(0,0,Elem);
                 this.CurPos--;
-                buffer[CurLvBuf].splice(0, 0, Elem);
                 continue;
             }
             //если скобки одинаковые - то степень, разные - delimiter
@@ -7807,29 +7820,35 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
             }
             this.CurPos--;
             continue;
-        // } else if (g_aMathAutoCorrectEqArrayMatrix[Elem.value]) { // 0x2061
-        //     if (this.Type == MATH_FRACTION) {
-        //         buffer[CurLvBuf].splice(0, 0, Elem);
-        //         this.CurPos--;
-        //         continue;
-        //     }
-        //     //to do обработать степень и скобки
-        //     if(this.Type !== null && !bBrackOpen) {
-        //         break;
-        //     }
-        //     // if (!bBrackOpen) {}
-        //     this.Type = MATH_FUNCTION;
-        //     CurLvBuf++;
-        //     buffer[CurLvBuf] = [];
-        //     while (this.CurPos >= 0) {
-        //         if (g_aMathAutoCorrectLatinAlph[this.Elements[this.CurPos].Element.value]) {
-        //             buffer[CurLvBuf].splice(0, 0, Elem);
-        //         } else {
-        //             break;
-        //         }
-        //         this.CurPos--;
-        //     }
-        //     break;
+        } else if (Elem.value === 0x2061) { // 0x2061
+            if (this.Type == MATH_FRACTION || bBrackOpen || g_aMathAutoCorrectDoNotMathFunc[this.ActionElement.value]) {
+                buffer[CurLvBuf].splice(0, 0, Elem);
+                this.CurPos--;
+                continue;
+            } else {
+                //добавить символы, при которых автозамена не производится
+                if (this.Type == MATH_DELIMITER) {
+                    this.Type = null;
+                }
+                if(this.Type !== null) {
+                    break;
+                }
+                this.Type = MATH_FUNCTION;
+                CurLvBuf++;
+                buffer[CurLvBuf] = [];
+                this.CurPos--;
+                while (this.CurPos >= 0) {
+                    Elem = this.Elements[this.CurPos].Element;
+                    if (g_aMathAutoCorrectLatinAlph[Elem.value]) {
+                        buffer[CurLvBuf].splice(0, 0, Elem);
+                    } else {
+                        break;
+                    }
+                    this.CurPos--;
+                }
+                break;
+            }
+            
         // } else if (Elem.value === 0x27E1) { // phantom
         //     if (this.Type == MATH_FRACTION) {
         //         buffer[CurLvBuf].splice(0, 0, Elem);
@@ -7928,9 +7947,9 @@ CMathAutoCorrectEngine.prototype.private_CanAutoCorrectEquation = function(CanMa
         case MATH_LIMIT:
             this.private_AutoCorrectAboveBelow(buffer);
             return true;
-        // case MATH_FUNCTION:
-        //     this.private_AutoCorrectFunction(buffer);
-        //     return true;
+        case MATH_FUNCTION:
+            this.private_AutoCorrectFunction(buffer);
+            return true;
         // case MATH_PHANTOM:
         //     this.private_AutoCorrectPhantom(buffer);
         //     return true;
@@ -8064,42 +8083,45 @@ CMathContent.prototype.GetTextContent = function(bSelectedText) {
         var tempStr;
         if(elem instanceof CDegree) {//степень
 			//основание
-            getAndPushTextContent(elem.Content[0], false);
+            getAndPushTextContent(elem.getBase(), false);
             //знак
 			addText((elem.Pr.type === DEGREE_SUPERSCRIPT) ? "^" : "_");
             //показатель
-            getAndPushTextContent(elem.Content[1], checkBracket(elem.Content[1].GetTextContent().str));
+            getAndPushTextContent(elem.getIterator(), checkBracket(elem.getIterator().GetTextContent().str));
         } else if (elem instanceof CDegreeSubSup) {//^ и _
             var bAddBrackets = false;
+            var base = elem.getBase();
+            var lower = elem.getLowerIterator();
+            var upper = elem.getUpperIterator();
             if (elem.Pr.type == 1) {
-                if (checkBracket(elem.Content[0].GetTextContent().str)) {
+                if (checkBracket(elem.getBase().GetTextContent().str)) {
                     addText("〖");
                     bAddBrackets = true;
                 }
                 //основание
-                getAndPushTextContent(elem.Content[0]);
+                getAndPushTextContent(base);
                 if (bAddBrackets) {
                     addText("〗");
                 }
                 addText("^");
                 //показатель ^
-                getAndPushTextContent(elem.Content[1], checkBracket(elem.Content[1].GetTextContent().str));
+                getAndPushTextContent(upper, checkBracket(upper.GetTextContent().str));
                 addText("_");
                 //показатель _
-                getAndPushTextContent(elem.Content[2], checkBracket(elem.Content[2].GetTextContent().str));
+                getAndPushTextContent(lower, checkBracket(lower.GetTextContent().str));
             } else {
                 //показатель _
-                getAndPushTextContent(elem.Content[2], checkBracket(elem.Content[2].GetTextContent().str));
+                getAndPushTextContent(lower, checkBracket(lower.GetTextContent().str));
                 addText("_");
                 //показатель ^
-                getAndPushTextContent(elem.Content[1], checkBracket(elem.Content[1].GetTextContent().str));
+                getAndPushTextContent(upper, checkBracket(upper.GetTextContent().str));
                 addText("^");
-                if (checkBracket(elem.Content[0].GetTextContent().str)) {
+                if (checkBracket(base.GetTextContent().str)) {
                     addText("〖");
                     bAddBrackets = true;
                 }
                 //основание
-                getAndPushTextContent(elem.Content[0]);
+                getAndPushTextContent(base);
                 if (bAddBrackets) {
                     addText("〗");
                 }
@@ -8108,11 +8130,11 @@ CMathContent.prototype.GetTextContent = function(bSelectedText) {
             //символ Bar
             addText(String.fromCharCode((elem.Pr.pos) ? 9601 : 175));        
             //содержимое
-            getAndPushTextContent(elem.Content[0], true);
+            getAndPushTextContent(elem.getBase(), true);
         } else if (elem instanceof CBox || elem instanceof CBorderBox) {
             addText(String.fromCharCode((elem instanceof CBox) ? 9633 : 9645));
             //содержимое
-            getAndPushTextContent(elem.Content[0], true);
+            getAndPushTextContent(elem.getBase(), true);
         } else if (elem instanceof CEqArray) {
             addText(String.fromCharCode(9608));
             addText("(");
@@ -8146,11 +8168,11 @@ CMathContent.prototype.GetTextContent = function(bSelectedText) {
             }
 			addText(")");
         } else if (elem instanceof CGroupCharacter) {
-            addText(String.fromCharCode(elem.Pr.chr || elem.operator.code));
-            getAndPushTextContent(elem.Content[0], true);
+            addText(String.fromCharCode(elem.Pr.chr || elem.operator.Get_CodeChr()));
+            getAndPushTextContent(elem.getBase(), true);
         } else if (elem instanceof CAccent) {
-            getAndPushTextContent(elem.Content[0], true);
-            addText(String.fromCharCode(elem.Pr.chr || elem.operator.code));
+            getAndPushTextContent(elem.getBase(), true);
+            addText(String.fromCharCode(elem.Pr.chr || elem.operator.Get_CodeChr()));
         } else if (elem instanceof CDelimiter) {
             addText(String.fromCharCode(elem.Pr.begChr || elem.begOper.code || 40));
             for (var i = 0; i < elem.Content.length; i++) {
@@ -8183,7 +8205,7 @@ CMathContent.prototype.GetTextContent = function(bSelectedText) {
             }
         } else if (elem instanceof CFraction) {//дробь
             //числитель
-			getAndPushTextContent(elem.Content[0], checkBracket(elem.Content[0].GetTextContent().str));
+			getAndPushTextContent(elem.getNumerator(), checkBracket(elem.getNumerator().GetTextContent().str));
             switch (elem.Pr.type) {
                 case 0:
                     addText(String.fromCharCode(47));
@@ -8200,7 +8222,7 @@ CMathContent.prototype.GetTextContent = function(bSelectedText) {
                     break;
             }
 			//знаменатель
-            getAndPushTextContent(elem.Content[1], checkBracket(elem.Content[1].GetTextContent().str));       
+            getAndPushTextContent(elem.getDenominator(), checkBracket(elem.getDenominator().GetTextContent().str));       
 		} else if (elem instanceof CRadical) {//корень
 			addText(String.fromCharCode(8730));
 			//степень корня
@@ -8221,7 +8243,7 @@ CMathContent.prototype.GetTextContent = function(bSelectedText) {
                     bOpenBr = true;
                 }
                 //подкоренное выражение
-			    getAndPushTextContent(elem.Content[1]);
+			    getAndPushTextContent(elem.getBase());
             } 
             if (bOpenBr) {
                 addText(")");
@@ -8257,16 +8279,16 @@ CMathContent.prototype.GetTextContent = function(bSelectedText) {
                 bAddBrackets = true;
             }
 			//аргумент
-            getAndPushTextContent(elem.Content[1], false);
+            getAndPushTextContent(tmp, false);
             if (bAddBrackets) {
                 addText("〗");
             }
 		} else if(elem instanceof CLimit) {
 			//функция
-            getAndPushTextContent(elem.Content[0], false);
+            getAndPushTextContent(elem.getFName(), false);
             addText((elem.Pr.type == 1) ? "┴" : "┬");
 			//аргумент
-            getAndPushTextContent(elem.Content[1], checkBracket(elem.Content[1].GetTextContent().str));
+            getAndPushTextContent(elem.getIterator(), true);
 		}
 
 	};
@@ -8968,6 +8990,13 @@ var g_aMathAutoCorrectDoNotAbove = {
     0x21 : 1, 0x22 : 1, 0x24 : 1, 0x27 : 1, 0x28 : 1,
     0x29 : 1, 0x2C : 1, 0x2E : 1, 0x5B : 1, 0x5C : 1,
     0x5D : 1, 0x5E : 1, 0x5F : 1, 0x7B : 1, 0x7C : 1, 0x7D : 1
+};
+// символы при которых не производится автозамена mathfunc 0x2061
+var g_aMathAutoCorrectDoNotMathFunc = {
+    0x21 : 1, 0x22 : 1, 0x24 : 1, 0x27 : 1,
+    0x28 : 1, 0x29 : 1, 0x2C : 1, 0x2E : 1,
+    0x5B : 1, 0x5C : 1, 0x5D : 1, 0x5E : 1,
+    0x5F : 1, 0x7B : 1, 0x7C : 1, 0x7D : 1
 };
 // символы корней
 var g_aMathAutoCorrectRadicalCharCode = {
