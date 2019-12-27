@@ -14046,8 +14046,8 @@ CTable.prototype.DrawTableCells = function(X1, Y1, X2, Y2, CurPageStart, CurPage
 							else if (ViewCell.Id === cur_cell.Id && cur_cell.Index === cur_cell.Row.Content.length - 1)
 							{
 								this.CurCell = cur_cell;
-								this.RemoveTableCells();
-								
+								//this.RemoveTableCells();
+								cur_cell.Row.RemoveCell(cur_cell.Index);
 								isContinue = true;
 							}
 						}
