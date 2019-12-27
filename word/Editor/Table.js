@@ -11380,6 +11380,9 @@ CTable.prototype.DrawTableCells = function(X1, Y1, X2, Y2, CurPageStart, CurPage
 					RowNumb[0] = curRow;
 			}
 
+			if (RowNumb.length === 0)
+				return; 
+				
 			if (X1 < 0 )
 				X1 = this.Content[RowNumb[0]].CellsInfo[0].X_cell_start;
 			
