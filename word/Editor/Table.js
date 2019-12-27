@@ -12593,6 +12593,9 @@ CTable.prototype.DrawTableCells = function(X1, Y1, X2, Y2, CurPageStart, CurPage
 				{
 					for (var curRow = Cell.Row.Index; curRow >= 0; curRow-- )
 					{
+						if (this.Content.length === 0)
+							return;
+							
 						var TempRow  =  this.Content[curRow];
 						var TempCell = this.Content[curRow].Get_Cell(0);
 						
