@@ -1021,6 +1021,10 @@ MoveState.prototype =
             {
                 var cur_track_original_shape = _arr_track_objects[track_index].originalObject;
                 var trackSnapArrayX = cur_track_original_shape.snapArrayX;
+                if(!trackSnapArrayX)
+                {
+                    continue;
+                }
                 var curDX =  result_x - startPos.x;
 
 
@@ -1089,6 +1093,10 @@ MoveState.prototype =
             {
                 cur_track_original_shape = _arr_track_objects[track_index].originalObject;
                 var trackSnapArrayY = cur_track_original_shape.snapArrayY;
+                if(!trackSnapArrayY)
+                {
+                    continue;
+                }
                 var curDY =  result_y - startPos.y;
 
 

@@ -1172,6 +1172,7 @@ function handleInternalChart(drawing, drawingObjectsController, e, x, y, group, 
         return false;
     }
     var ret = false, i, title;
+    var bIsMobileVersion = oApi && oApi.isMobileVersion;
     if(drawing.hit(x, y))
     {
         var bClickFlag =  !window["IS_NATIVE_EDITOR"] && (drawingObjectsController.handleEventMode === AscFormat.HANDLE_EVENT_MODE_CURSOR || e.ClickCount < 2);
@@ -1249,11 +1250,13 @@ function handleInternalChart(drawing, drawingObjectsController, e, x, y, group, 
             {
                 var ser = series[i];
                 var pts = AscFormat.getPtsFromSeries(ser);
+                var oDLbl;
                 for(var j = 0; j < pts.length; ++j)
                 {
-                    if(pts[j].compiledDlb)
+                    oDLbl = pts[j].compiledDlb;
+                    if(oDLbl)
                     {
-                        if(pts[j].compiledDlb.hit(x, y))
+                        if(oDLbl.hit(x, y))
                         {
                             var nDlbl = drawing.selection.dataLbls;
                             if(drawingObjectsController.handleEventMode === HANDLE_EVENT_MODE_HANDLE)
@@ -1265,7 +1268,33 @@ function handleInternalChart(drawing, drawingObjectsController, e, x, y, group, 
                                 drawing.selection.dataLbls = i;
                                 if(nDlbl === i)
                                 {
-                                    drawing.selection.dataLbl = j;
+                                    if(drawing.selection.dataLbl === j)
+                                    {
+                                        var hit_in_inner_area = oDLbl.hitInInnerArea(x, y);
+                                        var hit_in_path = oDLbl.hitInPath(x, y);
+                                        var hit_in_text_rect = oDLbl.hitInTextRect(x, y);
+
+                                        if((hit_in_inner_area && (!hit_in_text_rect) || (hit_in_path && bIsMobileVersion !== true)) && !window["NATIVE_EDITOR_ENJINE"])
+                                        {
+                                            drawing.selection.dataLbl = j;
+                                            drawingObjectsController.arrPreTrackObjects.length = 0;
+                                            drawingObjectsController.arrPreTrackObjects.push(new AscFormat.MoveChartObjectTrack(oDLbl, drawing));
+                                            drawingObjectsController.changeCurrentState(new AscFormat.PreMoveState(drawingObjectsController, x, y, false, false, drawing, true, true));
+                                            drawingObjectsController.updateSelectionState();
+                                            drawingObjectsController.updateOverlay();
+                                            return true;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        drawing.selection.dataLbl = j;
+                                        drawingObjectsController.arrPreTrackObjects.length = 0;
+                                        drawingObjectsController.arrPreTrackObjects.push(new AscFormat.MoveChartObjectTrack(oDLbl, drawing));
+                                        drawingObjectsController.changeCurrentState(new AscFormat.PreMoveState(drawingObjectsController, x, y, false, false, drawing, true, true));
+                                        drawingObjectsController.updateSelectionState();
+                                        drawingObjectsController.updateOverlay();
+                                        return true;
+                                    }
                                 }
                                 drawingObjectsController.updateSelectionState();
                                 drawingObjectsController.updateOverlay();
@@ -1285,7 +1314,6 @@ function handleInternalChart(drawing, drawingObjectsController, e, x, y, group, 
 
         var chart_titles = drawing.getAllTitles();
         var oApi = editor || Asc['editor'];
-        var bIsMobileVersion = oApi && oApi.isMobileVersion;
         for(i = 0; i < chart_titles.length; ++i)
         {
             title = chart_titles[i];
@@ -1294,34 +1322,7 @@ function handleInternalChart(drawing, drawingObjectsController, e, x, y, group, 
             var hit_in_text_rect = title.hitInTextRect(x, y);
             if((hit_in_inner_area && (!hit_in_text_rect || drawing.selection.title !== title) || (hit_in_path && bIsMobileVersion !== true)) && !window["NATIVE_EDITOR_ENJINE"])
             {
-                if(drawingObjectsController.handleEventMode === HANDLE_EVENT_MODE_HANDLE)
-                {
-                    var is_selected =  drawing.selected;
-                    drawingObjectsController.checkChartTextSelection();
-                    selector.resetSelection();
-                    selector.selectObject(drawing, pageIndex);
-                    selector.selection.chartSelection = drawing;
-                    drawing.selectTitle(title, pageIndex);
-                    drawingObjectsController.updateSelectionState();
-                    drawingObjectsController.updateOverlay();
-
-                    if(Asc["editor"] && Asc["editor"].wb)
-                    {
-                        var ws = Asc["editor"].wb.getWorksheet();
-                        if(ws){
-                            var ct = ws.getCursorTypeFromXY(ws.objectRender.lastX, ws.objectRender.lastY);
-                            if(ct){
-                                Asc["editor"].wb._onUpdateCursor(ct.cursor);
-                            }
-                        }
-                    }
-
-                    return true;
-                }
-                else
-                {
-                    return {objectId: drawing.Get_Id(), cursorType: "move", bMarker: false};
-                }
+                return drawingObjectsController.handleChartTitleMoveHit(title, e, x, y, drawing, group, pageIndex);
             }
             else if(hit_in_text_rect)
             {

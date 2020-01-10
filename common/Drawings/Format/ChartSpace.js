@@ -2171,7 +2171,7 @@ CChartSpace.prototype.applyLabelsFunction = function(fCallback, value)
                 var pt = pts[this.selection.dataLbl];
                 if(pt)
                 {
-                    var dLbl  = ser.dLbls.findDLblByIdx(pt.idx);
+                    var dLbl  = ser.dLbls && ser.dLbls.findDLblByIdx(pt.idx);
                     if(!dLbl)
                     {
                         dLbl = new AscFormat.CDLbl();
@@ -6198,20 +6198,51 @@ CChartSpace.prototype.getValAxisCrossType = function()
         else{
             fRetPos = fPos + fChartSize*fLayoutValue;
         }
+        if(fRetPos + fSize > fChartSize){
+            fRetPos -= (fRetPos + fSize - fChartSize);
+        }
+
         if(fRetPos < 0){
             fRetPos = 0;
         }
         return fRetPos;
     };
-    CChartSpace.prototype.calculateSizeByLayout = function(fPos, fChartSize, fLayoutSize, fSizeMode ){
+    CChartSpace.prototype.calculateSizeByLayout = function(fPos, fChartSize, fLayoutSize, nSizeMode ){
         if(!AscFormat.isRealNumber(fLayoutSize)){
             return -1;
         }
         var fRetSize = Math.min(fChartSize*fLayoutSize, fChartSize);
-        if(fSizeMode === AscFormat.LAYOUT_MODE_EDGE){
+        if(nSizeMode === AscFormat.LAYOUT_MODE_EDGE){
             fRetSize = fRetSize - fPos;
         }
         return fRetSize;
+    };
+
+    CChartSpace.prototype.calculateLayoutByPos = function(fPos, nLayoutMode, fPosValue, fChartSize)
+    {
+        var fRetLayoutValue = 0;
+        if(nLayoutMode === AscFormat.LAYOUT_MODE_EDGE){
+            fRetLayoutValue = fPosValue / fChartSize;
+        }
+        else{
+
+            fRetLayoutValue = (fPosValue - fPos) / fChartSize;
+        }
+        return fRetLayoutValue;
+    };
+
+    CChartSpace.prototype.calculateLayoutBySize = function(fPos, nSizeMode, fChartSize, fSize)
+    {
+        var fRetLayout;
+        if(nSizeMode === AscFormat.LAYOUT_MODE_EDGE)
+        {
+            fRetLayout = (fSize - fPos) /  fChartSize;
+        }
+        else
+        {
+            fRetLayout = fSize / fChartSize;
+        }
+        return fRetLayout;
     };
 
     CChartSpace.prototype.calculateLabelsPositions = function(b_recalc_labels, b_recalc_legend)

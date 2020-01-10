@@ -1199,6 +1199,14 @@ CDLbl.prototype =
         return tx>=0 && tx <= this.extX && ty >=0 && ty <=this.extY;
     },
 
+    hitInPath: CShape.prototype.hitInPath,
+
+    hitInInnerArea: CShape.prototype.hitInInnerArea,
+
+    hitInBoundingRect:  CShape.prototype.hitInBoundingRect,
+
+    hitInTextRect: CShape.prototype.hitInTextRect,
+
     getCompiledStyle: function()
     {
         return null;
@@ -2112,6 +2120,10 @@ CDLbl.prototype =
         this.transformText = this.localTransformText.CreateDublicate();
         this.invertTransformText = global_MatrixTransformer.Invert(this.transformText);
     },
+
+
+
+
 
     setPosition2: function(x, y)
     {
@@ -7854,6 +7866,14 @@ CLegend.prototype =
     },
 
 
+    convertPixToMM: function(pix){
+        return this.parent && this.parent.parent && this.parent.parent.convertPixToMM && this.parent.parent.convertPixToMM(pix);
+    },
+
+    hitToHandles: function(x, y){
+        return AscFormat.hitToHandles(x, y, this);
+    },
+
     getContentChangesByType: function(type){
         switch(type){
             case AscDFH.historyitem_Legend_AddLegendEntry:{
@@ -7960,6 +7980,14 @@ CLegend.prototype =
     getCompiledFill: CShape.prototype.getCompiledFill,
     getCompiledTransparent: CShape.prototype.getCompiledTransparent,
     check_bounds: CShape.prototype.check_bounds,
+    canMove: function()
+    {
+        return true;
+    },
+    selectObject: function()
+    {
+
+    },
     getHierarchy: function(){return this.chart ? this.chart.getHierarchy() : []},
     isEmptyPlaceholder: function()
     {
@@ -7985,6 +8013,13 @@ CLegend.prototype =
         var t_x = this.invertTransform.TransformPointX(x, y);
         var t_y = this.invertTransform.TransformPointY(x, y);
         return t_x >= 0 && t_y >= 0 && t_x <= this.extX && t_y <=this.extY;
+    },
+
+    hitInBoundingRect: CShape.prototype.hitInBoundingRect,
+    hitInInnerArea: CShape.prototype.hitInInnerArea,
+    canRotate: function()
+    {
+        return false;
     },
 
     setPosition: function(x, y)
