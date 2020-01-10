@@ -1314,7 +1314,7 @@ CChartSpace.prototype.checkTypeCorrect = function(){
 };
 CChartSpace.prototype.drawSelect = function(drawingDocument, nPageIndex)
     {
-        var i;
+        var i, oPath;
         if(this.selectStartPage === nPageIndex)
         {
             drawingDocument.DrawTrack(AscFormat.TYPE_TRACK.SHAPE, this.getTransformMatrix(), 0, 0, this.extX, this.extY, false, this.canRotate());
@@ -1394,12 +1394,12 @@ CChartSpace.prototype.drawSelect = function(drawingDocument, nPageIndex)
                             {
                                 if(AscFormat.isRealNumber(seriesPaths[i].lowLines))
                                 {
-                                    var oPath = this.pathMemory.GetPath(seriesPaths[i].lowLines);
+                                    oPath = this.GetPath(seriesPaths[i].lowLines);
                                     oPath.drawTracks(drawingDocument, this.transform);
                                 }
                                 if(AscFormat.isRealNumber(seriesPaths[i].highLines))
                                 {
-                                    var oPath = this.pathMemory.GetPath(seriesPaths[i].highLines);
+                                    oPath = this.GetPath(seriesPaths[i].highLines);
                                     oPath.drawTracks(drawingDocument, this.transform);
                                 }
                             }
@@ -1421,7 +1421,7 @@ CChartSpace.prototype.drawSelect = function(drawingDocument, nPageIndex)
                             {
                                 if(AscFormat.isRealNumber(seriesPaths[i].upBars))
                                 {
-                                    var oPath = this.pathMemory.GetPath(seriesPaths[i].upBars);
+                                    oPath = this.GetPath(seriesPaths[i].upBars);
                                     oPath.drawTracks(drawingDocument, this.transform);
                                 }
                             }
@@ -1443,7 +1443,7 @@ CChartSpace.prototype.drawSelect = function(drawingDocument, nPageIndex)
                             {
                                 if(AscFormat.isRealNumber(seriesPaths[i].downBars))
                                 {
-                                    var oPath = this.pathMemory.GetPath(seriesPaths[i].downBars);
+                                    oPath = this.GetPath(seriesPaths[i].downBars);
                                     oPath.drawTracks(drawingDocument, this.transform);
                                 }
                             }
@@ -1485,7 +1485,8 @@ CChartSpace.prototype.drawSelect = function(drawingDocument, nPageIndex)
                     {
                         var seriesPaths = this.selection.markers ? oDrawChart.paths.points : oDrawChart.paths.series;
                         var Paths;
-                        if(oDrawChart.chart && oDrawChart.chart.getObjectType() === AscDFH.historyitem_type_PieChart && oDrawChart.properties3d)
+                        var b3dPie = oDrawChart.chart.getObjectType() === AscDFH.historyitem_type_PieChart;
+                        if( b3dPie)
                         {
                             Paths = seriesPaths;
                         }
@@ -1504,7 +1505,7 @@ CChartSpace.prototype.drawSelect = function(drawingDocument, nPageIndex)
                             {
                                 if(AscFormat.isRealNumber(aPointsPaths[this.selection.datPoint]))
                                 {
-                                    var oPath = this.pathMemory.GetPath(aPointsPaths[this.selection.datPoint]);
+                                    oPath = this.GetPath(aPointsPaths[this.selection.datPoint]);
                                     oPath.drawTracks(drawingDocument, this.transform);
                                 }
                                 else  if(Array.isArray(aPointsPaths[this.selection.datPoint]))
@@ -1518,20 +1519,25 @@ CChartSpace.prototype.drawSelect = function(drawingDocument, nPageIndex)
                                             // frontPath: []
                                             // insidePath: 1188
                                             // upPath: 1213
+                                            if(AscFormat.isRealNumber(aPointsPaths2[z].downPath) && !b3dPie)
+                                            {
+                                                oPath = this.GetPath(aPointsPaths2[z].downPath);
+                                                oPath.drawTracks(drawingDocument, this.transform);
+                                            }
                                             if(AscFormat.isRealNumber(aPointsPaths2[z].upPath))
                                             {
-                                                var oPath = this.pathMemory.GetPath(aPointsPaths2[z].downPath);
+                                                oPath = this.GetPath(aPointsPaths2[z].upPath);
                                                 oPath.drawTracks(drawingDocument, this.transform);
                                             }
 											
 											var aFrontPaths = aPointsPaths2[z].frontPath || aPointsPaths2[z].frontPaths;
-                                            if(Array.isArray(aFrontPaths))
+                                            if(Array.isArray(aFrontPaths) && !b3dPie)
                                             {
                                                 for(var s = 0; s < aFrontPaths.length; ++s)
                                                 {
 													if(AscFormat.isRealNumber(aFrontPaths[s]))
 													{													
-														var oPath = this.pathMemory.GetPath(aFrontPaths[s]);
+														oPath = this.GetPath(aFrontPaths[s]);
 														oPath.drawTracks(drawingDocument, this.transform);	
 													}
                                                 }
@@ -1543,7 +1549,7 @@ CChartSpace.prototype.drawSelect = function(drawingDocument, nPageIndex)
                                                 {
 													if(AscFormat.isRealNumber(aFrontPaths[s]))
 													{													
-														var oPath = this.pathMemory.GetPath(aFrontPaths[s]);
+														oPath = this.GetPath(aFrontPaths[s]);
 														oPath.drawTracks(drawingDocument, this.transform);	
 													}
 												}
@@ -1552,7 +1558,7 @@ CChartSpace.prototype.drawSelect = function(drawingDocument, nPageIndex)
                                         }
                                         else if(AscFormat.isRealNumber(aPointsPaths2[z]))
                                         {
-                                            var oPath = this.pathMemory.GetPath(aPointsPaths2[z]);
+                                            oPath = this.GetPath(aPointsPaths2[z]);
                                             oPath.drawTracks(drawingDocument, this.transform);
                                         }
                                     }
@@ -1565,7 +1571,7 @@ CChartSpace.prototype.drawSelect = function(drawingDocument, nPageIndex)
                                         {
                                             if(AscFormat.isRealNumber(aPointsPaths[this.selection.datPoint].frontPaths[l]))
                                             {
-                                                var oPath = this.pathMemory.GetPath(aPointsPaths[this.selection.datPoint].frontPaths[l]);
+                                                oPath = this.GetPath(aPointsPaths[this.selection.datPoint].frontPaths[l]);
                                                 oPath.drawTracks(drawingDocument, this.transform);
                                             }
                                         }
@@ -1576,14 +1582,14 @@ CChartSpace.prototype.drawSelect = function(drawingDocument, nPageIndex)
                                         {
                                             if(AscFormat.isRealNumber(aPointsPaths[this.selection.datPoint].darkPaths[l]))
                                             {
-                                                var oPath = this.pathMemory.GetPath(aPointsPaths[this.selection.datPoint].darkPaths[l]);
+                                                oPath = this.GetPath(aPointsPaths[this.selection.datPoint].darkPaths[l]);
                                                 oPath.drawTracks(drawingDocument, this.transform);
                                             }
                                         }
                                     }
                                     if(AscFormat.isRealNumber(aPointsPaths[this.selection.datPoint].path))
                                     {
-                                        var oPath = this.pathMemory.GetPath(aPointsPaths[this.selection.datPoint].path);
+                                        oPath = this.GetPath(aPointsPaths[this.selection.datPoint].path);
                                         oPath.drawTracks(drawingDocument, this.transform);
                                     }
                                 }
@@ -1594,7 +1600,7 @@ CChartSpace.prototype.drawSelect = function(drawingDocument, nPageIndex)
                                 {
                                     if(AscFormat.isRealNumber(aPointsPaths[l]))
                                     {
-                                        var oPath = this.pathMemory.GetPath(aPointsPaths[l]);
+                                        oPath = this.GetPath(aPointsPaths[l]);
                                         oPath.drawTracks(drawingDocument, this.transform);
                                     }
                                     else if(Array.isArray(aPointsPaths[l]))
@@ -1604,9 +1610,53 @@ CChartSpace.prototype.drawSelect = function(drawingDocument, nPageIndex)
                                         {
                                             if(AscFormat.isRealNumber(aPointsPaths2[z]))
                                             {
-                                                var oPath = this.pathMemory.GetPath(aPointsPaths2[z]);
+                                                oPath = this.GetPath(aPointsPaths2[z]);
                                                 oPath.drawTracks(drawingDocument, this.transform);
                                             }
+                                            else if(AscCommon.isRealObject(aPointsPaths2[z]))
+                                            {
+                                                // downPath: 1230
+                                                // frontPath: []
+                                                // insidePath: 1188
+                                                // upPath: 1213
+                                                if(AscFormat.isRealNumber(aPointsPaths2[z].downPath) && !b3dPie)
+                                                {
+                                                    oPath = this.GetPath(aPointsPaths2[z].downPath);
+                                                    oPath.drawTracks(drawingDocument, this.transform);
+                                                }
+                                                if(AscFormat.isRealNumber(aPointsPaths2[z].upPath))
+                                                {
+                                                    oPath = this.GetPath(aPointsPaths2[z].upPath);
+                                                    oPath.drawTracks(drawingDocument, this.transform);
+                                                }
+
+                                                var aFrontPaths = aPointsPaths2[z].frontPath || aPointsPaths2[z].frontPaths;
+                                                if(Array.isArray(aFrontPaths) && !b3dPie)
+                                                {
+                                                    for(var s = 0; s < aFrontPaths.length; ++s)
+                                                    {
+                                                        if(AscFormat.isRealNumber(aFrontPaths[s]))
+                                                        {
+                                                            oPath = this.GetPath(aFrontPaths[s]);
+                                                            oPath.drawTracks(drawingDocument, this.transform);
+                                                        }
+                                                    }
+                                                }
+                                                aFrontPaths = aPointsPaths2[z].darkPaths;
+                                                if(Array.isArray(aFrontPaths))
+                                                {
+                                                    for(var s = 0; s < aFrontPaths.length; ++s)
+                                                    {
+                                                        if(AscFormat.isRealNumber(aFrontPaths[s]))
+                                                        {
+                                                            oPath = this.GetPath(aFrontPaths[s]);
+                                                            oPath.drawTracks(drawingDocument, this.transform);
+                                                        }
+                                                    }
+                                                }
+
+                                            }
+
                                         }
                                     }
 									else
@@ -1619,7 +1669,7 @@ CChartSpace.prototype.drawSelect = function(drawingDocument, nPageIndex)
 												{
 													if(AscFormat.isRealNumber(aPointsPaths[l].frontPaths[p]))
 													{
-														var oPath = this.pathMemory.GetPath(aPointsPaths[l].frontPaths[p]);
+														oPath = this.GetPath(aPointsPaths[l].frontPaths[p]);
 														oPath.drawTracks(drawingDocument, this.transform);
 													}
 												}
@@ -1630,14 +1680,14 @@ CChartSpace.prototype.drawSelect = function(drawingDocument, nPageIndex)
 												{
 													if(AscFormat.isRealNumber(aPointsPaths[l].darkPaths[p]))
 													{
-														var oPath = this.pathMemory.GetPath(aPointsPaths[l].darkPaths[p]);
+														oPath = this.GetPath(aPointsPaths[l].darkPaths[p]);
 														oPath.drawTracks(drawingDocument, this.transform);
 													}
 												}
 											}
                                             if(AscFormat.isRealNumber(aPointsPaths[l].path))
                                             {
-                                                var oPath = this.pathMemory.GetPath(aPointsPaths[l].path);
+                                                oPath = this.GetPath(aPointsPaths[l].path);
                                                 oPath.drawTracks(drawingDocument, this.transform);
                                             }
 										}
@@ -1653,26 +1703,62 @@ CChartSpace.prototype.drawSelect = function(drawingDocument, nPageIndex)
                                 {
                                     Paths = seriesPaths[this.selection.datPoint];
                                 }
-                                var oPath = this.pathMemory.GetPath(Paths);
+                                oPath = this.GetPath(Paths);
                                 oPath.drawTracks(drawingDocument, this.transform);
                             }
                         }
 
                     }
                 }
-
             }
             else if(this.selection.axis)
             {
+                var oAxObj;
+                var oChartObj = this.chartObj;
+                if(this.selection.axis.getObjectType() === AscDFH.historyitem_type_CatAx || this.selection.axis.getObjectType() === AscDFH.historyitem_type_DateAx)
+                {
+
+                    if(Array.isArray(oChartObj.catAxisChart))
+                    {
+                        for(i = 0; i < oChartObj.catAxisChart.length; ++i)
+                        {
+                            if(oChartObj.catAxisChart[i] && oChartObj.catAxisChart[i].catAx === this.selection.axis)
+                            {
+                                oAxObj = oChartObj.catAxisChart[i];
+                                break;
+                            }
+                        }
+                    }
+                }
+                else if(this.selection.axis.getObjectType() === AscDFH.historyitem_type_ValAx)
+                {
+                    if(Array.isArray(oChartObj.valAxisChart))
+                    {
+                        for(i = 0; i < oChartObj.valAxisChart.length; ++i)
+                        {
+                            if(oChartObj.valAxisChart[i] && oChartObj.valAxisChart[i].valAx === this.selection.axis)
+                            {
+                                oAxObj = oChartObj.valAxisChart[i];
+                                break;
+                            }
+                        }
+                    }
+                }
                 if(this.selection.majorGridlines)
                 {
-                    var oPath = this.pathMemory.GetPath(this.selection.majorGridlines);
-                    oPath.drawTracks(drawingDocument, this.transform);
+                    if(oAxObj && oAxObj.paths && AscFormat.isRealNumber(oAxObj.paths.gridLines))
+                    {
+                        oPath = this.GetPath(oAxObj.paths.gridLines);
+                        oPath.drawTracks(drawingDocument, this.transform);
+                    }
                 }
                 else if(this.selection.minorGridlines)
                 {
-                    var oPath = this.pathMemory.GetPath(this.selection.minorGridlines);
-                    oPath.drawTracks(drawingDocument, this.transform);
+                    if(oAxObj && oAxObj.paths && AscFormat.isRealNumber(oAxObj.paths.minorGridLines))
+                    {
+                        oPath = this.GetPath(oAxObj.paths.minorGridLines);
+                        oPath.drawTracks(drawingDocument, this.transform);
+                    }
                 }
             }
         }
@@ -2579,14 +2665,14 @@ CChartSpace.prototype.changeSize = CShape.prototype.changeSize;
         }
         else if(this.selection.axis)
         {
-            if(AscFormat.isRealNumber(this.selection.majorGridlines))
+            if(this.selection.majorGridlines)
             {
                 if(this.selection.axis.majorGridlines && this.selection.axis.majorGridlines.ln && this.selection.axis.majorGridlines.ln.Fill)
                 {
                     ret = this.selection.axis.majorGridlines.ln;
                 }
             }
-            if(AscFormat.isRealNumber(this.selection.minorGridlines))
+            if(this.selection.minorGridlines)
             {
                 if(this.selection.axis.minorGridlines && this.selection.axis.minorGridlines.ln && this.selection.axis.minorGridlines.ln.Fill)
                 {
@@ -4143,12 +4229,12 @@ CChartSpace.prototype.rebuildSeriesData = function(oValRange, oCatRange, oTxRang
         }
         if(oCatRange)
         {
-            if(bScatter) {
+            //if(bScatter) {
                 aSeries = this.getAllSeries();
-            }
-            else {
-                aSeries = [oSeries];
-            }
+            // }
+            // else {
+            //     aSeries = [oSeries];
+            // }
             for(i = 0; i < aSeries.length; ++i) {
                 oSeries = aSeries[i];
                 if(!bScatter) {
@@ -5313,14 +5399,8 @@ CChartSpace.prototype.getRangeObjectStr = function()
                     worksheet: first_series_sheet
                 };
 
-
-                bbox.seriesBBox = {
-                    r1: series_f[0].r1,
-                    r2: series_f[series_f.length-1].r2,
-                    c1: series_f[0].c1,
-                    c2: series_f[series_f.length-1].c2,
-                    bVert: b_vert
-                };
+                bbox.seriesBBox = new window["Asc"].Range(series_f[0].c1, series_f[0].r1, series_f[series_f.length-1].c2, series_f[series_f.length-1].r2, false);
+                bbox.seriesBBox.bVert = b_vert;
 
 
                 seriesBBoxes.push(new BBoxInfo(first_series_sheet, bbox.seriesBBox));
@@ -5356,12 +5436,8 @@ CChartSpace.prototype.getRangeObjectStr = function()
                 }
                 if(Array.isArray(series_title_f))
                 {
-                    bbox.serBBox = {
-                        r1: series_title_f[0].r1,
-                        r2: series_title_f[series_title_f.length-1].r2,
-                        c1: series_title_f[0].c1,
-                        c2: series_title_f[series_title_f.length-1].c2
-                    };
+
+                    bbox.serBBox = new window["Asc"].Range(series_title_f[0].c1, series_title_f[0].r1, series_title_f[series_title_f.length-1].c2, series_title_f[series_title_f.length-1].r2, false);
                     seriesTitlesBBoxes.push(new BBoxInfo(first_series_sheet, bbox.serBBox));
                 }
             }
@@ -5829,14 +5905,14 @@ CChartSpace.prototype.checkCatByNumRef = function(oThis, ser, cat, bVertical)
 CChartSpace.prototype.recalculateReferences = function()
 {
     var oSelectedSeries = this.getSelectedSeries();
-    if(!oSelectedSeries)
+    if(AscFormat.isRealNumber(this.selection.series))
     {
-        this.resetSelection(false);
-    }
-    else
-    {
-        this.selection.datPoint = null;
-        this.selection.markers = null;
+        if(!oSelectedSeries)
+        {
+            this.selection.series = null;
+            this.selection.datPoint = null;
+            this.selection.markers = null;
+        }
     }
     var worksheet = this.worksheet;
     //this.pointsMap = {};
@@ -6256,6 +6332,7 @@ CChartSpace.prototype.getValAxisCrossType = function()
         var oPlotArea = this.chart.plotArea, i;
         var nAxisType = oAxis.getObjectType();
         var oSeries = oPlotArea.getSeriesWithSmallestIndexForAxis(oAxis);
+        var bCat = false;
         switch(nAxisType){
             case AscDFH.historyitem_type_DateAx:
             case AscDFH.historyitem_type_CatAx:{
@@ -6282,6 +6359,7 @@ CChartSpace.prototype.getValAxisCrossType = function()
                         oLit = oCat.numLit;
                     }
                     if(oLit){
+                        bCat = true;
                         var oLitFormat = null, oPtFormat = null;
                         if(typeof oLit.formatCode === "string" && oLit.formatCode.length > 0){
                             oLitFormat = oNumFormatCache.get(oLit.formatCode);
@@ -6361,7 +6439,7 @@ CChartSpace.prototype.getValAxisCrossType = function()
                     nTickLblSkip = AscFormat.isRealNumber(oAxis.tickLblSkip) ? oAxis.tickLblSkip : (nPtsLength < SKIP_LBL_LIMIT ? 1 : (Math.floor(nPtsLength/SKIP_LBL_LIMIT) + 1));
                     var nStartLength = aStrings.length;
                     for(i = aStrings.length; i < nPtsLength; ++i){
-                        if(!bTickSkip || (((nStartLength + i) % nTickLblSkip) === 0)){
+                        if(!bCat && (!bTickSkip || (((nStartLength + i) % nTickLblSkip) === 0))){
                             if(oLitFormatDate){
                                 aStrings.push(oLitFormatDate.formatToChart(i + 1));
                             }
@@ -15745,12 +15823,12 @@ function CreateLineChart(chartSeries, type, bUseCache, oOptions, b3D)
         series.setSmooth(false);
         series.setVal(new AscFormat.CYVal());
         FillValNum(series.val, asc_series[i].Val, bUseCache);
-        if(parsedHeaders.bTop && !bInCols || bInCols && parsedHeaders.bLeft)
+        if(asc_series[i].Cat && typeof asc_series[i].Cat.Formula === "string" && asc_series[i].Cat.Formula.length > 0)
         {
             series.setCat(new AscFormat.CCat());
             FillCatStr(series.cat, asc_series[i].Cat, bUseCache);
         }
-        if((parsedHeaders.bLeft && !bInCols || bInCols && parsedHeaders.bTop) && asc_series[i].TxCache && typeof asc_series[i].TxCache.Formula === "string" && asc_series[i].TxCache.Formula.length > 0)
+        if( asc_series[i].TxCache && typeof asc_series[i].TxCache.Formula === "string" && asc_series[i].TxCache.Formula.length > 0)
         {
             FillSeriesTx(series, asc_series[i].TxCache, bUseCache);
         }
@@ -15882,12 +15960,12 @@ function CreateBarChart(chartSeries, type, bUseCache, oOptions, b3D, bDepth)
         series.setInvertIfNegative(false);
         series.setVal(new AscFormat.CYVal());
         FillValNum(series.val, asc_series[i].Val, bUseCache);
-        if(parsedHeaders.bTop && !bInCols || bInCols && parsedHeaders.bLeft)
+        if(asc_series[i].Cat && typeof asc_series[i].Cat.Formula === "string" && asc_series[i].Cat.Formula.length > 0)
         {
             series.setCat(new AscFormat.CCat());
             FillCatStr(series.cat, asc_series[i].Cat, bUseCache);
         }
-        if((parsedHeaders.bLeft && !bInCols || bInCols && parsedHeaders.bTop) && asc_series[i].TxCache && typeof asc_series[i].TxCache.Formula === "string" && asc_series[i].TxCache.Formula.length > 0)
+        if(asc_series[i].TxCache && typeof asc_series[i].TxCache.Formula === "string" && asc_series[i].TxCache.Formula.length > 0)
         {
             FillSeriesTx(series, asc_series[i].TxCache, bUseCache);
         }
@@ -16155,12 +16233,12 @@ function CreateAreaChart(chartSeries, type, bUseCache, oOptions)
         series.setOrder(i);
         series.setVal(new AscFormat.CYVal());
         FillValNum(series.val, asc_series[i].Val, bUseCache);
-        if(parsedHeaders.bTop && !bInCols || bInCols && parsedHeaders.bLeft)
+        if(asc_series[i].Cat && typeof asc_series[i].Cat.Formula === "string" && asc_series[i].Cat.Formula.length > 0)
         {
             series.setCat(new AscFormat.CCat());
             FillCatStr(series.cat, asc_series[i].Cat, bUseCache);
         }
-        if((parsedHeaders.bLeft && !bInCols || bInCols && parsedHeaders.bTop) && asc_series[i].TxCache && typeof asc_series[i].TxCache.Formula === "string" && asc_series[i].TxCache.Formula.length > 0)
+        if(asc_series[i].TxCache && typeof asc_series[i].TxCache.Formula === "string" && asc_series[i].TxCache.Formula.length > 0)
         {
             FillSeriesTx(series, asc_series[i].TxCache, bUseCache);
         }
@@ -16273,12 +16351,12 @@ function CreatePieChart(chartSeries, bDoughnut, bUseCache, oOptions, b3D)
         series.setVal(new AscFormat.CYVal());
         var val = series.val;
         FillValNum(series.val, asc_series[i].Val, bUseCache);
-        if(parsedHeaders.bTop && !bInCols || bInCols && parsedHeaders.bLeft)
+        if(asc_series[i].Cat && typeof asc_series[i].Cat.Formula === "string" && asc_series[i].Cat.Formula.length > 0)
         {
             series.setCat(new AscFormat.CCat());
             FillCatStr(series.cat, asc_series[i].Cat, bUseCache);
         }
-        if((parsedHeaders.bLeft && !bInCols || bInCols && parsedHeaders.bTop) && asc_series[i].TxCache && typeof asc_series[i].TxCache.Formula === "string" && asc_series[i].TxCache.Formula.length > 0)
+        if(asc_series[i].TxCache && typeof asc_series[i].TxCache.Formula === "string" && asc_series[i].TxCache.Formula.length > 0)
         {
             FillSeriesTx(series, asc_series[i].TxCache, bUseCache);
         }
@@ -16287,7 +16365,7 @@ function CreatePieChart(chartSeries, bDoughnut, bUseCache, oOptions, b3D)
     }
     pie_chart.setFirstSliceAng(0);
     if(bDoughnut)
-        pie_chart.setHoleSize(50);
+        pie_chart.setHoleSize(75);
     chart.setLegend(new AscFormat.CLegend());
     var legend = chart.legend;
     legend.setLegendPos(c_oAscChartLegendShowSettings.right);
@@ -16426,14 +16504,15 @@ function CreateScatterChart(chartSeries, bUseCache, oOptions)
     var first_series = null;
     var start_index = 0;
     var minus = 0;
-    if(parsedHeaders.bTop && !bInCols || bInCols && parsedHeaders.bLeft)
+    first_series = asc_series.length > 1 ? asc_series[0] : null;
+
+    if(first_series && first_series.xVal && typeof first_series.xVal.Formula === "string" && first_series.xVal.Formula.length > 0)
     {
         oXVal = new AscFormat.CXVal();
-        FillCatStr(oXVal, asc_series[0].xVal, bUseCache);
+        FillCatStr(oXVal, first_series.xVal, bUseCache);
     }
     else
     {
-        first_series = asc_series.length > 1 ? asc_series[0] : null;
         start_index = asc_series.length > 1 ? 1 : 0;
         minus = start_index === 1 ? 1 : 0;
         if(first_series)
@@ -16453,7 +16532,7 @@ function CreateScatterChart(chartSeries, bUseCache, oOptions)
         }
         series.setYVal(new AscFormat.CYVal());
         FillValNum(series.yVal, asc_series[i].Val, bUseCache);
-        if((parsedHeaders.bLeft && !bInCols || bInCols && parsedHeaders.bTop) && asc_series[i].TxCache && typeof asc_series[i].TxCache.Formula === "string" && asc_series[i].TxCache.Formula.length > 0)
+        if(asc_series[i].TxCache && typeof asc_series[i].TxCache.Formula === "string" && asc_series[i].TxCache.Formula.length > 0)
         {
             FillSeriesTx(series, asc_series[i].TxCache, bUseCache)
         }
@@ -16727,12 +16806,12 @@ function CreateStockChart(chartSeries, bUseCache, oOptions)
             series.setOrder(i);
             series.setVal(new AscFormat.CYVal());
             FillValNum(series.val, asc_series[i].Val, bUseCache);
-            if(parsedHeaders.bTop && !bInCols || bInCols && parsedHeaders.bLeft)
+            if(asc_series[i].Cat && typeof asc_series[i].Cat.Formula === "string" && asc_series[i].Cat.Formula.length > 0)
             {
                 series.setCat(new AscFormat.CCat());
                 FillCatStr(series.cat, asc_series[i].Cat, bUseCache);
             }
-            if((parsedHeaders.bLeft && !bInCols || bInCols && parsedHeaders.bTop) && asc_series[i].TxCache && typeof asc_series[i].TxCache.Formula === "string" && asc_series[i].TxCache.Formula.length > 0)
+            if(asc_series[i].TxCache && typeof asc_series[i].TxCache.Formula === "string" && asc_series[i].TxCache.Formula.length > 0)
             {
                 FillSeriesTx(series, asc_series[i].TxCache, bUseCache);
             }
@@ -17072,8 +17151,7 @@ function getChartSeries (worksheet, options, catHeadersBBox, serHeadersBBox)
                     r2temp = Math.max(bbox.r1, bbox.r2);
                     c1temp = Math.min(bbox.c1, bbox.c1);
                     c2temp = Math.max(bbox.c1, bbox.c2);
-                    nSumRows += (r2temp - r1temp);
-                    nSumCols += (c2temp - c1temp);
+
                     if (!oWorksheet)
                     {
                         oWorksheet = ws;
@@ -17116,6 +17194,18 @@ function getChartSeries (worksheet, options, catHeadersBBox, serHeadersBBox)
                                 }
                             }
                         }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                    if(bRows === null || bRows === true)
+                    {
+                        nSumCols += (c2temp - c1temp + 1);
+                    }
+                    if(bRows === null || bRows === false)
+                    {
+                        nSumRows += (r2temp - r1temp + 1);
                     }
                 }
             }
@@ -17125,90 +17215,145 @@ function getChartSeries (worksheet, options, catHeadersBBox, serHeadersBBox)
         {
             if(bRows)
             {
-                if(nSumCols > (r2 - r1 + 1))
+                aBBoxes.sort(function(a, b){
+                   return Math.min(a.c1, a.c2) - Math.min(b.c1, b.c2);
+                });
+                parsedHeaders = parseSeriesHeaders(oWorksheet, aBBoxes[0]);
+                if(parsedHeaders.bLeft)
                 {
-                    aBBoxes.sort(function(a, b){
-                       return Math.min(a.c1, a.c2) - Math.min(b.c1, b.c2);
-                    });
-                    parsedHeaders = parseSeriesHeaders(oWorksheet, aBBoxes[0]);
-                    if(parsedHeaders.bLeft)
+                    --nSumCols;
+                    ++c1;
+                }
+                if(parsedHeaders.bTop)
+                {
+                    ++r1;
+                }
+                if(nSumCols >= (r2 - r1 + 1))//series by rows
+                {
+                    for(i = r1; i <= r2; ++i)
                     {
-                        --nSumCols;
-                    }
-                    if(parsedHeaders.bTop)
-                    {
-                        ++r1;
-                    }
-                    if(nSumCols > (r2 - r1 + 1))
-                    {
-
-                        for(i = r1; i <= r2; ++i)
+                        ser = new AscFormat.asc_CChartSeria();
+                        series.push(ser);
+                        sFormula = "(";
+                        if(parsedHeaders.bLeft)
                         {
-                            ser = new AscFormat.asc_CChartSeria();
-                            series.push(ser);
-                            sFormula = "(";
-                            if(parsedHeaders.bLeft)
+                            formulaCell = new CellAddress( i, Math.min(aBBoxes[0].c1, aBBoxes[0].c2), 0 );
+                            ser.TxCache.Formula = parserHelp.get3DRef(oWorksheet.sName, formulaCell.getIDAbsolute());
+                        }
+
+
+                        if(parsedHeaders.bTop)
+                        {
+                            sCatFormula = "(";
+                            aCatCache = [];
+                        }
+                        for(j = 0; j < aBBoxes.length; ++j)
+                        {
+                            bbox = aBBoxes[j];
+                            if(j === 0 && parsedHeaders.bLeft)
                             {
-                                formulaCell = new CellAddress( i, Math.min(aBBoxes[0].c1, aBBoxes[0].c2), 0 );
-                                ser.TxCache.Formula = parserHelp.get3DRef(oWorksheet.sName, formulaCell.getIDAbsolute());
+                                if(Math.max(bbox.c1, bbox.c2) - Math.min(bbox.c1, bbox.c2) === 0)
+                                {
+                                    continue;
+                                }
+                                nStartCol = Math.min(bbox.c1, bbox.c2) + 1;
                             }
+                            else
+                            {
+                                nStartCol = Math.min(bbox.c1, bbox.c2);
+                            }
+                            startCell = new CellAddress(i, nStartCol, 0);
+                            endCell = new CellAddress(i, Math.max(bbox.c1, bbox.c2), 0);
 
+                            ser.isHidden = !!ws.getRowHidden(i);
 
+                            // Val
+                            sStartCellId = startCell.getIDAbsolute();
+                            sEndCellId = endCell.getIDAbsolute();
+                            if(sFormula.length > 1)
+                            {
+                                sFormula += ",";
+                            }
+                            sFormula += parserHelp.get3DRef(ws.sName, sStartCellId === sEndCellId ?
+                                sStartCellId : sStartCellId + ':' + sEndCellId);
+                            ser.Val.NumCache = ser.Val.NumCache.concat(getNumCache(ws, nStartCol, Math.max(bbox.c1, bbox.c2), i, i));
                             if(parsedHeaders.bTop)
                             {
-                                sCatFormula = "(";
-                                aCatCache = [];
-                            }
-                            for(j = 0; j < aBBoxes.length; ++j)
-                            {
-                                bbox = aBBoxes[j];
-                                if(j === 0 && parsedHeaders.bLeft)
-                                {
-                                    if(Math.max(bbox.c1, bbox.c2) - Math.min(bbox.c1, bbox.c2) === 1)
-                                    {
-                                        continue;
-                                    }
-                                    nStartCol = Math.min(bbox.c1, bbox.c2) + 1;
-                                }
-                                else
-                                {
-                                    nStartCol = Math.min(bbox.c1, bbox.c2);
-                                }
-                                startCell = new CellAddress(i, nStartCol, 0);
-                                endCell = new CellAddress(i, Math.max(bbox.c1, bbox.c2), 0);
-
-                                ser.isHidden = !!ws.getRowHidden(i);
-
-                                // Val
+                                aCatCache = aCatCache.concat(getNumCache(ws, nStartCol, Math.max(bbox.c1, bbox.c2), Math.min(aBBoxes[0].r1, aBBoxes[0].r2) - 1, Math.min(aBBoxes[0].r1, aBBoxes[0].r2) - 1));
+                                startCell = new CellAddress(r1 - 1, nStartCol, 0);
+                                endCell = new CellAddress(r1 - 1, Math.max(bbox.c1, bbox.c2), 0);
                                 sStartCellId = startCell.getIDAbsolute();
                                 sEndCellId = endCell.getIDAbsolute();
-                                if(sFormula.length > 1)
+                                if(sCatFormula.length > 1)
                                 {
-                                    sFormula += ",";
+                                    sCatFormula += ",";
                                 }
-                                sFormula += parserHelp.get3DRef(ws.sName, sStartCellId === sEndCellId ?
+                                sCatFormula += parserHelp.get3DRef(ws.sName, sStartCellId === sEndCellId ?
                                     sStartCellId : sStartCellId + ':' + sEndCellId);
-                                ser.Val.NumCache = ser.Val.NumCache.concat(getNumCache(ws, nStartCol, Math.max(bbox.c1, bbox.c2), i, i));
-                                if(parsedHeaders.bTop)
-                                {
-                                    aCatCache = aCatCache.concat(getNumCache(ws, nStartCol, Math.max(bbox.c1, bbox.c2), Math.min(aBBoxes[0].r1, aBBoxes[0].r2) - 1, Math.min(aBBoxes[0].r1, aBBoxes[0].r2) - 1));
-                                    startCell = new CellAddress(r1 - 1, nStartCol, 0);
-                                    endCell = new CellAddress(r1 - 1, Math.max(bbox.c1, bbox.c2), 0);
-                                    sStartCellId = startCell.getIDAbsolute();
-                                    sEndCellId = endCell.getIDAbsolute();
-                                    if(sCatFormula.length > 1)
-                                    {
-                                        sCatFormula += ",";
-                                    }
-                                    sCatFormula += parserHelp.get3DRef(ws.sName, sStartCellId === sEndCellId ?
-                                        sStartCellId : sStartCellId + ':' + sEndCellId);
-                                }
                             }
-                            sFormula += ")";
-                            ser.Val.Formula = sFormula;
-                            if(parsedHeaders.bTop)
+                        }
+                        sFormula += ")";
+                        ser.Val.Formula = sFormula;
+                        if(parsedHeaders.bTop)
+                        {
+                            sCatFormula += ")";
+                            if (bIsScatter)
                             {
-                                sCatFormula += ")";
+                                ser.xVal.Formula = sCatFormula;
+                                ser.xVal.NumCache = aCatCache;
+                            }
+                            else
+                            {
+                                ser.Cat.Formula = sCatFormula;
+                                ser.Cat.NumCache = aCatCache;
+                            }
+                        }
+                    }
+                    return {series: series, parsedHeaders: parsedHeaders};
+                }
+                else //series by cols
+                {
+                    for(i = 0; i < aBBoxes.length; ++i)
+                    {
+                        bbox = aBBoxes[i];
+                        if(i === 0 && parsedHeaders.bLeft)
+                        {
+                            if(Math.max(bbox.c1, bbox.c2) - Math.min(bbox.c1, bbox.c2) === 0)
+                            {
+                                continue;
+                            }
+                            nStartCol = Math.min(bbox.c1, bbox.c2) + 1;
+                        }
+                        else
+                        {
+                            nStartCol = Math.min(bbox.c1, bbox.c2);
+                        }
+
+                        for(j = nStartCol; j <= Math.max(bbox.c1, bbox.c2); ++j)
+                        {
+                            startCell = new CellAddress(r1, j, 0);
+                            endCell = new CellAddress(r2, j, 0);
+
+
+                            ser = new AscFormat.asc_CChartSeria();
+                            series.push(ser);
+                            ser.isHidden = !!ws.getColHidden(j);
+
+                            // Val
+                            sStartCellId = startCell.getIDAbsolute();
+                            sEndCellId = endCell.getIDAbsolute();
+                            ser.Val.Formula = parserHelp.get3DRef(ws.sName, sStartCellId === sEndCellId ?
+                                sStartCellId : sStartCellId + ':' + sEndCellId);
+                            ser.Val.NumCache = getNumCache(ws, j, j, r1, r2);
+                            if(parsedHeaders.bLeft)
+                            {
+                                aCatCache = getNumCache(ws, Math.min(aBBoxes[0].c1, aBBoxes[0].c2), Math.min(aBBoxes[0].c1, aBBoxes[0].c2), Math.min(aBBoxes[0].r1, aBBoxes[0].r2), Math.max(aBBoxes[0].r1, aBBoxes[0].r2));
+                                startCell = new CellAddress(Math.min(r1, r2), Math.min(aBBoxes[0].c1, aBBoxes[0].c2), 0);
+                                endCell = new CellAddress(Math.max(r1, r2), Math.min(aBBoxes[0].c1, aBBoxes[0].c2), 0);
+                                sStartCellId = startCell.getIDAbsolute();
+                                sEndCellId = endCell.getIDAbsolute();
+                                sCatFormula = parserHelp.get3DRef(ws.sName, sStartCellId === sEndCellId ?
+                                    sStartCellId : sStartCellId + ':' + sEndCellId);
                                 if (bIsScatter)
                                 {
                                     ser.xVal.Formula = sCatFormula;
@@ -17220,28 +17365,33 @@ function getChartSeries (worksheet, options, catHeadersBBox, serHeadersBBox)
                                     ser.Cat.NumCache = aCatCache;
                                 }
                             }
+                            if(parsedHeaders.bTop)
+                            {
+                                formulaCell = new CellAddress( Math.min(aBBoxes[0].r1, aBBoxes[0].r2), j, 0 );
+                                ser.TxCache.Formula = parserHelp.get3DRef(oWorksheet.sName, formulaCell.getIDAbsolute());
+                            }
                         }
-                        return {series: series, parsedHeaders: parsedHeaders};
                     }
+                    return {series: series, parsedHeaders: parsedHeaders};
                 }
             }
             else
             {
+                aBBoxes.sort(function(a, b){
+                    return Math.min(a.r1, a.r2) - Math.min(b.r1, b.r2);
+                });
+                parsedHeaders = parseSeriesHeaders(oWorksheet, aBBoxes[0]);
+                if(parsedHeaders.bTop)
+                {
+                    --nSumRows;
+                    ++r1;
+                }
+                if(parsedHeaders.bLeft)
+                {
+                    ++c1;
+                }
                 if(nSumRows > (c2 - c1 + 1))
                 {
-
-                    aBBoxes.sort(function(a, b){
-                        return Math.min(a.r1, a.r2) - Math.min(b.r1, b.r2);
-                    });
-                    parsedHeaders = parseSeriesHeaders(oWorksheet, aBBoxes[0]);
-                    if(parsedHeaders.bTop)
-                    {
-                        --nSumRows;
-                    }
-                    if(parsedHeaders.bLeft)
-                    {
-                        ++c1;
-                    }
                     if(nSumRows > (c2 - c1 + 1))
                     {
                         for(i = c1; i <= c2; ++i)
@@ -17266,7 +17416,7 @@ function getChartSeries (worksheet, options, catHeadersBBox, serHeadersBBox)
                                 bbox = aBBoxes[j];
                                 if(j === 0 && parsedHeaders.bTop)
                                 {
-                                    if(Math.max(bbox.r1, bbox.r2) - Math.min(bbox.r1, bbox.r2) === 1)
+                                    if(Math.max(bbox.r1, bbox.r2) - Math.min(bbox.r1, bbox.r2) === 0)
                                     {
                                         continue;
                                     }
@@ -17326,12 +17476,78 @@ function getChartSeries (worksheet, options, catHeadersBBox, serHeadersBBox)
                         return {series: series, parsedHeaders: parsedHeaders};
                     }
                 }
+                else
+                {
+                    for(i = 0; i < aBBoxes.length; ++i)
+                    {
+                        bbox = aBBoxes[i];
+                        if(i === 0 && parsedHeaders.bTop)
+                        {
+                            if(Math.max(bbox.r1, bbox.r2) - Math.min(bbox.r1, bbox.r2) === 0)
+                            {
+                                continue;
+                            }
+                            nStartRow = Math.min(bbox.r1, bbox.r2) + 1;
+                        }
+                        else
+                        {
+                            nStartRow = Math.min(bbox.r1, bbox.r2);
+                        }
+
+                        for(j = nStartRow; j <= Math.max(bbox.r1, bbox.r2); ++j)
+                        {
+                            startCell = new CellAddress(j, c1, 0);
+                            endCell = new CellAddress(j, c2, 0);
+
+
+                            ser = new AscFormat.asc_CChartSeria();
+                            series.push(ser);
+                            ser.isHidden = !!ws.getColHidden(j);
+
+                            // Val
+                            sStartCellId = startCell.getIDAbsolute();
+                            sEndCellId = endCell.getIDAbsolute();
+                            ser.Val.Formula = parserHelp.get3DRef(ws.sName, sStartCellId === sEndCellId ?
+                                sStartCellId : sStartCellId + ':' + sEndCellId);
+                            ser.Val.NumCache = getNumCache(ws, c1, c2, j, j);
+                            if(parsedHeaders.bTop)
+                            {
+                                aCatCache = getNumCache(ws, Math.min(c1, c2), Math.max(c1, c2), Math.min(aBBoxes[0].r1, aBBoxes[0].r2), Math.min(aBBoxes[0].r1, aBBoxes[0].r2));
+                                startCell = new CellAddress(Math.min(aBBoxes[0].r1, aBBoxes[0].r2), Math.min(c1, c2), 0);
+                                endCell = new CellAddress(Math.min(aBBoxes[0].r1, aBBoxes[0].r2), Math.max(c1, c2), 0);
+                                sStartCellId = startCell.getIDAbsolute();
+                                sEndCellId = endCell.getIDAbsolute();
+                                sCatFormula = parserHelp.get3DRef(ws.sName, sStartCellId === sEndCellId ?
+                                    sStartCellId : sStartCellId + ':' + sEndCellId);
+                                if (bIsScatter)
+                                {
+                                    ser.xVal.Formula = sCatFormula;
+                                    ser.xVal.NumCache = aCatCache;
+                                }
+                                else
+                                {
+                                    ser.Cat.Formula = sCatFormula;
+                                    ser.Cat.NumCache = aCatCache;
+                                }
+                            }
+                            if(parsedHeaders.bLeft)
+                            {
+                                formulaCell = new CellAddress( j, Math.min(aBBoxes[0].c1, aBBoxes[0].c2), 0 );
+                                ser.TxCache.Formula = parserHelp.get3DRef(oWorksheet.sName, formulaCell.getIDAbsolute());
+                            }
+                        }
+                    }
+                    return {series: series, parsedHeaders: parsedHeaders};
+                }
             }
         }
     }
 
+    var oFirstBBox;
     for(nRangeIndex = 0; nRangeIndex < aRanges.length; ++nRangeIndex)
     {
+        top_header_bbox = null;
+        left_header_bbox = null;
         result = parserHelp.parse3DRef(aRanges[nRangeIndex]);
         if (result) {
             ws = worksheet.workbook.getWorksheetByName(result.sheet);
@@ -17343,11 +17559,18 @@ function getChartSeries (worksheet, options, catHeadersBBox, serHeadersBBox)
             continue;
 
         bbox = range.getBBox0();
-        parsedHeaders = parseSeriesHeaders(ws, bbox);
+        if(nRangeIndex === 0)
+        {
+            oFirstBBox = bbox;
+            parsedHeaders = parseSeriesHeaders(ws, bbox);
+        }
         var data_bbox = {r1: bbox.r1, r2: bbox.r2, c1: bbox.c1, c2: bbox.c2};
         if(parsedHeaders.bTop)
         {
-            ++data_bbox.r1;
+            if(oFirstBBox && bbox.r1 === oFirstBBox.r1)
+            {
+                ++data_bbox.r1;
+            }
         }
         else
         {
@@ -17369,7 +17592,10 @@ function getChartSeries (worksheet, options, catHeadersBBox, serHeadersBBox)
 
         if(parsedHeaders.bLeft)
         {
-            ++data_bbox.c1;
+            if(oFirstBBox && oFirstBBox.c1 === bbox.c1)
+            {
+                ++data_bbox.c1;
+            }
         }
         else
         {
@@ -17391,12 +17617,22 @@ function getChartSeries (worksheet, options, catHeadersBBox, serHeadersBBox)
 
         if (!options.getInColumns()) {
             if(parsedHeaders.bTop)
-                top_header_bbox = {r1: bbox.r1, c1: data_bbox.c1, r2: bbox.r1, c2: data_bbox.c2};
+            {
+                if(oFirstBBox && oFirstBBox.r1 === bbox.r1)
+                {
+                    top_header_bbox = {r1: bbox.r1, c1: data_bbox.c1, r2: bbox.r1, c2: data_bbox.c2};
+                }
+            }
             else if(catHeadersBBox && catHeadersBBox.c1 === data_bbox.c1 && catHeadersBBox.c2 === data_bbox.c2 && catHeadersBBox.r1 === catHeadersBBox.r2)
                 top_header_bbox = {r1: catHeadersBBox.r1, c1: catHeadersBBox.c1, r2: catHeadersBBox.r1, c2:catHeadersBBox.c2};
 
             if(parsedHeaders.bLeft)
-                left_header_bbox = {r1: data_bbox.r1, r2: data_bbox.r2, c1: bbox.c1, c2: bbox.c1};
+            {
+                if(oFirstBBox && oFirstBBox.c1 === bbox.c1)
+                {
+                    left_header_bbox = {r1: data_bbox.r1, r2: data_bbox.r2, c1: bbox.c1, c2: bbox.c1};
+                }
+            }
             else if(serHeadersBBox && serHeadersBBox.c1 === serHeadersBBox.c2 && serHeadersBBox.r1 === data_bbox.r1 && serHeadersBBox.r2 === data_bbox.r2)
                 left_header_bbox = {r1: serHeadersBBox.r1, c1: serHeadersBBox.c1, r2: serHeadersBBox.r1, c2: serHeadersBBox.c2};
 
@@ -17447,13 +17683,19 @@ function getChartSeries (worksheet, options, catHeadersBBox, serHeadersBBox)
                 nameIndex++;
             }
         } else {
-            if(parsedHeaders.bTop)
-                top_header_bbox = {r1: bbox.r1, c1: data_bbox.c1, r2: bbox.r1, c2: data_bbox.c2};
+            if(parsedHeaders.bTop) {
+                if(oFirstBBox && oFirstBBox.r1 === bbox.r1) {
+                    top_header_bbox = {r1: bbox.r1, c1: data_bbox.c1, r2: bbox.r1, c2: data_bbox.c2};
+                }
+            }
             else if(serHeadersBBox && serHeadersBBox.r1 === serHeadersBBox.r2 && serHeadersBBox.c1 === data_bbox.c1 && serHeadersBBox.c2 === data_bbox.c2)
                 top_header_bbox = {r1: serHeadersBBox.r1, c1: serHeadersBBox.c1, r2: serHeadersBBox.r2, c2: serHeadersBBox.c2};
 
-            if(parsedHeaders.bLeft)
-                left_header_bbox = {r1: data_bbox.r1, c1: bbox.c1, r2: data_bbox.r2, c2: bbox.c1};
+            if(parsedHeaders.bLeft) {
+                if(oFirstBBox && oFirstBBox.c1 === bbox.c1) {
+                    left_header_bbox = {r1: data_bbox.r1, c1: bbox.c1, r2: data_bbox.r2, c2: bbox.c1};
+                }
+            }
             else if(catHeadersBBox && catHeadersBBox.c1 === catHeadersBBox.c2 && catHeadersBBox.r1 === data_bbox.r1 && catHeadersBBox.r2 === data_bbox.r2)
                 left_header_bbox = {r1: catHeadersBBox.r1, c1: catHeadersBBox.c1, r2: catHeadersBBox.r2, c2: catHeadersBBox.c2};
 

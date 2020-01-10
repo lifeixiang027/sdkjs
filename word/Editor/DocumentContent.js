@@ -4126,7 +4126,10 @@ CDocumentContent.prototype.InsertContent = function(SelectedContent, NearPos)
     var Para        = NearPos.Paragraph;
     var ParaNearPos = Para.Get_ParaNearestPos(NearPos);
     var LastClass   = ParaNearPos.Classes[ParaNearPos.Classes.length - 1];
-    if (para_Math_Run === LastClass.Type)
+
+	this.private_CheckSelectedContentBeforePaste(SelectedContent, NearPos);
+
+	if (para_Math_Run === LastClass.Type)
     {
         var MathRun        = LastClass;
         var NewMathRun     = MathRun.Split(ParaNearPos.NearPos.ContentPos, ParaNearPos.Classes.length - 1);
@@ -4624,38 +4627,88 @@ CDocumentContent.prototype.SetParagraphIndent = function(Ind)
 };
 CDocumentContent.prototype.Set_ParagraphPresentationNumbering = function(Bullet, Pr)
 {
-    if (true === this.ApplyToAll)
+	var Index, StartPos, EndPos;
+	if (true === this.ApplyToAll)
     {
-        for (var Index = 0; Index < this.Content.length; Index++)
-        {
-            this.Content[Index].Add_PresentationNumbering(Bullet, Pr);
-        }
-        return;
+		StartPos = 0;
+		EndPos = this.Content.length - 1;
     }
+    else
+	{
+		if (this.CurPos.ContentPos < 0)
+			return;
 
-    if (this.CurPos.ContentPos < 0)
-        return false;
+		if (true === this.Selection.Use)
+		{
+			StartPos = this.Selection.StartPos;
+			EndPos   = this.Selection.EndPos;
+			if (EndPos < StartPos)
+			{
+				var Temp = StartPos;
+				StartPos = EndPos;
+				EndPos   = Temp;
+			}
+		}
+		else
+		{
+			StartPos = this.CurPos.ContentPos;
+			EndPos = this.CurPos.ContentPos;
+		}
+	}
 
-    if (true === this.Selection.Use)
-    {
-        var StartPos = this.Selection.StartPos;
-        var EndPos   = this.Selection.EndPos;
-        if (EndPos < StartPos)
-        {
-            var Temp = StartPos;
-            StartPos = EndPos;
-            EndPos   = Temp;
-        }
+	var oLastParagraph = this.Content[EndPos];
+	var oLastBullet;
+	if(oLastParagraph)
+	{
+		oLastBullet = oLastParagraph.Get_PresentationNumbering();
+	}
+	for (Index = StartPos; Index <= EndPos; Index++)
+	{
+		this.Content[Index].Add_PresentationNumbering(Bullet, Pr);
+	}
+	//if(AscCommon.isRealObject(Pr) && AscFormat.isRealNumber(Pr.NumStartAt))
+	{
+		if(oLastParagraph)
+		{
+			if(oLastBullet)
+			{
+				var Level = AscFormat.isRealNumber(oLastParagraph.Pr.Lvl) ? oLastParagraph.Pr.Lvl : 0;
 
-        for (var Index = StartPos; Index <= EndPos; Index++)
-        {
-            this.Content[Index].Add_PresentationNumbering(Bullet, Pr);
-        }
-        this.Recalculate();
-        return;
-    }
-    this.Content[this.CurPos.ContentPos].Add_PresentationNumbering(Bullet, Pr);
-    this.Recalculate();
+				var oLastBullet_ = oLastParagraph.Get_PresentationNumbering();
+				if (oLastBullet_.Get_Type() >= numbering_presentationnumfrmt_ArabicPeriod)
+				{
+					var Next = oLastParagraph.Next;
+					while (null != Next && type_Paragraph === Next.GetType())
+					{
+						var NextLevel = Next.PresentationPr.Level;
+						var NextBullet = Next.Get_PresentationNumbering();
+						if (Level < NextLevel)
+						{
+							Next = Next.Next;
+							continue;
+						}
+						else if (Level > NextLevel)
+							break;
+						else if (NextBullet.Get_Type() === oLastBullet.Get_Type() && NextBullet.Get_StartAt() === oLastBullet.Get_StartAt() )
+						{
+							var oPr = null;
+							if(Pr)
+							{
+								oPr = {NumStartAt: Pr.NumStartAt};
+							}
+							Next.Add_PresentationNumbering(Bullet, oPr);
+							Next = Next.Next;
+						}
+						else
+						{
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+
 };
 CDocumentContent.prototype.Can_IncreaseParagraphLevel         = function(bIncrease)
 {
@@ -5499,8 +5552,17 @@ CDocumentContent.prototype.GetCalculatedParaPr = function()
 				{
 					oBullet.bulletColor.UniColor.check(this.Get_Theme(), this.Get_ColorMap());
 				}
+				if(oBullet.bulletType.startAt !== undefined)
+				{
+					oBullet.bulletType.startAt = this.Content[0].GetBulletNum();
+				}
+				if(!AscFormat.isRealNumber(Result_ParaPr.Lvl))
+				{
+					oBullet.bulletType.startAt = undefined;
+				}
 			}
 		}
+
 		return Result_ParaPr;
 	}
 
@@ -5510,10 +5572,11 @@ CDocumentContent.prototype.GetCalculatedParaPr = function()
 	}
 	else //if ( docpostype_Content === this.CurPos.Type )
 	{
+		var StartPos, EndPos;
 		if (true === this.Selection.Use && selectionflag_Common === this.Selection.Flag)
 		{
-			var StartPos = this.Selection.StartPos;
-			var EndPos   = this.Selection.EndPos;
+			StartPos = this.Selection.StartPos;
+			EndPos   = this.Selection.EndPos;
 			if (EndPos < StartPos)
 			{
 				var Temp = StartPos;
@@ -5567,6 +5630,7 @@ CDocumentContent.prototype.GetCalculatedParaPr = function()
 		}
 		else
 		{
+			StartPos = this.CurPos.ContentPos;
 			var Item = this.Content[this.CurPos.ContentPos];
 			if (type_Paragraph == Item.GetType())
 			{
@@ -5596,6 +5660,14 @@ CDocumentContent.prototype.GetCalculatedParaPr = function()
 				if(oBullet.bulletColor &&  oBullet.bulletColor.UniColor)
 				{
 					oBullet.bulletColor.UniColor.check(oTheme, oColorMap);
+				}
+				if(oBullet.bulletType.startAt !== undefined)
+				{
+					oBullet.bulletType.startAt = this.Content[StartPos].GetBulletNum();
+				}
+				if(!AscFormat.isRealNumber(Result_ParaPr.Lvl))
+				{
+					oBullet.bulletType.startAt = undefined;
 				}
 			}
 			if(FirstTextPr)
@@ -8429,13 +8501,6 @@ CDocumentContent.prototype.CheckContentControlEditingLock = function()
 {
 	if (this.Parent && this.Parent.CheckContentControlEditingLock)
 		this.Parent.CheckContentControlEditingLock();
-};
-CDocumentContent.prototype.CheckContentControlDeletingLock = function()
-{
-	for (var nIndex = 0, nCount = this.Content.length; nIndex < nCount; ++nIndex)
-	{
-		this.Content[nIndex].CheckContentControlDeletingLock();
-	}
 };
 /**
  * Оставляем один пустой параграф в содержимом

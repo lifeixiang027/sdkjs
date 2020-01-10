@@ -3446,7 +3446,8 @@ CPresentation.prototype.setHFProperties = function (oProps, bAll) {
                                 oSlide.addToSpTreeToPos(undefined, oSp);
                                 oSp.setParent(oSlide);
                             }
-                        } else {
+                        } 
+                        if(oSp) {
                             oContent = oSp.getDocContent && oSp.getDocContent();
                             if (oContent) {
                                 if (sDateTime) {
@@ -3506,6 +3507,7 @@ CPresentation.prototype.addFieldToContent = function (fCallback) {
                 var oFld = fCallback.call(this, oParagraph);
                 if (oFld) {
                     oContent.AddToParagraph(oFld, false, false);
+                    oContent.MoveCursorRight(false, false);
                     this.Recalculate();
                     this.RecalculateCurPos();
                     this.Document_UpdateSelectionState();
@@ -4268,7 +4270,7 @@ CPresentation.prototype.GenerateThumbnails = function (_drawerThemes, _drawerLay
     }
 };
 
-CPresentation.prototype.Stop_Recalculate = function () {
+CPresentation.prototype.StopRecalculate = function () {
     this.clearThemeTimeouts();
 //        this.DrawingDocument.OnStartRecalculate( 0 );
 };
@@ -4785,7 +4787,6 @@ CPresentation.prototype.addImages = function (aImages, placeholder) {
                     this.Recalculate();
                     this.Document_UpdateInterfaceState();
                     this.CheckEmptyPlaceholderNotes();
-                    this.DrawingDocument.m_oWordControl.OnUpdateOverlay();
                     return;
                 } else {
                     return;
@@ -4985,10 +4986,6 @@ CPresentation.prototype.Add_FlowTable = function (Cols, Rows, Placeholder) {
     graphic_frame.graphicObject.MoveCursorToStartPos();
     this.Recalculate();
     this.Document_UpdateInterfaceState();
-    this.Document_UpdateSelectionState();
-
-    this.DrawingDocument.m_oWordControl.OnUpdateOverlay();
-
 };
 
 
@@ -5034,7 +5031,7 @@ CPresentation.prototype.Create_TableGraphicFrame = function (Cols, Rows, Parent,
     graphic_frame.setNvSpPr(new AscFormat.UniNvPr());
 
     var table = new CTable(this.DrawingDocument, graphic_frame, Inline, Rows, Cols, Grid, true);
-    table.Reset(0, 0, W, 100000, 0, 0, 1);
+    table.Reset(Inline ? X : 0, Inline ? Y : 0, W, 100000, 0, 0, 1, 0);
     if (!Inline) {
         table.Set_PositionH(Asc.c_oAscHAnchor.Page, false, 0);
         table.Set_PositionV(Asc.c_oAscVAnchor.Page, false, 0);
@@ -6236,6 +6233,10 @@ CPresentation.prototype.OnKeyDown = function (e) {
                         editor.WordControl.GoToPage(_last_selected_slide_num);
                         editor.WordControl.m_oLogicDocument.addNextSlide();
                     }
+                    else if(this.Slides.length === 0) {
+                        editor.WordControl.m_oLogicDocument.addNextSlide();
+                        editor.WordControl.GoToPage(0);
+                    }
                 }
             }
         }
@@ -7297,7 +7298,7 @@ CPresentation.prototype.CheckTableStyles = function (Slide, TableLook) {
         AscFormat.ExecuteNoHistory(function () {
             for (var key in this.TableStylesIdMap) {
                 if (this.TableStylesIdMap[key]) {
-                    this.TablesForInterface[index] = this.Create_TableGraphicFrame(5, 5, Slide, key, W, H, _x_mar, _y_mar, true);
+                    this.TablesForInterface[index] = this.Create_TableGraphicFrame(5, 5, Slide, key, W, H - 17, _x_mar, _y_mar, true);
                     this.TablesForInterface[index].setBDeleted(true);
                     index++;
                 }
@@ -10354,6 +10355,13 @@ CPresentation.prototype.StartAction = function (nDescription) {
 };
 CPresentation.prototype.FinalizeAction = function () {
     this.Recalculate();
+};
+
+CPresentation.prototype.IsSplitPageBreakAndParaMark = function() {
+	return false;
+};
+CPresentation.prototype.IsDoNotExpandShiftReturn = function() {
+	return false;
 };
 
 

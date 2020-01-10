@@ -6605,6 +6605,94 @@ function RangeDataManagerElem(bbox, data)
 		return bIsSortStateDelete;
 	};
 
+	SortState.prototype.setOffset = function(offset, ws, addToHistory) {
+		var oldSortState = this.clone();
+		var ref = this.Ref.clone();
+		ref.setOffset(offset);
+		this.Ref = ref;
+
+		if (this.SortConditions) {
+			for (var i = 0; i < this.SortConditions.length; ++i) {
+				this.SortConditions[i].setOffset(offset);
+			}
+		}
+
+		if (addToHistory) {
+			History.Add(AscCommonExcel.g_oUndoRedoSortState, AscCH.historyitem_SortState_Add, ws.getId(), null,
+				new AscCommonExcel.UndoRedoData_SortState(oldSortState, this.clone()));
+		}
+	};
+
+	SortState.prototype.shift = function(range, offset, ws, addToHistory) {
+		var oldSortState = this.clone();
+
+		var from = this.Ref;
+		var to = null;
+		var bAdd = offset.row > 0 || offset.col > 0;
+		var bHor = 0 != offset.col;
+		var nTemp1, nTemp2;
+		if (bHor) {
+			if (from.c1 < range.c1 && range.r1 <= from.r1 && from.r2 <= range.r2) {
+				if (bAdd) {
+					to = from.clone();
+					to.setOffsetLast(new AscCommon.CellBase(0, range.c2 - range.c1 + 1));
+				} else {
+					to = from.clone();
+					nTemp1 = from.c2 - range.c1 + 1;
+					nTemp2 = range.c2 - range.c1 + 1;
+					to.setOffsetLast(new AscCommon.CellBase(0, -Math.min(nTemp1, nTemp2)));
+				}
+			}
+		} else {
+			if (from.r1 < range.r1 && range.c1 <= from.c1 && from.c2 <= range.c2) {
+				if (bAdd) {
+					to = from.clone();
+					to.setOffsetLast(new AscCommon.CellBase(range.r2 - range.r1 + 1, 0));
+				} else {
+					to = from.clone();
+					nTemp1 = from.r2 - range.r1 + 1;
+					nTemp2 = range.r2 - range.r1 + 1;
+					to.setOffsetLast(new AscCommon.CellBase(-Math.min(nTemp1, nTemp2), 0));
+				}
+			}
+		}
+
+		if (null != to) {
+			this.Ref = to;
+			if (this.SortConditions) {
+				var deleteIndexes = [];
+				for (var i = 0; i < this.SortConditions.length; ++i) {
+					var sortCondition = this.SortConditions[i];
+					var ref = sortCondition.Ref;
+					if (offset.row < 0 || offset.col < 0) {
+						//смотрим, не попал ли в выделение целиком
+						if(range.containsRange(ref)) {
+							deleteIndexes[i] = true;
+						}
+					}
+					if(!deleteIndexes[i]) {
+						var bboxShift = AscCommonExcel.shiftGetBBox(range, 0 !== offset.col);
+						//проверяем, не сдвинулся ли целиком
+						if(bboxShift.containsRange(ref)) {
+							sortCondition.setOffset(offset);
+						} else {
+							//осталось проверить на изменение диапазона
+							sortCondition.shift(range, offset, this.ColumnSort);
+						}
+					}
+				}
+				for(var j in deleteIndexes) {
+					this.SortConditions.splice(j, 1);
+				}
+			}
+		}
+
+		if (addToHistory && null != to) {
+			History.Add(AscCommonExcel.g_oUndoRedoSortState, AscCH.historyitem_SortState_Add, ws.getId(), null,
+				new AscCommonExcel.UndoRedoData_SortState(oldSortState, this.clone()));
+		}
+	};
+
 
 	/** @constructor */
 	function TableColumn() {
@@ -7976,14 +8064,25 @@ SortCondition.prototype.Read_FromBinary2 = function(r) {
 		this.Ref = new Asc.Range(c1, r1, c2, r2);
 	}
 	if (r.GetBool()) {
-		this.ConditionSortBy = r.GetBool();
+		this.ConditionSortBy = r.GetLong();
 	}
 	if (r.GetBool()) {
 		this.ConditionDescending = r.GetBool();
 	}
 
-	//?
-	//this.dxf = r.GetBool();
+	if (r.GetBool()) {
+		var api_sheet = Asc['editor'];
+		var wb = api_sheet.wbModel;
+		var bsr = new AscCommonExcel.Binary_StylesTableReader(r, wb);
+		var bcr = new AscCommon.Binary_CommonReader(r);
+		var oDxf = new AscCommonExcel.CellXfs();
+		r.GetUChar();
+		var length = r.GetULongLE();
+		bcr.Read1(length, function(t,l){
+			return bsr.ReadDxf(t,l,oDxf);
+		});
+		this.dxf = oDxf;
+	}
 };
 SortCondition.prototype.Write_ToBinary2 = function(w) {
 	if (null != this.Ref) {
@@ -7997,7 +8096,7 @@ SortCondition.prototype.Write_ToBinary2 = function(w) {
 	}
 	if (null != this.ConditionSortBy) {
 		w.WriteBool(true);
-		w.WriteBool(this.ConditionSortBy);
+		w.WriteLong(this.ConditionSortBy);
 	} else {
 		w.WriteBool(false);
 	}
@@ -8008,8 +8107,14 @@ SortCondition.prototype.Write_ToBinary2 = function(w) {
 		w.WriteBool(false);
 	}
 
-	//?
-	//this.dxf
+	if(null != this.dxf) {
+		var dxf = this.dxf;
+		w.WriteBool(true);
+		var oBinaryStylesTableWriter = new AscCommonExcel.BinaryStylesTableWriter(w);
+		oBinaryStylesTableWriter.bs.WriteItem(0, function(){oBinaryStylesTableWriter.WriteDxf(dxf);});
+	}else {
+		w.WriteBool(false);
+	}
 };
 SortCondition.prototype.moveRef = function(col, row) {
 	var ref = this.Ref.clone();
@@ -8048,6 +8153,12 @@ SortCondition.prototype.changeColumns = function(activeRange, isDelete) {
 	}
 	
 	return bIsDeleteCurSortCondition;
+};
+
+SortCondition.prototype.setOffset = function(offset) {
+	var ref = this.Ref.clone();
+	ref.setOffset(offset);
+	this.Ref = ref;
 };
 
 SortCondition.prototype.getSortType = function() {
@@ -8101,6 +8212,43 @@ SortCondition.prototype.applySort = function(type, ref, color) {
 		this.ConditionDescending = type !== Asc.c_oAscSortOptions.Ascending;
 	}
 
+};
+
+SortCondition.prototype.shift = function(range, offset, bColumnSort) {
+	var from = this.Ref;
+	var to = null;
+	var bAdd = offset.row > 0 || offset.col > 0;
+	var bHor = 0 != offset.col;
+	var nTemp1, nTemp2;
+	var diff = bHor ? range.c1 + offset.col - 1 : range.r1 + offset.row;
+	if (bHor && bColumnSort) {
+		if (from.c1 < range.c1 && range.r1 <= from.r1 && from.r2 <= range.r2) {
+			if (bAdd) {
+				to = from.clone();
+				to.setOffsetLast(new AscCommon.CellBase(0, range.c2 - range.c1 + 1));
+			} else {
+				to = from.clone();
+				nTemp1 = from.c2 - range.c1 + 1;
+				nTemp2 = range.c2 - range.c1 + 1;
+				to.setOffsetLast(new AscCommon.CellBase(0, -Math.min(nTemp1, nTemp2)));
+			}
+		}
+	} else if(!bColumnSort) {
+		if (from.r1 < range.r1 && range.c1 <= from.c1 && from.c2 <= range.c2) {
+			if (bAdd) {
+				to = from.clone();
+				to.setOffsetLast(new AscCommon.CellBase(range.r2 - range.r1 + 1, 0));
+			} else {
+				to = from.clone();
+				nTemp1 = from.r2 - range.r1 + 1;
+				nTemp2 = range.r2 - range.r1 + 1;
+				to.setOffsetLast(new AscCommon.CellBase(-Math.min(nTemp1, nTemp2), 0));
+			}
+		}
+	}
+	if(null != to) {
+		this.Ref = to;
+	}
 };
 
 function AutoFilterDateElem(start, end, dateTimeGrouping) {
@@ -8945,7 +9093,7 @@ AutoFilterDateElem.prototype.convertDateGroupItemToRange = function(oDateGroupIt
 		this._newSelection = null;
 		this.hasHeaders = null;
 		this.columnSort = null;
-		this.caseSensative = null;
+		this.caseSensitive = null;
 
 		this.levels = null;
 
@@ -8966,7 +9114,7 @@ AutoFilterDateElem.prototype.convertDateGroupItemToRange = function(oDateGroupIt
 		return this.columnSort;
 	};
 	CSortProperties.prototype.asc_getCaseSensitive = function () {
-		return this.caseSensative;
+		return this.caseSensitive;
 	};
 	CSortProperties.prototype.asc_getLevels = function () {
 		return this.levels;
@@ -8996,7 +9144,7 @@ AutoFilterDateElem.prototype.convertDateGroupItemToRange = function(oDateGroupIt
 		this.columnSort = val;
 	};
 	CSortProperties.prototype.asc_setCaseSensitive = function (val) {
-		this.caseSensative = val;
+		this.caseSensitive = val;
 	};
 	CSortProperties.prototype.asc_setLevels = function (val) {
 		this.levels = val;
@@ -9100,7 +9248,7 @@ AutoFilterDateElem.prototype.convertDateGroupItemToRange = function(oDateGroupIt
 		var range = new Asc.Range(c1, r1, c2, r2);
 
 		var levelInfo;
-		var rangeInfo = t._ws.model.getRowColColors(range, !this.columnSort);
+		var rangeInfo = t._ws.model.getRowColColors(range, !this.columnSort, true);
 		if(rangeInfo) {
 			levelInfo = new CSortLevelInfo();
 			levelInfo.colorsFill = rangeInfo.colors;

@@ -251,6 +251,10 @@ ParaDrawing.prototype.GetParagraph = function()
 {
 	return this.Get_ParentParagraph();
 };
+ParaDrawing.prototype.GetRun = function()
+{
+	return this.Get_Run();
+};
 ParaDrawing.prototype.Get_Run = function()
 {
 	var oParagraph = this.Get_ParentParagraph();
@@ -1472,7 +1476,7 @@ ParaDrawing.prototype.Set_XYForAdd = function(X, Y, NearPos, PageNum)
 			this.SetSkipOnRecalculate(true);
             oLogicDocument.TurnOff_InterfaceEvents();
             oLogicDocument.Recalculate();
-            oLogicDocument.TurnOn_InterfaceEvents(false)
+            oLogicDocument.TurnOn_InterfaceEvents(false);
 			this.SetSkipOnRecalculate(false);
 		}
 
@@ -1595,10 +1599,18 @@ ParaDrawing.prototype.Use_TextWrap = function()
 ParaDrawing.prototype.Draw_Selection = function()
 {
 	var Padding = this.DrawingDocument.GetMMPerDot(6);
-	var extX = this.getXfrmExtX();
-	var extY = this.getXfrmExtY();
+	var extX, extY;
+	if(this.GraphicObj)
+	{
+		extX = this.GraphicObj.extX;
+		extY = this.GraphicObj.extY;
+	}
+	else
+	{
+		extX = this.getXfrmExtX();
+		extY = this.getXfrmExtY();
+	}
 	var rot = this.getXfrmRot();
-	var X, Y, W, H;
 	if(AscFormat.checkNormalRotate(rot))
 	{
 		this.DrawingDocument.AddPageSelection(this.PageNum, this.X - this.EffectExtent.L - Padding, this.Y - this.EffectExtent.T - Padding, this.EffectExtent.L + extX + this.EffectExtent.R + 2 * Padding, this.EffectExtent.T + extY + this.EffectExtent.B + 2 * Padding);
@@ -1666,6 +1678,29 @@ ParaDrawing.prototype.Get_ParentParagraph = function()
 	if (this.Parent instanceof ParaRun)
 		return this.Parent.Paragraph;
 	return null;
+};
+ParaDrawing.prototype.SelectAsText = function()
+{
+	var oParagraph = this.GetParagraph();
+	var oRun       = this.GetRun();
+	if (!oParagraph || !oRun)
+		return;
+
+	var oDocument = oParagraph.GetLogicDocument();
+	if (!oDocument)
+		return;
+
+	oDocument.RemoveSelection();
+
+	oRun.Make_ThisElementCurrent(false);
+	oRun.SetCursorPosition(oRun.GetElementPosition(this));
+
+	var oStartPos = oDocument.GetContentPosition(false);
+	oRun.SetCursorPosition(oRun.GetElementPosition(this) + 1);
+	var oEndPos = oDocument.GetContentPosition(false);
+
+	oDocument.RemoveSelection();
+	oDocument.SetSelectionByContentPositions(oStartPos, oEndPos);
 };
 ParaDrawing.prototype.Add_ToDocument = function(NearPos, bRecalculate, RunPr, Run)
 {
@@ -2783,9 +2818,14 @@ ParaDrawing.prototype.Document_Is_SelectionLocked = function(CheckType)
 	}
 };
 
-ParaDrawing.prototype.CheckContentControlDeletingLock = function(){
-	if(this.DocumentContent && this.DocumentContent.CheckContentControlDeletingLock){
-        this.DocumentContent.CheckContentControlDeletingLock();
+ParaDrawing.prototype.CheckDeletingLock = function()
+{
+	var arrDocContents = this.GetAllDocContents();
+	for (var nIndex = 0, nCount = arrDocContents.length; nIndex < nCount; ++nIndex)
+	{
+		arrDocContents[nIndex].Set_ApplyToAll(true);
+		arrDocContents[nIndex].Document_Is_SelectionLocked(AscCommon.changestype_Remove);
+		arrDocContents[nIndex].Set_ApplyToAll(false);
 	}
 };
 ParaDrawing.prototype.GetAllFields = function(isUseSelection, arrFields)
@@ -2803,6 +2843,14 @@ ParaDrawing.prototype.GetAllSeqFieldsByType = function(sType, aFields)
 	{
 		return this.GraphicObj.GetAllSeqFieldsByType(sType, aFields);
 	}
+};
+/**
+ * Является ли данная автофигура картинкой
+ * @returns {boolean}
+ */
+ParaDrawing.prototype.IsPicture = function()
+{
+	return (this.GraphicObj.getObjectType() === AscDFH.historyitem_type_ImageShape);
 };
 
 /**

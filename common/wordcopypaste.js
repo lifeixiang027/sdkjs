@@ -2272,6 +2272,7 @@ PasteProcessor.prototype =
 			this.pasteTypeContent = null;
 			var oSelectedContent = new CSelectedContent();
 			var tableSpecialPaste = false;
+
 			if(bIsSpecialPaste){
 				if (Asc.c_oSpecialPasteProps.insertAsNestedTable === specialPasteHelper.specialPasteProps ||
 					Asc.c_oSpecialPasteProps.overwriteCells === specialPasteHelper.specialPasteProps)
@@ -2758,6 +2759,8 @@ PasteProcessor.prototype =
 
 								break;
 							}
+							case para_Field:
+							case para_InlineLevelSdt:
 							case para_Hyperlink:
 							{
 								//изменить hyperlink на pararun

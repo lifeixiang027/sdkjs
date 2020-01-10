@@ -2990,7 +2990,21 @@
 		//не делаем Duplicate потому что предполагаем что схема не будет менять частями, а только обьектом целиком.
 		History.Add(AscCommonExcel.g_oUndoRedoWorkbook, AscCH.historyitem_Workbook_ChangeColorScheme, null,
 			null, new AscCommonExcel.UndoRedoData_ClrScheme(this.theme.themeElements.clrScheme, scheme));
-		this.theme.themeElements.clrScheme = scheme;
+		this.theme.changeColorScheme(scheme);
+		this.rebuildColors();
+		return true;
+	};
+	Workbook.prototype.changeColorSchemeByIdx = function (nIdx) {
+
+		var scheme = this.oApi.getColorSchemeByIdx(nIdx);
+		if(!scheme) {
+			return;
+		}
+		History.Create_NewPoint();
+		//не делаем Duplicate потому что предполагаем что схема не будет менять частями, а только обьектом целиком.
+		History.Add(AscCommonExcel.g_oUndoRedoWorkbook, AscCH.historyitem_Workbook_ChangeColorScheme, null,
+			null, new AscCommonExcel.UndoRedoData_ClrScheme(this.theme.themeElements.clrScheme, scheme));
+		this.theme.changeColorScheme(scheme);
 		this.rebuildColors();
 		return true;
 	};
@@ -4281,6 +4295,9 @@
 		var renameRes = this.renameDependencyNodes(offset, oActualRange);
 		var redrawTablesArr = this.autoFilters.insertRows("delCell", oActualRange, c_oAscDeleteOptions.DeleteRows);
 		this.updatePivotOffset(oActualRange, offset);
+		if (false == this.workbook.bUndoChanges && false == this.workbook.bRedoChanges) {
+			this.updateSortStateOffset(oActualRange, offset);
+		}
 
 		var collapsedInfo = null, lastRowIndex;
 		var oDefRowPr = new AscCommonExcel.UndoRedoData_RowProp();
@@ -4367,6 +4384,9 @@
 		var renameRes = this.renameDependencyNodes(offset, oActualRange);
 		var redrawTablesArr = this.autoFilters.insertRows("insCell", oActualRange, c_oAscInsertOptions.InsertColumns);
 		this.updatePivotOffset(oActualRange, offset);
+		if (false == this.workbook.bUndoChanges && false == this.workbook.bRedoChanges) {
+			this.updateSortStateOffset(oActualRange, offset);
+		}
 
 		this._updateFormulasParents(index, 0, gc_nMaxRow0, gc_nMaxCol0, oActualRange, offset, renameRes.shiftedShared);
 		var borders;
@@ -4434,6 +4454,9 @@
 		var renameRes = this.renameDependencyNodes(offset, oActualRange);
 		var redrawTablesArr = this.autoFilters.insertColumn(oActualRange, nDif);
 		this.updatePivotOffset(oActualRange, offset);
+		if (false == this.workbook.bUndoChanges && false == this.workbook.bRedoChanges) {
+			this.updateSortStateOffset(oActualRange, offset);
+		}
 
 		var collapsedInfo = null, lastRowIndex;
 		var oDefColPr = new AscCommonExcel.UndoRedoData_ColProp();
@@ -4498,6 +4521,9 @@
 		var renameRes = this.renameDependencyNodes(offset, oActualRange);
 		var redrawTablesArr = this.autoFilters.insertColumn(oActualRange, count);
 		this.updatePivotOffset(oActualRange, offset);
+		if (false == this.workbook.bUndoChanges && false == this.workbook.bRedoChanges) {
+			this.updateSortStateOffset(oActualRange, offset);
+		}
 
 		this._updateFormulasParents(0, index, gc_nMaxRow0, gc_nMaxCol0, oActualRange, offset, renameRes.shiftedShared);
 		var borders;
@@ -5720,6 +5746,9 @@
 		//renameDependencyNodes before move cells to store current location in history
 		var renameRes = this.renameDependencyNodes(offset, oBBox);
 		var redrawTablesArr = this.autoFilters.insertColumn( oBBox, dif );
+		if (false == this.workbook.bUndoChanges && false == this.workbook.bRedoChanges) {
+			this.updateSortStateOffset(oBBox, offset);
+		}
 
 		this.getRange3(oBBox.r1, oBBox.c1, oBBox.r2, oBBox.c2)._foreachNoEmpty(function(cell){
 			t._removeCell(null, null, cell);
@@ -5751,6 +5780,9 @@
 		//renameDependencyNodes before move cells to store current location in history
 		var renameRes = this.renameDependencyNodes(offset, oBBox);
 		var redrawTablesArr = this.autoFilters.insertRows("delCell", oBBox, c_oAscDeleteOptions.DeleteCellsAndShiftTop);
+		if (false == this.workbook.bUndoChanges && false == this.workbook.bRedoChanges) {
+			this.updateSortStateOffset(oBBox, offset);
+		}
 
 		this.getRange3(oBBox.r1, oBBox.c1, oBBox.r2, oBBox.c2)._foreachNoEmpty(function(cell){
 			t._removeCell(null, null, cell);
@@ -5778,6 +5810,9 @@
 		//renameDependencyNodes before move cells to store current location in history
 		var renameRes = this.renameDependencyNodes(offset, oBBox);
 		var redrawTablesArr = this.autoFilters.insertColumn( oBBox, dif, displayNameFormatTable );
+		if (false == this.workbook.bUndoChanges && false == this.workbook.bRedoChanges) {
+			this.updateSortStateOffset(oBBox, offset);
+		}
 
 		this._updateFormulasParents(oActualRange.r1, oActualRange.c1, oActualRange.r2, oActualRange.c2, oBBox, offset, renameRes.shiftedShared);
 		var borders;
@@ -5833,6 +5868,10 @@
 				displayNameFormatTable);
 		}
 		this._updateFormulasParents(oActualRange.r1, oActualRange.c1, oActualRange.r2, oActualRange.c2, oBBox, offset, renameRes.shiftedShared);
+		if (false == this.workbook.bUndoChanges && false == this.workbook.bRedoChanges) {
+			this.updateSortStateOffset(oBBox, offset);
+		}
+
 		var borders;
 		if (nTop > 0 && !this.workbook.bUndoChanges) {
 			borders = this._getBordersForInsert(oBBox, true);
@@ -7111,7 +7150,7 @@
 		return res;
 	};
 
-	Worksheet.prototype.getRowColColors = function (columnRange, byRow) {
+	Worksheet.prototype.getRowColColors = function (columnRange, byRow, notCheckOneColor) {
 		var ws = this;
 		var res = {text: true, colors: [], fontColors: []};
 		var alreadyAddColors = {}, alreadyAddFontColors = {};
@@ -7210,16 +7249,59 @@
 		});
 
 		//если один элемент в массиве, не отправляем его в меню
-		if (res.colors.length === 1) {
+		if (res.colors.length === 1 && !notCheckOneColor) {
 			res.colors = [];
 		}
-		if (res.fontColors.length === 1) {
+		if (res.fontColors.length === 1 && !notCheckOneColor) {
 			res.fontColors = [];
 		}
 
 		res.text = tempDigit <= tempText;
 
 		return res;
+	};
+
+	Worksheet.prototype.updateSortStateOffset = function (range, offset) {
+		if(!this.sortState) {
+			return;
+		}
+		var bAlreadyDel = false;
+		if (offset.row < 0 || offset.col < 0) {
+			//смотрим, не попал ли в выделение целиком
+			bAlreadyDel = this.deleteSortState(range);
+		}
+		if(!bAlreadyDel) {
+			var bboxShift = AscCommonExcel.shiftGetBBox(range, 0 !== offset.col);
+			//проверяем, не сдвинулся ли целиком
+			if(!this.moveSortState(bboxShift, offset)) {
+				//осталось проверить на изменение диапазона
+				this.sortState.shift(range, offset, this, true);
+			}
+		}
+	};
+
+	Worksheet.prototype.deleteSortState = function (range) {
+		if(this.sortState && range.containsRange(this.sortState.Ref)) {
+			this._deleteSortState();
+			return true;
+		}
+		return false;
+	};
+
+	Worksheet.prototype._deleteSortState = function () {
+		var oldSortState = this.sortState.clone();
+		this.sortState = null;
+		History.Add(AscCommonExcel.g_oUndoRedoSortState, AscCH.historyitem_SortState_Add, this.getId(), null,
+			new AscCommonExcel.UndoRedoData_SortState(oldSortState, null));
+		return true;
+	};
+
+	Worksheet.prototype.moveSortState = function (range, offset) {
+		if(this.sortState && range.containsRange(this.sortState.Ref)) {
+			this.sortState.setOffset(offset, this, true);
+			return true;
+		}
+		return false;
 	};
 
 
@@ -11929,7 +12011,7 @@
 					} else {
 						res = {row: nRow0, num: nNumber, text: sText, colorFill: colorFillCell, colorsText: colorsTextCell};
 					}
-				} else if (isSortColor) {
+				} else if (isSortColor || (opt_custom_sort && (colorFillCell || colorsTextCell))) {
 					if (opt_by_row) {
 						res = {col: nCol0, num: nNumber, text: sText, colorFill: colorFillCell, colorsText: colorsTextCell};
 					} else {
@@ -12018,7 +12100,7 @@
 			});
 			return oCell ? fAddSortElems(oCell, row, col) : null;
 		};
-		caseSensitive = true;
+		
 		putElem = false;
 		if (isSortColor) {
 			var newArrayNeedColor = [];
@@ -12037,6 +12119,7 @@
 		} else {
 			aSortElems.sort(function (a, b) {
 				var res = 0;
+				var nullVal = false;
 				var compare = function(_a, _b, _sortCondition) {
 					//если есть opt_custom_sort(->sortConditions) - тогда может быть несколько условий сортировки
 					//в данном случае идём по отдельной ветке и по-другому обрабатываем сортировку по цвету
@@ -12057,20 +12140,29 @@
 							res = 1;
 						}
 					} else {
-						if (null != _a.text) {
-							if (null != _b.text) {
+						if (_a && null != _a.text) {
+							if (_b && null != _b.text) {
 								var val1 = caseSensitive ? _a.text : _a.text.toUpperCase();
 								var val2 = caseSensitive ? _b.text : _b.text.toUpperCase();
 								res = strcmp(val1, val2);
-							} else {
+							} else if(_b && null != _b.num) {
 								res = 1;
-							}
-						} else if (null != _a.num) {
-							if (null != _b.num) {
-								res = _a.num - _b.num;
 							} else {
 								res = -1;
+								nullVal = true;
 							}
+						} else if (_a && null != _a.num) {
+							if (_b && null != _b.num) {
+								res = _a.num - _b.num;
+							} else if(_b && null != _b.text) {
+								res = -1;
+							} else {
+								res = -1;
+								nullVal = true;
+							}
+						} else if(_b && (null != _b.num || null != _b.text)){
+							res = 1;
+							nullVal = true;
 						}
 					}
 				};
@@ -12087,21 +12179,21 @@
 							var col2 = !opt_by_row ? col : b.col;
 							var tempA = getSortElem(row1, col1);
 							var tempB = getSortElem(row2, col2);
-							compare(tempA, tempB);
+							compare(tempA, tempB, sortConditions[i]);
 							var tempAscent = !sortConditions[i].ConditionDescending;
 							if(res != 0) {
 								if(!tempAscent) {
 									res = -res;
 								}
 								break;
-							} else if(i === sortConditions.length - 1) {
+							} else if(i === sortConditions.length - 1 && tempA && tempB) {
 								res = opt_by_row ? tempA.col - tempB.col : tempA.row - tempB.row;
 							}
 						}
 					} else {
 						res = opt_by_row ? a.col - b.col : a.row - b.row;
 					}
-				} else if (!bAscent) {
+				} else if (!bAscent && !nullVal) {
 					res = -res;
 				}
 				return res;
@@ -12151,13 +12243,13 @@
 
 		var tempRange = this.worksheet.getRange3(oBBox.r1, oBBox.c1, oBBox.r2, oBBox.c2);
 		var func = opt_by_row ? tempRange._foreachNoEmptyByCol : tempRange._foreachNoEmpty;
-		func.apply(tempRange, (function (cell) {
+		func.apply(tempRange, [(function (cell) {
 			var ws = t.worksheet;
 			var formula = cell.getFormulaParsed();
 			if (formula) {
 				var cellWithFormula = formula.getParent();
-				var nTo = oSortedIndexes[nFrom];
 				var nFrom = opt_by_row ? cell.nCol : cell.nRow;
+				var nTo = oSortedIndexes[nFrom];
 				if (null != nTo) {
 					if (opt_by_row) {
 						cell.changeOffset(new AscCommon.CellBase(0, nTo - nFrom), true, true);
@@ -12174,7 +12266,7 @@
 				}
 				ws.workbook.dependencyFormulas.addToChangedCell(cellWithFormula);
 			}
-		}));
+		})]);
 
 
 		var tempSheetMemory, nIndexFrom, nIndexTo, j;
@@ -12226,208 +12318,6 @@
 			History.LocalChange = false;
 		}
 	};
-
-
-
-
-
-	Range.prototype.sort2 = function (nOption, nStartRowCol, sortColor, opt_guessHeader, opt_by_row) {
-		var bbox = this.bbox;
-		if (opt_guessHeader) {
-			//если тип ячеек первого и второго row попарно совпадает, то считаем первую строку заголовком
-			//todo рассмотреть замерженые ячейки. стили тоже влияют, но непонятно как сравнивать border
-			var bIgnoreFirstRow = ignoreFirstRowSort(this.worksheet, bbox);
-
-			if (bIgnoreFirstRow) {
-				bbox = bbox.clone();
-				bbox.r1++;
-			}
-		}
-
-		//todo горизонтальная сортировка
-		var aMerged = this.worksheet.mergeManager.get(bbox);
-		if (aMerged.outer.length > 0 || (aMerged.inner.length > 0 && null == _isSameSizeMerged(bbox, aMerged.inner))) {
-			return null;
-		}
-
-		var nMergedWidth = 1;
-		var nMergedHeight = 1;
-		if (aMerged.inner.length > 0) {
-			var merged = aMerged.inner[0];
-			if (opt_by_row) {
-				nMergedWidth = merged.bbox.c2 - merged.bbox.c1 + 1;
-				//меняем nStartCol, потому что приходит колонка той ячейки, на которой начали выделение
-				nStartRowCol = merged.bbox.r1;
-			} else {
-				nMergedHeight = merged.bbox.r2 - merged.bbox.r1 + 1;
-				//меняем nStartCol, потому что приходит колонка той ячейки, на которой начали выделение
-				nStartRowCol = merged.bbox.c1;
-			}
-
-		}
-
-		this.worksheet.workbook.dependencyFormulas.lockRecal();
-
-		var oRes = null;
-		var oThis = this;
-		var bAscent = false;
-		if (nOption == Asc.c_oAscSortOptions.Ascending) {
-			bAscent = true;
-		}
-
-		var fromArray = [];
-		var toArray = [];
-
-		var nRowFirst0 = bbox.r1;
-		var nRowLast0 = bbox.r2;
-		var nColFirst0 = bbox.c1;
-		var nColLast0 = bbox.c2;
-
-		var bWholeCol = false;
-		var bWholeRow = false;
-		if (0 == nRowFirst0 && gc_nMaxRow0 == nRowLast0) {
-			bWholeCol = true;
-		}
-		if (0 == nColFirst0 && gc_nMaxCol0 == nColLast0) {
-			bWholeRow = true;
-		}
-
-		var colorFill = nOption === Asc.c_oAscSortOptions.ByColorFill;
-		var colorText = nOption === Asc.c_oAscSortOptions.ByColorFont;
-		var isSortColor = colorFill || colorText;
-
-		var start = opt_by_row ? nColFirst0 : nRowFirst0;
-		var end = opt_by_row ? nColLast0 : nRowLast0;
-		var count = 0;
-		for(var i = start; i <= end; i++) {
-			if((opt_by_row && !this.worksheet.getColHidden(i)) || (!opt_by_row && !this.worksheet.getRowHidden(i))) {
-				fromArray[count] = i;
-				toArray[count] = i;
-				count++;
-			}
-		}
-
-
-
-		function strcmp(str1, str2) {
-			return ( ( str1 == str2 ) ? 0 : ( ( str1 > str2 ) ? 1 : -1 ) );
-		}
-
-
-		//color sort
-		var colorFillCmp = function (color1, color2) {
-			var res = false;
-			//TODO возможно так сравнивать не правильно, позже пересмотреть
-			if (colorFill) {
-				res = (color1 !== null && color2 !== null && color1.rgb === color2.rgb) || (color1 === color2);
-			} else if (colorText && color1 && color1.length) {
-				for (var n = 0; n < color1.length; n++) {
-					if (color1[n] && color2 !== null && color1[n].rgb === color2.rgb) {
-						res = true;
-						break;
-					}
-				}
-			}
-
-			return res;
-		};
-
-
-		var t = this;
-		var getElem = function(row, col) {
-
-			var oCell;
-			t.worksheet._getCellNoEmpty(row, col, function(cell) {
-				oCell = cell;
-			});
-
-			var val = oCell.getValueWithoutFormat();
-
-			//for sort color
-			var colorFillCell, colorsTextCell = null;
-			if (colorFill) {
-				var styleCell = oCell.getCompiledStyleCustom(false, true, true);
-				colorFillCell = styleCell !== null && styleCell.fill ? styleCell.fill.bg() : null;
-			} else if (colorText) {
-				var value2 = oCell.getValue2();
-				for (var n = 0; n < value2.length; n++) {
-					if (null === colorsTextCell) {
-						colorsTextCell = [];
-					}
-
-					colorsTextCell.push(value2[n].format.getColor());
-				}
-			}
-
-			var res;
-			var nNumber = null;
-			var sText = null;
-			if ("" != val) {
-				var nVal = val - 0;
-				if (nVal == val) {
-					nNumber = nVal;
-				} else {
-					sText = val;
-				}
-				res = {num: nNumber, text: sText, colorFill: colorFillCell, colorsText: colorsTextCell};
-			} else if (isSortColor) {
-				res = {num: nNumber, text: sText, colorFill: colorFillCell, colorsText: colorsTextCell};
-			}
-			return res;
-		};
-
-		if (isSortColor) {
-			var newArrayNeedColor = [];
-			var newArrayAnotherColor = [];
-
-			for (var i = 0; i < aSortElems.length; i++) {
-				var color = colorFill ? aSortElems[i].colorFill : aSortElems[i].colorsText;
-				if (colorFillCmp(color, sortColor)) {
-					newArrayNeedColor.push(aSortElems[i]);
-				} else {
-					newArrayAnotherColor.push(aSortElems[i]);
-				}
-			}
-
-			var aSortElems = newArrayNeedColor.concat(newArrayAnotherColor);
-		} else {
-			//TODO массив должен приходить с данными сортировки
-			var indexSearch = nStartRowCol;
-			toArray.sort(function (index1, index2) {
-				var res = 0;
-				var a = getElem(opt_by_row ? indexSearch : index1, opt_by_row ? index1 : indexSearch);
-				var b = getElem(opt_by_row ? indexSearch : index2, opt_by_row ? index2 : indexSearch);
-
-				var compare = function() {
-					if (null != a.text) {
-						if (null != b.text) {
-							res = strcmp(a.text.toUpperCase(), b.text.toUpperCase());
-						} else {
-							res = 1;
-						}
-					} else if (null != a.num) {
-						if (null != b.num) {
-							res = a.num - b.num;
-						} else {
-							res = -1;
-						}
-					}
-				};
-
-
-				if (0 == res) {
-					res = opt_by_row ? a.col - b.col : a.row - b.row;
-				} else if (!bAscent) {
-					res = -res;
-				}
-				return res;
-			});
-		}
-
-
-		return;
-	};
-
 
 	function _isSameSizeMerged(bbox, aMerged) {
 		var oRes = null;

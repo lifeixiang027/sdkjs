@@ -2946,6 +2946,23 @@ function DrawingObjects() {
                     _this.checkSparklineGroupMinMaxVal(oSparklineGroup);
                 }, _this, []);
             }
+            
+            if(oDrawingContext instanceof AscCommonExcel.CPdfPrinter)
+            {
+                graphics.SaveGrState();
+                var _baseTransform;
+                if(!oDrawingContext.Transform)
+                {
+                    _baseTransform = new AscCommon.CMatrix();
+                }
+                else
+                {
+                    _baseTransform = oDrawingContext.Transform.CreateDublicate();
+                }
+                _baseTransform.sx /= nSparklineMultiplier;
+                _baseTransform.sy /= nSparklineMultiplier;
+                graphics.SetBaseTransform(_baseTransform);
+            }
             for(j = 0; j < oSparklineGroup.arrSparklines.length; ++j) {
 				sparkline = oSparklineGroup.arrSparklines[j];
 				if (!sparkline.checkInRange(range)) {
@@ -2957,23 +2974,15 @@ function DrawingObjects() {
 					sparkline.oCacheView.initFromSparkline(sparkline, oSparklineGroup, worksheet);
                 }
 
-                if(oDrawingContext instanceof AscCommonExcel.CPdfPrinter)
-                {
-                    graphics.SaveGrState();
-                    var _baseTransform = new AscCommon.CMatrix();
-                    _baseTransform.sx /= nSparklineMultiplier;
-                    _baseTransform.sy /= nSparklineMultiplier;
-
-                    graphics.SetBaseTransform(_baseTransform);
-                }
 
 				sparkline.oCacheView.draw(graphics, offsetX, offsetY);
 
-                if(oDrawingContext instanceof AscCommonExcel.CPdfPrinter)
-                {
-                    graphics.SetBaseTransform(null);
-                    graphics.RestoreGrState();
-                }
+                
+            }
+            if(oDrawingContext instanceof AscCommonExcel.CPdfPrinter)
+            {
+                graphics.SetBaseTransform(null);
+                graphics.RestoreGrState();
             }
         }
         if(oDrawingContext instanceof AscCommonExcel.CPdfPrinter)
@@ -4133,7 +4142,7 @@ function DrawingObjects() {
         var BB, range;
         var oSelectedSeries = drawing.getSelectedSeries();
         var oSelectionRange;
-        var aActiveRanges = [];
+        var aActiveRanges = [], aCheckRanges, i, j;
 
         var oSeriesBBox = null, oTxBBox = null, oCatBBox = null;
         if(!oSelectedSeries)
@@ -4143,6 +4152,17 @@ function DrawingObjects() {
                 oSeriesBBox = BBoxObjects.bbox.seriesBBox;
                 oTxBBox = BBoxObjects.bbox.serBBox;
                 oCatBBox = BBoxObjects.bbox.catBBox;
+                aCheckRanges = [oSeriesBBox, oTxBBox, oCatBBox];
+                for(i = 0; i < aCheckRanges.length; ++i)
+                {
+                    for(j = i + 1; j < aCheckRanges.length; ++j)
+                    {
+                        if(aCheckRanges[i] && aCheckRanges[j] && aCheckRanges[i].isIntersect && aCheckRanges[i].isIntersect(aCheckRanges[j]))
+                        {
+                            return;
+                        }
+                    }
+                }
             }
         }
         else {

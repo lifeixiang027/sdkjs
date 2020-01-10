@@ -1628,7 +1628,7 @@
     };
 
     // ----- Drawing for print -----
-    WorksheetView.prototype._calcPagesPrint = function(range, pageOptions, indexWorksheet, arrPages, printScale) {
+    WorksheetView.prototype._calcPagesPrint = function(range, pageOptions, indexWorksheet, arrPages, printScale, adjustPrint) {
         if (0 > range.r2 || 0 > range.c2) {
 			// Ничего нет
             return;
@@ -1639,8 +1639,7 @@
 			vector_koef /= AscCommon.AscBrowser.retinaPixelRatio;
 		}
 
-		//TODO  в данный момент с этот флаг не используется. нужно проверить и убрать.
-		var bPageLayout = arguments[4];
+		var isOnlyFirstPage = adjustPrint && adjustPrint.isOnlyFirstPage;
 
         //TODO убрать использование bFitToWidth/bFitToHeight. сейчас всё должно регулироваться скейлингом
 		var bFitToWidth = false;
@@ -1763,12 +1762,17 @@
 
 		var bIsAddOffset = false;
 		var nCountOffset = 0;
+		var nCountPages = 0;
 
 		var curTitleWidth = 0, curTitleHeight = 0;
 		var addedTitleHeight = 0, addedTitleWidth = 0;
 
 		var startTitleArrRow = [];
 		while (AscCommonExcel.c_kMaxPrintPages > arrPages.length) {
+			if(isOnlyFirstPage && nCountPages > 0) {
+				break;
+			}
+
 			var newPagePrint = new asc_CPagePrint();
 
 			var colIndex = currentColIndex, rowIndex = currentRowIndex, pageRange;
@@ -1848,8 +1852,7 @@
 
 					if (bFitToWidth) {
 						newPagePrint.pageClipRectWidth = Math.max(currentWidth, newPagePrint.pageClipRectWidth);
-						newPagePrint.pageWidth =
-							newPagePrint.pageClipRectWidth * vector_koef + (pageLeftField + pageRightField);
+						newPagePrint.pageWidth = newPagePrint.pageClipRectWidth * vector_koef + (pageLeftField + pageRightField);
 					} else {
 						newPagePrint.pageClipRectWidth = Math.min(currentWidth, newPagePrint.pageClipRectWidth);
 					}
@@ -1867,8 +1870,7 @@
 			}
 			if (bFitToHeight) {
 				newPagePrint.pageClipRectHeight = Math.max(currentHeight, newPagePrint.pageClipRectHeight);
-				newPagePrint.pageHeight =
-					newPagePrint.pageClipRectHeight * vector_koef + (pageTopField + pageBottomField);
+				newPagePrint.pageHeight = newPagePrint.pageClipRectHeight * vector_koef + (pageTopField + pageBottomField);
 			} else {
 				newPagePrint.pageClipRectHeight = Math.min(currentHeight, newPagePrint.pageClipRectHeight);
 			}
@@ -1900,8 +1902,11 @@
 			//чтобы передать временный scale(допустим при печати выделенного) добавляем его в pagePrint
 			if(printScale) {
 				newPagePrint.scale = printScale / 100;
+			} else if(scale) {
+				newPagePrint.scale = scale;
 			}
 			arrPages.push(newPagePrint);
+			nCountPages++;
 
 			if (bIsAddOffset) {
 				// Мы еще не дорисовали колонку
@@ -1956,10 +1961,10 @@
 			}
 			if(!hiddenRow && 0 < t._getColumnWidth(c)){
 				var style = cell.getStyle();
-				if (style && ((style.fill && style.fill.notEmpty()) || (style.border && style.border.notEmpty()))) {
+				//if (style && ((style.fill && style.fill.notEmpty()) || (style.border && style.border.notEmpty()))) {
 					maxCol = Math.max(maxCol, c);
 					maxRow = Math.max(maxRow, r);
-				}
+				//}
 				var ct = t._getCellTextCache(c, r);
 				if (ct !== undefined) {
 					rightSide = 0;
@@ -1976,12 +1981,20 @@
 		return new AscCommon.CellBase(maxRow, maxCol);
 	};
 
-    WorksheetView.prototype.calcPagesPrint = function (pageOptions, printOnlySelection, indexWorksheet, arrPages, arrRanges, ignorePrintArea, doNotRecalc) {
+    WorksheetView.prototype.calcPagesPrint = function (pageOptions, printOnlySelection, indexWorksheet, arrPages, arrRanges, adjustPrint, doNotRecalc) {
 		var range, maxCell, t = this;
 		var _printArea = this.model.workbook.getDefinesNames("Print_Area", this.model.getId());
+		var ignorePrintArea = adjustPrint ? adjustPrint.asc_getIgnorePrintArea() : null;
 		var printArea = !ignorePrintArea && _printArea;
 
 		this.recalcPrintScale();
+
+		var oldPagePrintOptions;
+		if(this.model.PagePrintOptions) {
+			oldPagePrintOptions = this.model.PagePrintOptions;
+			this.model.PagePrintOptions = pageOptions;
+		}
+
 		//this.model.PagePrintOptions.pageSetup.scale  = 145;
 
 		var getPrintAreaRanges = function() {
@@ -2007,24 +2020,20 @@
 
 		//проверяем, не пришли ли настройки масштабирование, отличные от тех, которые лежат в модели
 		var checkCustomScaleProps = function() {
-			var _res = null;
+			var _res;
 
 			var _pageOptions = t.model.PagePrintOptions;
 			var _pageSetup = _pageOptions.asc_getPageSetup();
-			var width = _pageSetup.asc_getFitToWidth();
-			var height = _pageSetup.asc_getFitToHeight();
 			var modelScale = _pageSetup.asc_getScale();
 
-			if(width !== fitToWidth || height !== fitToHeight) {
-				if(fitToWidth || fitToHeight) {
-					_res = t.calcPrintScale(fitToWidth, fitToHeight);
-				} else if(_scale !== modelScale) {
-					_res = _scale;
-				}
-			} else if(_scale !== modelScale) {
-				_res = _scale;
+			if(fitToWidth || fitToHeight) {
+				_res = t.calcPrintScale(fitToWidth, fitToHeight);
 			}
-			return _res;
+			if(_res !== null && _res !== modelScale) {
+				return _res;
+			}
+
+			return null;
 		};
 
 		if (printOnlySelection) {
@@ -2042,10 +2051,10 @@
 					}
 				} else {
 					maxCell = this._checkPrintRange(range, doNotRecalc);
-					range = new asc_Range(0, 0, maxCell.col, maxCell.row);
+					range = new asc_Range(range.c1, range.r1, maxCell.col, maxCell.row);
 				}
 
-				this._calcPagesPrint(range, pageOptions, indexWorksheet, arrPages, tempPrintScale);
+				this._calcPagesPrint(range, pageOptions, indexWorksheet, arrPages, tempPrintScale, adjustPrint);
 			}
 		} else if(printArea && printAreaRanges) {
 
@@ -2061,14 +2070,20 @@
 					continue;
 				}
 
+				if (c_oAscSelectionType.RangeCells === range.getType()) {
+					if(!doNotRecalc) {
+						this._prepareCellTextMetricsCache(range);
+					}
+				} else {
+					maxCell = this._checkPrintRange(range, doNotRecalc);
+					range = new asc_Range(range.c1, range.r1, maxCell.col, maxCell.row);
+				}
+
 				if(arrRanges) {
 					arrRanges.push(range);
 				}
 
-				if(!doNotRecalc) {
-					this._prepareCellTextMetricsCache(range);
-				}
-				this._calcPagesPrint(range, pageOptions, indexWorksheet, arrPages, tempPrintScale);
+				this._calcPagesPrint(range, pageOptions, indexWorksheet, arrPages, tempPrintScale, adjustPrint);
 			}
 		} else {
 			range = new asc_Range(0, 0, this.model.getColsCount() - 1, this.model.getRowsCount() - 1);
@@ -2094,7 +2109,11 @@
 				tempPrintScale = checkCustomScaleProps();
 			}
 
-			this._calcPagesPrint(range, pageOptions, indexWorksheet, arrPages, tempPrintScale);
+			this._calcPagesPrint(range, pageOptions, indexWorksheet, arrPages, tempPrintScale, adjustPrint);
+		}
+
+		if(oldPagePrintOptions) {
+			this.model.PagePrintOptions = oldPagePrintOptions;
 		}
 
 		if(this.groupWidth || this.groupHeight) {
@@ -3531,11 +3550,18 @@
 							} else {
 								return;
 							}
-
                             if(ctx instanceof AscCommonExcel.CPdfPrinter)
                             {
                                 graphics.SaveGrState();
-                                var _baseTransform = new AscCommon.CMatrix();
+                                var _baseTransform;
+                                if(!ctx.Transform)
+                                {
+                                    _baseTransform = new AscCommon.CMatrix();
+                                }
+                                else
+                                {
+                                    _baseTransform = ctx.Transform;
+                                }
                                 graphics.SetBaseTransform(_baseTransform);
                             }
 
@@ -3653,12 +3679,21 @@
 
                                 var oUniFill = new AscFormat.builder_CreateBlipFill(img, "stretch");
 
-                                if(context instanceof AscCommonExcel.CPdfPrinter)
+                                if(ctx instanceof AscCommonExcel.CPdfPrinter)
                                 {
                                     graphics.SaveGrState();
-                                    var _baseTransform = new AscCommon.CMatrix();
+                                    var _baseTransform;
+                                    if(!ctx.Transform)
+                                    {
+                                        _baseTransform = new AscCommon.CMatrix();
+                                    }
+                                    else
+                                    {
+                                        _baseTransform = ctx.Transform;
+                                    }
                                     graphics.SetBaseTransform(_baseTransform);
                                 }
+    
 
                                 graphics.save();
                                 var oMatrix = new AscCommon.CMatrix();
@@ -10622,7 +10657,7 @@
                        	var opt_by_rows = false;
 						//var props = t.getSortProps(true);
                         //t.cellCommentator.sortComments(range.sort(val.type, opt_by_rows ? activeCell.row : activeCell.col, val.color, true, opt_by_rows, props.levels));
-                        t.cellCommentator.sortComments(range.sort(val.type, opt_by_rows ? activeCell.row : activeCell.col, val.color, true, opt_by_rows));
+                        t.cellCommentator.sortComments(t._doSort(range, val.type, opt_by_rows ? activeCell.row : activeCell.col, val.color, true, opt_by_rows));
 						t.setSortProps(t._generateSortProps(val.type, opt_by_rows ? activeCell.row : activeCell.col, val.color, true, opt_by_rows, range.bbox), true);
                         break;
 
@@ -10811,8 +10846,8 @@
 			});
 		}
 
-		if (("merge" === prop || "paste" === prop || "sort" === prop || "hyperlink" === prop || "rh" === prop) &&
-			this.model.inPivotTable(checkRange)) {
+		if (("merge" === prop || "paste" === prop || "sort" === prop || "hyperlink" === prop || "rh" === prop ||
+			"customSort" === prop) && this.model.inPivotTable(checkRange)) {
 			this.model.workbook.handlers.trigger("asc_onError", c_oAscError.ID.LockedCellPivot,
 				c_oAscError.Level.NoCritical);
 			return;
@@ -12137,14 +12172,18 @@
 			t.model._getCell(rangeStyle.cellValueData2.row, rangeStyle.cellValueData2.col, function (cell) {
 				cell.setValueData(rangeStyle.cellValueData2.valueData);
 			});
-		} /*else if (rangeStyle.value2 && specialPasteProps.font && specialPasteProps.val) {
-			if (formulaProps) {
+		} else if (rangeStyle.value2 && specialPasteProps.font && specialPasteProps.val) {
+			if (formulaProps && firstRange) {
 				firstRange.setValue2(rangeStyle.value2);
 			} else {
 				range.setValue2(rangeStyle.value2);
 			}
-		}*/ else if (rangeStyle.cellValueData && specialPasteProps.val) {
-			range.setValueData(rangeStyle.cellValueData);
+		} else if (rangeStyle.cellValueData && specialPasteProps.val) {
+			if (formulaProps && firstRange) {
+				firstRange.setValueData(rangeStyle.cellValueData);
+			} else {
+				range.setValueData(rangeStyle.cellValueData);
+			}
 		} else if (null != rangeStyle.val && specialPasteProps.val) {
 			//TODO возможно стоит всегда вызывать setValueData и тип выставлять в зависимости от val
 			if (rangeStyle.val[0] === "'") {
@@ -14576,7 +14615,7 @@
                     }
                 }
 
-                var sort = sortRange.sort(type, startCol, rgbColor, null, null, null, sortState);
+				var sort = t._doSort(sortRange, type, startCol, rgbColor, null, null, null, sortState);
                 t.cellCommentator.sortComments(sort);
             }
 
@@ -14774,11 +14813,10 @@
 				History.Create_NewPoint();
                 History.StartTransaction();
 
-                var rgbColor = color ?
-                  new AscCommonExcel.RgbColor((color.asc_getR() << 16) + (color.asc_getG() << 8) + color.asc_getB()) :
-                  null;
+                var rgbColor = color ? new AscCommonExcel.RgbColor((color.asc_getR() << 16) + (color.asc_getG() << 8) + color.asc_getB()) : null;
 
-                var sort = sortProps.sortRange.sort(type, sortProps.startCol, rgbColor);
+
+                var sort = t._doSort(sortProps.sortRange, type, sortProps.startCol, rgbColor)
                 t.cellCommentator.sortComments(sort);
                 t.model.autoFilters.sortColFilter(type, cellId, ar, sortProps, displayName, rgbColor);
 
@@ -15838,7 +15876,8 @@
         var lockRange = null;
 
 		var sendError = function() {
-			ws.workbook.handlers.trigger("asc_onError", c_oAscError.ID.AutoFilterMoveToHiddenRangeError, c_oAscError.Level.NoCritical);
+			ws.workbook.handlers.trigger("asc_onError", c_oAscError.ID.AutoFilterChangeFormatTableError, c_oAscError.Level.NoCritical);
+			t.handlers.trigger("selectionChanged");
 		};
 
 		var checkShift = function(range) {
@@ -16469,8 +16508,16 @@
                 return;
             }
 
-            t._isLockedCells(lockRange, null, callback);
-        };
+			var callbackLockAll = function(_success) {
+				if (false === _success) {
+					return;
+				}
+
+				t._isLockedCells(lockRange, null, callback);
+			};
+
+			t._isLockedAll(callbackLockAll);
+		};
 
         //лочим данный именованный диапазон при смене размера ф/т
         var defNameId = t.model.workbook.dependencyFormulas.getDefNameByName(tableName, t.model.getId());
@@ -18803,9 +18850,12 @@
 		var selection = t.model.selectionRange.getLast();
 		var oldSelection = selection.clone();
 
+		var autoFilter = t.model.AutoFilter;
 		var modelSort, dataHasHeaders, columnSort;
 		var tables = t.model.autoFilters.getTableIntersectionRange(selection);
-		var lockChangeHeaders, lockChangeOrientation, caseSenstitive;
+		var lockChangeHeaders, lockChangeOrientation, caseSensitive;
+		//проверяем, возможно находится рядом а/ф
+		var tryExpandRange = t.model.autoFilters.expandRange(selection, true);
 		if(tables && tables.length) {
 			if(tables && tables && tables.length === 1 && tables[0].Ref.containsRange(selection)) {
 				selection = tables[0].getRangeWithoutHeaderFooter();
@@ -18815,39 +18865,33 @@
 				lockChangeHeaders = true;
 				lockChangeOrientation = true;
 			} else {
-				this.model.workbook.handlers.trigger("asc_onError", c_oAscError.ID.LockedAllError, c_oAscError.Level.NoCritical);
+				t.workbook.handlers.trigger("asc_onError", c_oAscError.ID.AutoFilterDataRangeError, c_oAscError.Level.NoCritical);
 				return false;
 			}
-		} else if(t.model.AutoFilter && t.model.AutoFilter.Ref && t.model.AutoFilter.Ref.intersection(selection)) {
-			var autoFilter = t.model.AutoFilter;
-			if(autoFilter.Ref.containsRange(selection)) {
-				selection = autoFilter.getRangeWithoutHeaderFooter();
-				columnSort = true;
-				dataHasHeaders = true;
-				modelSort = autoFilter.SortState;
-				lockChangeHeaders = true;
-				lockChangeOrientation = true;
-			} else {
-				this.model.workbook.handlers.trigger("asc_onError", c_oAscError.ID.LockedAllError, c_oAscError.Level.NoCritical);
-				return false;
-			}
+		} else if(autoFilter && autoFilter.Ref && (autoFilter.Ref.isEqual(selection) || (selection.isOneCell() && (autoFilter.Ref.containsRange(selection) || autoFilter.Ref.containsRange(tryExpandRange))))) {
+			selection = autoFilter.getRangeWithoutHeaderFooter();
+			columnSort = true;
+			dataHasHeaders = true;
+			modelSort = autoFilter.SortState;
+			lockChangeHeaders = true;
+			lockChangeOrientation = true;
 		} else {
-			var type = selection.getType();
-			if(c_oAscSelectionType.RangeMax === type || c_oAscSelectionType.RangeRow === type || c_oAscSelectionType.RangeCol === type ) {
-				//TODO возможно стоит обрезать в любом случае после expand
-				selection =  t.model.autoFilters.cutRangeByDefinedCells(selection);
-			} else if(bExpand) {
-				selection = t.model.autoFilters.expandRange(selection);
+			if(bExpand) {
+				selection = tryExpandRange ? tryExpandRange : t.model.autoFilters.expandRange(selection, true);
 			}
+			selection =  t.model.autoFilters.cutRangeByDefinedCells(selection);
 
 			//в модели лежит флаг columnSort - если он true значит сортируем по строке(те перемещаем колонки)
 			//в настройках флаг columnSort - означает, что сортируем по колонке
 			modelSort = this.model.sortState;
 			columnSort = modelSort ? !modelSort.ColumnSort : true;
-			caseSenstitive = modelSort ? modelSort.CaseSensititve : false;
+			caseSensitive = modelSort ? modelSort.CaseSensitive : false;
 
-			if(selection.r1 === selection.r2 || !columnSort) {
-				lockChangeHeaders = true;
+			var isOneRow = selection.r1 === selection.r2;
+			if(isOneRow || !columnSort) {
+				if(isOneRow) {
+					lockChangeHeaders = true;
+				}
 				dataHasHeaders = false;
 			}
 
@@ -18867,7 +18911,7 @@
 
 			//если пустой дипазон, выдаём ошибку
 			if(t.model.autoFilters._isEmptyRange(selection, 0)) {
-				this.model.workbook.handlers.trigger("asc_onError", c_oAscError.ID.LockedAllError, c_oAscError.Level.NoCritical);
+				t.workbook.handlers.trigger("asc_onError", c_oAscError.ID.AutoFilterDataRangeError, c_oAscError.Level.NoCritical);
 				return false;
 			}
 		}
@@ -18881,15 +18925,15 @@
 		sortSettings.hasHeaders = dataHasHeaders;
 		sortSettings.columnSort = columnSort;
 
-		sortSettings.caseSenstitive = caseSenstitive;
+		sortSettings.caseSensitive = caseSensitive;
 
 		sortSettings.lockChangeHeaders = lockChangeHeaders;
 		sortSettings.lockChangeOrientation = lockChangeOrientation;
 
 		var getSortLevel = function(sortCondition) {
 			var level = new Asc.CSortPropertiesLevel();
-			var index = columnSort ? sortCondition.Ref.c1 - modelSort.Ref.c1 : sortCondition.Ref.r1 - modelSort.Ref.r1;
-			var name = sortSettings.getNameColumnByIndex(index, modelSort.Ref);
+			var index = columnSort ? sortCondition.Ref.c1 - selection.c1 : sortCondition.Ref.r1 - selection.r1;
+			var name = sortSettings.getNameColumnByIndex(index, selection);
 
 			level.index = index;
 			level.name = name;
@@ -18950,10 +18994,13 @@
 			//заполняем только в случае пересечения
 			if(selection.intersection(modelSort.Ref)) {
 				for(var i = 0; i < modelSort.SortConditions.length; i++) {
-					if(!sortSettings.levels) {
-						sortSettings.levels = [];
+					if(modelSort.SortConditions[i].Ref.intersection(selection)) {
+						if(!sortSettings.levels) {
+							sortSettings.levels = [];
+						}
+
+						sortSettings.levels.push(getSortLevel(modelSort.SortConditions[i]));
 					}
-					sortSettings.levels.push(getSortLevel(modelSort.SortConditions[i]));
 				}
 			}
 		}
@@ -18998,12 +19045,13 @@
 				sortCondition.ConditionDescending = Asc.c_oAscSortOptions.Descending === level.descending;
 
 				var conditionSortBy = level.sortBy;
-				var sortColor = null, newDxf;
+				var sortColor = null, newDxf, isRgbColor;
 				switch (conditionSortBy) {
 					case Asc.c_oAscSortOptions.ByColorFill: {
 						sortCondition.ConditionSortBy = Asc.ESortBy.sortbyCellColor;
 						sortColor = level.color;
-						sortColor = sortColor ? new AscCommonExcel.RgbColor((sortColor.asc_getR() << 16) + (sortColor.asc_getG() << 8) + sortColor.asc_getB()) : null;
+						isRgbColor = sortColor && sortColor.getType && sortColor.getType() === AscCommonExcel.UndoRedoDataTypes.RgbColor;
+						sortColor = sortColor && !isRgbColor ? new AscCommonExcel.RgbColor((sortColor.asc_getR() << 16) + (sortColor.asc_getG() << 8) + sortColor.asc_getB()) : null;
 
 						newDxf = new AscCommonExcel.CellXfs();
 						newDxf.fill = new AscCommonExcel.Fill();
@@ -19014,7 +19062,8 @@
 					case Asc.c_oAscSortOptions.ByColorFont: {
 						sortCondition.ConditionSortBy = Asc.ESortBy.sortbyFontColor;
 						sortColor = level.color;
-						sortColor = sortColor ? new AscCommonExcel.RgbColor((sortColor.asc_getR() << 16) + (sortColor.asc_getG() << 8) + sortColor.asc_getB()) : null;
+						isRgbColor = sortColor && sortColor.getType && sortColor.getType() === AscCommonExcel.UndoRedoDataTypes.RgbColor;
+						sortColor = sortColor && !isRgbColor ? new AscCommonExcel.RgbColor((sortColor.asc_getR() << 16) + (sortColor.asc_getG() << 8) + sortColor.asc_getB()) : null;
 
 						newDxf = new AscCommonExcel.CellXfs();
 						newDxf.font = new AscCommonExcel.Font();
@@ -19063,7 +19112,7 @@
 
 			if(!doNotSortRange) {
 				var range = t.model.getRange3(selection.r1, selection.c1, selection.r2, selection.c2);
-				t.cellCommentator.sortComments(range.sort(null, null, null, null, !columnSort, sortState));
+				t.cellCommentator.sortComments(t._doSort(range, null, null, null, null, !columnSort, sortState));
 			}
 
 			History.EndTransaction();
@@ -19117,6 +19166,39 @@
 
 		return res;
 	};
+
+	WorksheetView.prototype._doSort = function (range, nOption, nStartRowCol, sortColor, opt_guessHeader, opt_by_row, opt_custom_sort) {
+		var res;
+
+		var bordersArr = [];
+		range._foreachNoEmpty(function(cell, row, col) {
+			var style = cell ? cell.getStyle() : null;
+			if(style && style.border) {
+				if(!bordersArr[row]) {
+					bordersArr[row] = [];
+				}
+				bordersArr[row][col] = style.border;
+				cell.setBorder(null);
+			}
+		});
+		res = range.sort(nOption, nStartRowCol, sortColor, opt_guessHeader, opt_by_row, opt_custom_sort);
+		for(var i = 0; i < bordersArr.length; i++) {
+			if(bordersArr[i]) {
+				for(var j = 0; j < bordersArr[i].length; j++) {
+					if(bordersArr[i][j]) {
+						var curBorder = bordersArr[i][j];
+						this.model._getCell(i, j, function(cell) {
+							cell.setBorder(curBorder);
+						});
+
+					}
+				}
+			}
+		}
+
+		return res;
+	};
+
 	//------------------------------------------------------------export---------------------------------------------------
     window['AscCommonExcel'] = window['AscCommonExcel'] || {};
 	window["AscCommonExcel"].CellFlags = CellFlags;
