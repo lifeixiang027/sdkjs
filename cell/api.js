@@ -2289,7 +2289,7 @@ var editor;
       //получаем полный бинарник + удаляем лист
       var binaryStr = AscCommonExcel.g_clipboardExcel.copyProcessor.getBinaryForCopy(ws.model, null, null, true);
 
-      this.wb.asc_deleteWorksheet(deleteIndex);
+      //this.wb.asc_deleteWorksheet(deleteIndex);
       return binaryStr;
   };
 

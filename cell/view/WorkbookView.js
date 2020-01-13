@@ -3255,7 +3255,6 @@
 
 		var doCopy = function() {
 			History.Create_NewPoint();
-			t.copyWorksheet(0, insertBefore);
 			t.model.copyWorksheet(0, insertBefore, name, undefined, undefined, undefined, pastedWs);
 			callback();
 		};

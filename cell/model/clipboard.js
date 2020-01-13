@@ -554,7 +554,7 @@
 					//так же необходимо протащить локаль, для этого использую поля language
 					//и записываю туда номер локали, предварительно конвертируя его в строку
 					//пока буду использовать его только при вставке в документы, а в документах устанавливать -> AscCommon.setCurrentCultureInfo(val)
-					var locale = wb.oApi.asc_getLocale();
+					var locale = wb.oApi ? wb.oApi.asc_getLocale() : null;
 					wb.Core.language = undefined != locale ? locale.toString() : null;
 
 
