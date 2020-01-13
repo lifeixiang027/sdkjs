@@ -1262,21 +1262,23 @@ function handleInternalChart(drawing, drawingObjectsController, e, x, y, group, 
                             var nDlbl = drawing.selection.dataLbl;
                             if(drawingObjectsController.handleEventMode === HANDLE_EVENT_MODE_HANDLE)
                             {
-
                                 drawingObjectsController.checkChartTextSelection();
                                 selector.resetSelection();
                                 selector.selectObject(drawing, pageIndex);
                                 selector.selection.chartSelection = drawing;
                                 drawing.selection.dataLbls = i;
-                                if(nDlbls === i)
+                            }
+                            if(nDlbls === i)
+                            {
+                                if(nDlbl === j)
                                 {
-                                    if(nDlbl === j)
-                                    {
-                                        var hit_in_inner_area = oDLbl.hitInInnerArea(x, y);
-                                        var hit_in_path = oDLbl.hitInPath(x, y);
-                                        var hit_in_text_rect = oDLbl.hitInTextRect(x, y);
+                                    var hit_in_inner_area = oDLbl.hitInInnerArea(x, y);
+                                    var hit_in_path = oDLbl.hitInPath(x, y);
+                                    var hit_in_text_rect = oDLbl.hitInTextRect(x, y);
 
-                                        if((hit_in_inner_area && (!hit_in_text_rect) || (hit_in_path && bIsMobileVersion !== true)) && !window["NATIVE_EDITOR_ENJINE"])
+                                    if((hit_in_inner_area && (!hit_in_text_rect) || (hit_in_path && bIsMobileVersion !== true)) && !window["NATIVE_EDITOR_ENJINE"])
+                                    {
+                                        if(drawingObjectsController.handleEventMode === HANDLE_EVENT_MODE_HANDLE)
                                         {
                                             drawing.selection.dataLbl = j;
                                             drawingObjectsController.arrPreTrackObjects.length = 0;
@@ -1286,9 +1288,46 @@ function handleInternalChart(drawing, drawingObjectsController, e, x, y, group, 
                                             drawingObjectsController.updateOverlay();
                                             return true;
                                         }
+                                        else
+                                        {
+                                            return {objectId: drawing.Get_Id(), cursorType: "move", title: title};
+                                        }
                                     }
-                                    else
+                                    else if(hit_in_text_rect)
                                     {
+                                        if(drawingObjectsController.handleEventMode === HANDLE_EVENT_MODE_HANDLE)
+                                        {
+                                            drawing.selection.dataLbl = j;
+                                            drawing.selection.textSelection = oDLbl;
+                                            drawingObjectsController.changeCurrentState(new AscFormat.TextAddState(drawingObjectsController, oDLbl, x, y));
+                                            if(e.ClickCount <= 1)
+                                            {
+                                                drawingObjectsController.updateSelectionState();
+                                            }
+                                            return true;
+                                        }
+                                        else
+                                        {
+                                            if(drawingObjectsController.document)
+                                            {
+                                                var content = oDLbl.getDocContent();
+                                                var invert_transform_text = oDLbl.invertTransformText, tx, ty;
+                                                if(content && invert_transform_text)
+                                                {
+                                                    tx = invert_transform_text.TransformPointX(x, y);
+                                                    ty = invert_transform_text.TransformPointY(x, y);
+                                                    content.UpdateCursorType(tx, ty, 0);
+                                                }
+                                            }
+                                            return {objectId: drawing.Get_Id(), cursorType: "text", title: oDLbl};
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    if(drawingObjectsController.handleEventMode === HANDLE_EVENT_MODE_HANDLE)
+                                    {
+
                                         drawing.selection.dataLbl = j;
                                         drawingObjectsController.arrPreTrackObjects.length = 0;
                                         drawingObjectsController.arrPreTrackObjects.push(new AscFormat.MoveChartObjectTrack(oDLbl, drawing));
@@ -1297,14 +1336,21 @@ function handleInternalChart(drawing, drawingObjectsController, e, x, y, group, 
                                         drawingObjectsController.updateOverlay();
                                         return true;
                                     }
+                                    else
+                                    {
+                                        return {objectId: drawing.Get_Id(), cursorType: "default", title: oDLbl};
+                                    }
                                 }
+                            }
+                            if(drawingObjectsController.handleEventMode === HANDLE_EVENT_MODE_HANDLE)
+                            {
                                 drawingObjectsController.updateSelectionState();
                                 drawingObjectsController.updateOverlay();
                                 return true;
                             }
                             else
                             {
-                                return {objectId: drawing.Get_Id(), cursorType: "default", bMarker: false};
+                                return {objectId: drawing.Get_Id(), cursorType: "default", title: oDLbl};
                             }
                         }
                     }

@@ -1192,6 +1192,11 @@ CDLbl.prototype =
     recalculatePen: CShape.prototype.recalculatePen,
     check_bounds: CShape.prototype.check_bounds,
     getInvertTransform: CShape.prototype.getInvertTransform,
+    getDocContent: CShape.prototype.getDocContent,
+    updateSelectionState: CShape.prototype.updateSelectionState,
+    getDrawingDocument: function () {
+        return this.chart && this.chart.getDrawingDocument && this.chart.getDrawingDocument();
+    },
     checkHitToBounds: function (x, y) {
         var oInvertTransform = this.getInvertTransform();
         var _x, _y;
@@ -1210,6 +1215,11 @@ CDLbl.prototype =
     getCanvasContext: function()
     {
         return this.chart && this.chart.getCanvasContext();
+    },
+
+    convertPixToMM: function(pix)
+    {
+        return this.chart && this.chart.convertPixToMM(pix);
     },
 
     hit: function(x, y)
@@ -12701,10 +12711,7 @@ CTitle.prototype =
     selectionCheck: CShape.prototype.selectionCheck,
     getInvertTransform: CShape.prototype.getInvertTransform,
     getCanvasContext: CDLbl.prototype.getCanvasContext,
-    convertPixToMM: function(pix)
-    {
-        return this.chart && this.chart.convertPixToMM(pix);
-    },
+    convertPixToMM: CDLbl.prototype.convertPixToMM,
     getDrawingDocument: function()
     {
         if(this.chart && this.chart.getDrawingDocument)
