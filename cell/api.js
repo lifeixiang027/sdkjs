@@ -2306,30 +2306,54 @@ var editor;
       return res;
   };
 
-  spreadsheet_api.prototype.asc_EndMoveSheet = function(base64, index, name) {
+  spreadsheet_api.prototype.asc_EndMoveSheet = function(where, arrNames, arrSheets) {
+	  // Проверка глобального лока
+	  if (this.collaborativeEditing.getGlobalLock()) {
+		  return false;
+	  }
+
+	  // Support old versions
+	  if (!Array.isArray(arrNames)) {
+		  arrNames = [arrNames];
+	  }
+	  if (0 === arrNames.length) {
+		  return false;
+	  }
+	  if (!arrSheets) {
+		  return false;
+	  }
+
 	  var scale = this.asc_getZoom();
-	  var i = this.wbModel.getActive();
-
-	  // ToDo уйти от lock для листа при копировании
-	  var sheetId = this.wbModel.getWorksheet(i).getId();
-	  var lockInfo = this.collaborativeEditing.getLockInfo(c_oAscLockTypeElem.Sheet, /*subType*/null, sheetId, sheetId);
 	  var t = this;
-	  var copyWorksheet = function(res) {
+	  var addWorksheet = function(res) {
 		  if (res) {
-			  // ToDo перейти от wsViews на wsViewsId (сейчас вызываем раньше, чем в модели, т.к. там будет sortDependency
-			  // и cleanCellCache, который создаст уже скопированный лист(и splice сработает неправильно))
+			  // ToDo перейти от wsViews на wsViewsId
+			  History.Create_NewPoint();
+			  History.StartTransaction();
 
-			  t.wb.pasteSheet(base64, index, name, function() {
-				  // Делаем активным скопированный
-				  t.asc_showWorksheet(index);
-				  t.asc_setZoom(scale);
-				  // Посылаем callback об изменении списка листов
-				  t.sheetsChanged();
-              });
+			  for (var i = arrSheets.length - 1; i >= 0; --i) {
+				  t.wb.pasteSheet(arrSheets[i], where, arrNames[i], function() {
+					  // Делаем активным скопированный
+					  t.asc_showWorksheet(where);
+					  t.asc_setZoom(scale);
+					  // Посылаем callback об изменении списка листов
+					  t.sheetsChanged();
+				  });
+
+			  }
+			  // Делаем активным скопированный
+			  t.wbModel.setActive(where);
+			  t.wb.updateWorksheetByModel();
+			  t.wb.showWorksheet();
+			  History.EndTransaction();
+			  // Посылаем callback об изменении списка листов
+			  t.sheetsChanged();
 		  }
 	  };
 
-	  this.collaborativeEditing.lock([lockInfo], copyWorksheet);
+	  //TODO нужно лочить все листы
+	  addWorksheet(true);
+	  //this.collaborativeEditing.lock([], addWorksheet);
   };
 
   spreadsheet_api.prototype.asc_cleanSelection = function() {
