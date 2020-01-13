@@ -1191,6 +1191,26 @@ CDLbl.prototype =
     recalculateBrush: CShape.prototype.recalculateBrush,
     recalculatePen: CShape.prototype.recalculatePen,
     check_bounds: CShape.prototype.check_bounds,
+    getInvertTransform: CShape.prototype.getInvertTransform,
+    checkHitToBounds: function (x, y) {
+        var oInvertTransform = this.getInvertTransform();
+        var _x, _y;
+        if(oInvertTransform) {
+            _x = oInvertTransform.TransformPointX(x, y);
+            _y = oInvertTransform.TransformPointY(x, y);
+        }
+        else {
+            _x = x - this.transform.tx;
+            _y = y - this.transform.ty;
+        }
+
+        return _x >= 0 && _x <= this.extX && _y >= 0 && _y < this.extY;
+    },
+
+    getCanvasContext: function()
+    {
+        return this.chart && this.chart.getCanvasContext();
+    },
 
     hit: function(x, y)
     {
@@ -12563,12 +12583,7 @@ CTitle.prototype =
     recalculateGeometry: CShape.prototype.recalculateGeometry,
     getTransform : CShape.prototype.getTransform ,
 
-    checkHitToBounds: function(x, y)
-    {
-        var _x = x - this.transform.tx;
-        var _y = y - this.transform.ty;
-        return _x >= 0 && _x <= this.extX && _y >= 0 && _y < this.extY;
-    },
+    checkHitToBounds: CDLbl.prototype.checkHitToBounds,
 
     checkDocContent: function()
     {
@@ -12685,10 +12700,7 @@ CTitle.prototype =
     check_bounds: CShape.prototype.check_bounds,
     selectionCheck: CShape.prototype.selectionCheck,
     getInvertTransform: CShape.prototype.getInvertTransform,
-    getCanvasContext: function()
-    {
-        return this.chart && this.chart.getCanvasContext();
-    },
+    getCanvasContext: CDLbl.prototype.getCanvasContext,
     convertPixToMM: function(pix)
     {
         return this.chart && this.chart.convertPixToMM(pix);

@@ -1258,17 +1258,19 @@ function handleInternalChart(drawing, drawingObjectsController, e, x, y, group, 
                     {
                         if(oDLbl.hit(x, y))
                         {
-                            var nDlbl = drawing.selection.dataLbls;
+                            var nDlbls = drawing.selection.dataLbls;
+                            var nDlbl = drawing.selection.dataLbl;
                             if(drawingObjectsController.handleEventMode === HANDLE_EVENT_MODE_HANDLE)
                             {
+
                                 drawingObjectsController.checkChartTextSelection();
                                 selector.resetSelection();
                                 selector.selectObject(drawing, pageIndex);
                                 selector.selection.chartSelection = drawing;
                                 drawing.selection.dataLbls = i;
-                                if(nDlbl === i)
+                                if(nDlbls === i)
                                 {
-                                    if(drawing.selection.dataLbl === j)
+                                    if(nDlbl === j)
                                     {
                                         var hit_in_inner_area = oDLbl.hitInInnerArea(x, y);
                                         var hit_in_path = oDLbl.hitInPath(x, y);
