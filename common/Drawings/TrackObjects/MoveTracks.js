@@ -648,7 +648,8 @@ function MoveChartObjectTrack(oObject, oChartSpace)
                     var dLbl  = oDlbls.findDLblByIdx(this.originalObject.pt.idx);
                     if(!dLbl)
                     {
-                        dLbl = new AscFormat.CDLbl();
+                        dLbl = this.originalObject.createDuplicate();
+                        dLbl.setDelete(undefined);
                         dLbl.setIdx(this.originalObject.pt.idx);
                         oSeries.dLbls.addDLbl(dLbl);
                         dLbl.series  = oSeries;
