@@ -13193,6 +13193,9 @@ CTextPr.prototype.isEqual = function(TextPrOld, TextPrNew)
 };
 CTextPr.prototype.Is_Equal = function(TextPr)
 {
+	if (!TextPr)
+		return false;
+
 	if (this.Bold !== TextPr.Bold)
 		return false;
 
@@ -13301,6 +13304,10 @@ CTextPr.prototype.Is_Equal = function(TextPr)
 
 	return true;
 };
+CTextPr.prototype.IsEqual = function(oTextPr)
+{
+	return this.Is_Equal(oTextPr);
+};
 CTextPr.prototype.Is_Empty = function()
 {
 	if (undefined !== this.Bold
@@ -13378,6 +13385,44 @@ CTextPr.prototype.SetColor = function(nR, nG, nB, isAuto)
 		this.Color = undefined;
 	else
 		this.Color = new CDocumentColor(nR, nG, nB, isAuto);
+};
+CTextPr.prototype.GetAscColor = function()
+{
+	if (this.Unifill && this.Unifill.fill && this.Unifill.fill.type === Asc.c_oAscFill.FILL_TYPE_SOLID && this.Unifill.fill.color)
+	{
+		return AscCommon.CreateAscColor(this.Unifill.fill.color);
+	}
+	else if (this.Color)
+	{
+		return AscCommon.CreateAscColorCustom(this.Color.r, this.Color.g, this.Color.b, this.Color.Auto);
+	}
+
+	return undefined;
+};
+CTextPr.prototype.SetAscColor = function(oAscColor)
+{
+	if (!oAscColor)
+	{
+		this.Color   = undefined;
+		this.Unifill = undefined;
+	}
+	else if (true === oAscColor.Auto)
+	{
+		this.Color   = new CDocumentColor(0, 0, 0, true);
+		this.Unifill = undefined;
+	}
+	else
+	{
+		this.Color              = undefined;
+		this.Unifill            = new AscFormat.CUniFill();
+		this.Unifill.fill       = new AscFormat.CSolidFill();
+		this.Unifill.fill.color = AscFormat.CorrectUniColor(oAscColor, this.Unifill.fill.color, 1);
+
+		var oLogicDocument = editor && editor.private_GetLogicDocument() ? editor.private_GetLogicDocument() : null;
+		if (oLogicDocument)
+			this.Unifill.check(oLogicDocument.GetTheme(), oLogicDocument.GetColorMap());
+
+	}
 };
 CTextPr.prototype.GetVertAlign = function()
 {
@@ -13720,8 +13765,8 @@ CTextPr.prototype['get_Strikeout']  = CTextPr.prototype.get_Strikeout  = CTextPr
 CTextPr.prototype['put_Strikeout']  = CTextPr.prototype.put_Strikeout  = CTextPr.prototype.SetStrikeout;
 CTextPr.prototype['get_Underline']  = CTextPr.prototype.get_Underline  = CTextPr.prototype['Get_Underline']  = CTextPr.prototype.GetUnderline;
 CTextPr.prototype['put_Underline']  = CTextPr.prototype.put_Underline  = CTextPr.prototype.SetUnderline;
-CTextPr.prototype['get_Color']      = CTextPr.prototype.get_Color      = CTextPr.prototype['Get_Color']      = CTextPr.prototype.GetColor;
-CTextPr.prototype['put_Color']      = CTextPr.prototype.put_Color      = CTextPr.prototype.SetColor;
+CTextPr.prototype['get_Color']      = CTextPr.prototype.get_Color      = CTextPr.prototype['Get_Color']      = CTextPr.prototype.GetAscColor;
+CTextPr.prototype['put_Color']      = CTextPr.prototype.put_Color      = CTextPr.prototype.SetAscColor;
 CTextPr.prototype['get_VertAlign']  = CTextPr.prototype.get_VertAlign  = CTextPr.prototype['Get_VertAlign']  = CTextPr.prototype.GetVertAlign;
 CTextPr.prototype['put_VertAlign']  = CTextPr.prototype.put_VertAlign  = CTextPr.prototype.SetVertAlign;
 CTextPr.prototype['get_Highlight']  = CTextPr.prototype.get_Highlight  = CTextPr.prototype['Get_Highlight']  = CTextPr.prototype.GetHighlight;
@@ -15562,7 +15607,14 @@ CParaPr.prototype.Get_PresentationBullet = function(theme, colorMap)
 			case AscFormat.BULLET_TYPE_BULLET_AUTONUM :
 			{
 				Bullet.m_nType    = g_NumberingArr[this.Bullet.bulletType.AutoNumType];
-				Bullet.m_nStartAt = this.Bullet.bulletType.startAt;
+				if(this.Bullet.bulletType.startAt === null)
+				{
+					Bullet.m_nStartAt = 1;
+				}
+				else
+				{
+					Bullet.m_nStartAt = this.Bullet.bulletType.startAt;
+				}
 				break;
 			}
 			case AscFormat.BULLET_TYPE_BULLET_NONE :
@@ -16047,6 +16099,8 @@ window["AscCommonWord"].CTextPr = CTextPr;
 window["AscCommonWord"].CParaPr = CParaPr;
 window["AscCommonWord"].CParaTabs = CParaTabs;
 window["AscCommonWord"].g_dKoef_pt_to_mm = g_dKoef_pt_to_mm;
+window["AscCommonWord"].g_dKoef_pc_to_mm = g_dKoef_pc_to_mm;
+window["AscCommonWord"].g_dKoef_in_to_mm = g_dKoef_in_to_mm;
 window["AscCommonWord"].g_dKoef_mm_to_twips = g_dKoef_mm_to_twips;
 window["AscCommonWord"].g_dKoef_mm_to_pt = g_dKoef_mm_to_pt;
 window["AscCommonWord"].g_dKoef_mm_to_emu = g_dKoef_mm_to_emu;

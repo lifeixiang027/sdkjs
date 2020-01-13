@@ -304,7 +304,8 @@
 		DataValidations: 32,
 		QueryTable: 33,
 		Controls: 34,
-		XlsbPos: 35
+		XlsbPos: 35,
+		SortState: 36
     };
     /** @enum */
     var c_oSerWorksheetPropTypes =
@@ -510,7 +511,9 @@
         ConditionRef:4,
         ConditionSortBy:5,
         ConditionDescending:6,
-        ConditionDxfId:7
+        ConditionDxfId:7,
+        ColumnSort: 8,
+        SortMethod: 9
     };
     /** @enum */
     var c_oSer_AutoFilter =
@@ -1776,6 +1779,10 @@
             }
             if(null != sortState.CaseSensitive)
                 this.bs.WriteItem(c_oSer_SortState.CaseSensitive, function(){oThis.memory.WriteBool(sortState.CaseSensitive);});
+            if(null != sortState.ColumnSort)
+                this.bs.WriteItem(c_oSer_SortState.ColumnSort, function(){oThis.memory.WriteBool(sortState.ColumnSort);});
+            if(null != sortState.SortMethod)
+                this.bs.WriteItem(c_oSer_SortState.SortMethod, function(){oThis.memory.WriteByte(sortState.SortMethod);});
             if(null != sortState.SortConditions)
                 this.bs.WriteItem(c_oSer_SortState.SortConditions, function(){oThis.WriteSortConditions(sortState.SortConditions);});
         };
@@ -3147,6 +3154,11 @@
                 oBinaryTableWriter = new BinaryTableWriter(this.memory, this.aDxfs);
                 this.bs.WriteItem(c_oSerWorksheetsTypes.Autofilter, function(){oBinaryTableWriter.WriteAutoFilter(ws.AutoFilter);});
             }
+            if(null != ws.sortState && !this.isCopyPaste)
+            {
+                oBinaryTableWriter = new BinaryTableWriter(this.memory, this.aDxfs);
+                this.bs.WriteItem(c_oSerWorksheetsTypes.SortState, function(){oBinaryTableWriter.WriteSortState(ws.sortState);});
+            }
             if(null != ws.TableParts && ws.TableParts.length > 0)
             {
                 oBinaryTableWriter = new BinaryTableWriter(this.memory, this.aDxfs, this.isCopyPaste);
@@ -3919,7 +3931,7 @@
             {
                 case c_oAscCellAnchorType.cellanchorTwoCell:
                 {
-                    //this.bs.WriteItem(c_oSer_DrawingType.EditAs, function(){oThis.memory.WriteByte(oDrawing.EditAs);});
+                    this.bs.WriteItem(c_oSer_DrawingType.EditAs, function(){oThis.memory.WriteByte(oDrawing.editAs);});
                     this.bs.WriteItem(c_oSer_DrawingType.From, function(){oThis.WriteFromTo(oDrawing.from);});
                     this.bs.WriteItem(c_oSer_DrawingType.To, function(){oThis.WriteFromTo(oDrawing.to);});
                     break;
@@ -5371,6 +5383,10 @@
                 oSortState.Ref = AscCommonExcel.g_oRangeCache.getAscRange(this.stream.GetString2LE(length));
             else if ( c_oSer_SortState.CaseSensitive == type )
                 oSortState.CaseSensitive = this.stream.GetBool();
+            else if ( c_oSer_SortState.ColumnSort == type )
+                oSortState.ColumnSort = this.stream.GetBool();
+            else if ( c_oSer_SortState.SortMethod == type )
+                oSortState.SortMethod = this.stream.GetUChar();
             else if ( c_oSer_SortState.SortConditions == type )
             {
                 oSortState.SortConditions = [];
@@ -7042,9 +7058,13 @@
                 res = this.bcr.Read1(length, function(t,l){
                     return oBinary_TableReader.ReadAutoFilter(t,l, oWorksheet.AutoFilter);
                 });
-            }
-            else if ( c_oSerWorksheetsTypes.TableParts == type )
-            {
+            } else if (c_oSerWorksheetsTypes.SortState === type) {
+                oBinary_TableReader = new Binary_TableReader(this.stream, this.oReadResult, oWorksheet, this.Dxfs);
+                oWorksheet.sortState = new AscCommonExcel.SortState();
+                res = this.bcr.Read1(length, function(t, l) {
+                    return oBinary_TableReader.ReadSortState(t, l, oWorksheet.sortState);
+                });
+            } else if (c_oSerWorksheetsTypes.TableParts == type) {
                 oBinary_TableReader = new Binary_TableReader(this.stream, this.oReadResult, oWorksheet, this.Dxfs);
                 oBinary_TableReader.Read(length, oWorksheet.TableParts);
             } else if ( c_oSerWorksheetsTypes.Comments == type
@@ -7732,7 +7752,7 @@
             if ( c_oSerWorksheetsTypes.Drawing == type )
             {
                 var objectRender = new AscFormat.DrawingObjects();
-                var oFlags = {from: false, to: false, pos: false, ext: false, EditAs: c_oAscCellAnchorType.cellanchorTwoCell};
+                var oFlags = {from: false, to: false, pos: false, ext: false, editAs: c_oAscCellAnchorType.cellanchorTwoCell};
                 var oNewDrawing = objectRender.createDrawingObject();
                 res = this.bcr.Read1(length, function(t, l) {
                     return oThis.ReadDrawing(t, l, oNewDrawing, oFlags);
@@ -7741,7 +7761,7 @@
                 {
                     if(false != oFlags.from && false != oFlags.to) {
                         oNewDrawing.Type = c_oAscCellAnchorType.cellanchorTwoCell;
-                        //oNewDrawing.EditAs = oFlags.EditAs;
+                        oNewDrawing.editAs = oFlags.editAs;
                     } else if(false != oFlags.from && false != oFlags.ext)
                         oNewDrawing.Type = c_oAscCellAnchorType.cellanchorOneCell;
                     else if(false != oFlags.pos && false != oFlags.ext)
@@ -7780,7 +7800,7 @@
             if ( c_oSer_DrawingType.Type == type )
                 oDrawing.Type = this.stream.GetUChar();
             else if ( c_oSer_DrawingType.EditAs == type )
-                oFlags.EditAs = this.stream.GetUChar();
+                oFlags.editAs = this.stream.GetUChar();
             else if ( c_oSer_DrawingType.From == type )
             {
                 oFlags.from = true;
@@ -7922,7 +7942,6 @@
                 if(null != src)
                 {
                   oDrawing.image.src = src;
-                  oDrawing.imageUrl = src;
                 }
             }
             else
@@ -10008,4 +10027,8 @@
 
     window["Asc"].getBinaryOtherTableGVar = getBinaryOtherTableGVar;
     window["Asc"].ReadDefTableStyles = ReadDefTableStyles;
+
+	window["AscCommonExcel"].BinaryStylesTableWriter = BinaryStylesTableWriter;
+	window["AscCommonExcel"].Binary_StylesTableReader = Binary_StylesTableReader;
+
 })(window);

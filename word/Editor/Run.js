@@ -299,7 +299,7 @@ ParaRun.prototype.GetSelectedContent = function(oSelectedContent)
 		{
 			var oRun = this.Copy(true, {CopyReviewPr : false});
 
-			if (oReviewInfo.IsMovedTo() || oReviewInfo.IsMovedFrom())
+			if (reviewtype_Common !== nReviewType && (oReviewInfo.IsMovedTo() || oReviewInfo.IsMovedFrom()))
 				oSelectedContent.SetMovedParts(true);
 
 			if (oSelectedContent.IsMoveTrack())
@@ -364,38 +364,38 @@ ParaRun.prototype.Refresh_ContentChanges = function()
 
 ParaRun.prototype.Get_Text = function(Text)
 {
-    if ( null === Text.Text )
-        return;
+	if (null === Text.Text)
+		return;
 
-    var ContentLen = this.Content.length;
+	var ContentLen = this.Content.length;
 
-    for ( var CurPos = 0; CurPos < ContentLen; CurPos++ )
-    {
-        var Item = this.Content[CurPos];
-        var ItemType = Item.Type;
+	for (var CurPos = 0; CurPos < ContentLen; CurPos++)
+	{
+		var Item     = this.Content[CurPos];
+		var ItemType = Item.Type;
 
-        var bBreak = false;
+		var bBreak = false;
 
-        switch ( ItemType )
-        {
-            case para_Drawing:
-            case para_PageNum:
-            case para_PageCount:
-            {
+		switch (ItemType)
+		{
+			case para_Drawing:
+			case para_PageNum:
+			case para_PageCount:
+			{
 				if (true === Text.BreakOnNonText)
 				{
 					Text.Text = null;
-					bBreak = true;
+					bBreak    = true;
 				}
 
-                break;
-            }
+				break;
+			}
 			case para_End:
 			{
 				if (true === Text.BreakOnNonText)
 				{
 					Text.Text = null;
-					bBreak = true;
+					bBreak    = true;
 				}
 
 				if (true === Text.ParaEndToSpace)
@@ -404,14 +404,41 @@ ParaRun.prototype.Get_Text = function(Text)
 				break;
 			}
 
-            case para_Text : Text.Text += String.fromCharCode(Item.Value); break;
-            case para_Space:
-            case para_Tab  : Text.Text += " "; break;
-        }
+			case para_Text :
+			{
+				Text.Text += String.fromCharCode(Item.Value);
+				break;
+			}
+			case para_Space:
+			case para_NewLine:
+			case para_Tab:
+			{
+				Text.Text += " ";
+				break;
+			}
+		}
 
-        if ( true === bBreak )
-            break;
-    }
+		if (true === bBreak)
+			break;
+	}
+};
+
+/**
+ * Получем текст из данного рана
+ * @param oText
+ * @returns {string}
+ */
+ParaRun.prototype.GetText = function(oText)
+{
+	if (!oText)
+	{
+		oText = {
+			Text : ""
+		};
+	}
+
+	this.Get_Text(oText);
+	return oText.Text;
 };
 
 // Проверяем пустой ли ран
@@ -2802,6 +2829,8 @@ ParaRun.prototype.Recalculate_Range = function(PRS, ParaPr, Depth)
 	// TODO: Сделать возможность показывать инструкцию
     var isHiddenCFPart = PRS.ComplexFields.IsComplexFieldCode();
 
+    PRS.CheckUpdateLBP(Pos, Depth);
+
     if (false === StartWord && true === FirstItemOnLine && XEnd - X < 0.001 && RangesCount > 0)
     {
         NewRange = true;
@@ -3639,7 +3668,7 @@ ParaRun.prototype.Recalculate_Range = function(PRS, ParaPr, Depth)
 							continue;
 						}
 
-						if (break_Page === Item.BreakType && true === Para.Check_BreakPageEnd(Item))
+						if (break_Page === Item.BreakType && !Para.CheckSplitPageOnPageBreak(Item))
                             continue;
 
                         Item.Flags.NewLine = true;
@@ -3649,6 +3678,8 @@ ParaRun.prototype.Recalculate_Range = function(PRS, ParaPr, Depth)
                     }
                     else
                     {
+                    	PRS.BreakLine = true;
+
                         NewRange = true;
                         EmptyLine = false;
 						TextOnLine = true;
@@ -4329,7 +4360,13 @@ ParaRun.prototype.Recalculate_Range_Spaces = function(PRSA, _CurLine, _CurRange,
                 var X_Right_Margin  = PageLimits.XLimit - PageFields.XLimit;
                 var Y_Bottom_Margin = PageLimits.YLimit - PageFields.YLimit;
 
-                if (true === Para.Parent.IsTableCellContent() && (true !== Item.Use_TextWrap() || false === Item.IsLayoutInCell()))
+                var isTableCellContent = Para.Parent.IsTableCellContent();
+                var isUseWrap          = Item.Use_TextWrap();
+                var isLayoutInCell     = Item.IsLayoutInCell();
+
+                // TODO: Надо здесь почистить все, а то названия переменных путаются, и некоторые имеют неправильное значение
+
+                if (isTableCellContent && (!isUseWrap || !isLayoutInCell))
                 {
                     X_Left_Field   = LD_PageFields.X;
                     Y_Top_Field    = LD_PageFields.Y;
@@ -4353,7 +4390,7 @@ ParaRun.prototype.Recalculate_Range_Spaces = function(PRSA, _CurLine, _CurRange,
                 var Bottom_Margin = Y_Bottom_Margin;
                 var Page_H        = Page_Height;
 
-                if ( true === Para.Parent.IsTableCellContent() && true == Item.Use_TextWrap() )
+                if (isTableCellContent && isUseWrap)
                 {
                     Top_Margin    = 0;
                     Bottom_Margin = 0;
@@ -4361,7 +4398,7 @@ ParaRun.prototype.Recalculate_Range_Spaces = function(PRSA, _CurLine, _CurRange,
                 }
 
                 var PageLimitsOrigin = Para.Parent.Get_PageLimits(PageRel);
-                if (true === Para.Parent.IsTableCellContent() && false === Item.IsLayoutInCell())
+                if (isTableCellContent && !isLayoutInCell)
                 {
                     PageLimitsOrigin = LogicDocument.Get_PageLimits(PageAbs);
                     var PageFieldsOrigin = LogicDocument.Get_PageFields(PageAbs);
@@ -4369,17 +4406,20 @@ ParaRun.prototype.Recalculate_Range_Spaces = function(PRSA, _CurLine, _CurRange,
                     ColumnEndX   = PageFieldsOrigin.XLimit;
                 }
 
-                if ( true != Item.Use_TextWrap() )
+                if (!isUseWrap)
                 {
                     PageFields.X      = X_Left_Field;
                     PageFields.Y      = Y_Top_Field;
                     PageFields.XLimit = X_Right_Field;
                     PageFields.YLimit = Y_Bottom_Field;
 
-                    PageLimits.X = 0;
-                    PageLimits.Y = 0;
-                    PageLimits.XLimit = Page_Width;
-                    PageLimits.YLimit = Page_Height;
+					if (!isTableCellContent || !isLayoutInCell)
+					{
+						PageLimits.X      = 0;
+						PageLimits.Y      = 0;
+						PageLimits.XLimit = Page_Width;
+						PageLimits.YLimit = Page_Height;
+					}
                 }
 
                 if ( true === Item.Is_Inline() || true === Para.Parent.Is_DrawingShape() )
@@ -4432,7 +4472,7 @@ ParaRun.prototype.Recalculate_Range_Spaces = function(PRSA, _CurLine, _CurRange,
                     // запоминаем текущий объект. В функции Internal_Recalculate_2 пересчитываем
                     // его позицию и сообщаем ее внешнему классу.
 
-                    if ( true === Item.Use_TextWrap() )
+                    if (isUseWrap)
                     {
                         var LogicDocument = Para.Parent;
                         var LDRecalcInfo  = Para.Parent.RecalcInfo;
@@ -4467,7 +4507,7 @@ ParaRun.prototype.Recalculate_Range_Spaces = function(PRSA, _CurLine, _CurRange,
                                 LDRecalcInfo.Reset();
                                 Item.Reset_SavedPosition();
                             }
-                            else if ( true === Para.Parent.IsTableCellContent() )
+                            else if (isTableCellContent)
                             {
                                 // Картинка не на нужной странице, но так как это таблица
                                 // мы пересчитываем заново текущую страницу, а не предыдущую
@@ -4818,33 +4858,28 @@ ParaRun.prototype.Check_PageBreak = function()
     return false;
 };
 
-ParaRun.prototype.Check_BreakPageEnd = function(PBChecker)
+ParaRun.prototype.CheckSplitPageOnPageBreak = function(oChecker)
 {
-    var ContentLen = this.Content.length;
-    for ( var CurPos = 0; CurPos < ContentLen; CurPos++ )
-    {
-        var Item = this.Content[CurPos];
+	for (var nPos = 0, nCount = this.Content.length; nPos < nCount; ++nPos)
+	{
+		var oItem = this.Content[nPos];
 
-        if ( true === PBChecker.FindPB )
-        {
-            if ( Item === PBChecker.PageBreak )
-            {
-                PBChecker.FindPB = false;
-                PBChecker.PageBreak.Flags.NewLine = true;
-            }
-        }
-        else
-        {
-            var ItemType = Item.Type;
+		if (oChecker.IsFindPageBreak())
+		{
+			oChecker.CheckPageBreakItem(oItem);
+		}
+		else
+		{
+			var nItemType = oItem.Type;
 
-            if ( para_End === ItemType )
-                return true;
-            else if ( para_Drawing !== ItemType || drawing_Anchor !== Item.Get_DrawingType() )
-                return false;
-        }
-    }
+			if (para_End === nItemType && !oChecker.IsSplitPageBreakAndParaMark())
+				return false;
+			else if (para_Drawing !== nItemType || drawing_Anchor !== oItem.Get_DrawingType())
+				return true;
+		}
+	}
 
-    return true;
+	return false;
 };
 
 ParaRun.prototype.RecalculateMinMaxContentWidth = function(MinMax)
@@ -8353,6 +8388,14 @@ ParaRun.prototype.Get_RStyle = function()
 {
 	return this.Get_CompiledPr(false).RStyle;
 };
+ParaRun.prototype.GetRStyle = function()
+{
+	return this.Get_RStyle();
+};
+ParaRun.prototype.SetRStyle = function(sStyleId)
+{
+	this.Set_RStyle(sStyleId);
+};
 
 ParaRun.prototype.Set_Spacing = function(Value)
 {
@@ -10462,6 +10505,27 @@ ParaRun.prototype.Is_UseInParagraph = function()
         return false;
 
     return true;
+};
+/**
+ * Получаем позицию данного рана в родительском параграфе
+ * @param nInObjectPos {?number}
+ * @returns {?CParagraphContentPos}
+ */
+ParaRun.prototype.GetParagraphContentPosFromObject = function(nInObjectPos)
+{
+	if (undefined === nInObjectPos)
+		nInObjectPos = 0;
+
+	var oParagraph = this.GetParagraph();
+	if (!oParagraph)
+		return null;
+
+	var oContentPos = oParagraph.GetPosByElement(this);
+	if (!oContentPos)
+		return null;
+
+	oContentPos.Add(nInObjectPos);
+	return oContentPos;
 };
 ParaRun.prototype.Displace_BreakOperator = function(isForward, bBrkBefore, CountOperators)
 {

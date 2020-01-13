@@ -999,6 +999,7 @@ CDocumentContentBase.prototype.private_AddContentControl = function(nContentCont
 			else
 			{
 				var oSdt = new CBlockLevelSdt(editor.WordControl.m_oLogicDocument, this);
+				oSdt.SetDefaultTextPr(this.GetDirectTextPr());
 
 				var oLogicDocument = this instanceof CDocument ? this : this.LogicDocument;
 				oLogicDocument.RemoveCommentsOnPreDelete = false;
@@ -1038,6 +1039,7 @@ CDocumentContentBase.prototype.private_AddContentControl = function(nContentCont
 			if (type_Paragraph === oElement.GetType())
 			{
 				var oSdt = new CBlockLevelSdt(editor.WordControl.m_oLogicDocument, this);
+				oSdt.SetDefaultTextPr(this.GetDirectTextPr());
 
 				var nContentPos = this.CurPos.ContentPos;
 				if (oElement.IsCursorAtBegin())
@@ -1853,6 +1855,39 @@ CDocumentContentBase.prototype.private_RejectRevisionChanges = function(nType, b
 					}
 				}
 			}
+		}
+	}
+};
+/**
+ * Вычисляем ли мы сейчас нижнюю границу секции для случая, когда следующая секция расположена на той же странице
+ * @returns {boolean}
+ */
+CDocumentContentBase.prototype.IsCalculatingContinuousSectionBottomLine = function()
+{
+	return false;
+};
+/**
+ * Проверяем содержимое, которые мы вставляем, в зависимости от места куда оно вставляется
+ * @param oSelectedContent {CSelectedContent}
+ * @param oAnchorPos {NearestPos}
+ */
+CDocumentContentBase.prototype.private_CheckSelectedContentBeforePaste = function(oSelectedContent, oAnchorPos)
+{
+	var oParagraph = oAnchorPos.Paragraph;
+
+	// Если мы вставляем в специальный контент контрол, тогда производим простую вставку текста
+	var oParaState = oParagraph.SaveSelectionState();
+	oParagraph.RemoveSelection();
+	oParagraph.Set_ParaContentPos(oAnchorPos.ContentPos, false, -1, -1, false);
+	var arrContentControls = oParagraph.GetSelectedContentControls();
+	oParagraph.LoadSelectionState(oParaState);
+
+	for (var nIndex = 0, nCount = arrContentControls.length; nIndex < nCount; ++nIndex)
+	{
+		if (arrContentControls[nIndex].IsComboBox() || arrContentControls[nIndex].IsDropDownList())
+		{
+			oSelectedContent.ConvertToText();
+			break;
 		}
 	}
 };

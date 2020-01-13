@@ -1847,6 +1847,7 @@
 	window['AscDFH'].historyitem_SdtPr_ComboBox         = window['AscDFH'].historyitem_type_SdtPr | 12;
 	window['AscDFH'].historyitem_SdtPr_DropDownList     = window['AscDFH'].historyitem_type_SdtPr | 13;
 	window['AscDFH'].historyitem_SdtPr_DatePicker       = window['AscDFH'].historyitem_type_SdtPr | 14;
+	window['AscDFH'].historyitem_SdtPr_TextPr           = window['AscDFH'].historyitem_type_SdtPr | 15;
 	//------------------------------------------------------------------------------------------------------------------
 	// Графические классы общего назначение (без привязки к конкретному классу)
 	//------------------------------------------------------------------------------------------------------------------
@@ -1859,6 +1860,7 @@
 	window['AscDFH'].historyitem_AutoShapes_SetDrawingBaseType       = window['AscDFH'].historyitem_type_CommonShape | 107;
 	window['AscDFH'].historyitem_AutoShapes_SetDrawingBaseExt        = window['AscDFH'].historyitem_type_CommonShape | 108;
 	window['AscDFH'].historyitem_AutoShapes_SetDrawingBasePos        = window['AscDFH'].historyitem_type_CommonShape | 109;
+	window['AscDFH'].historyitem_AutoShapes_SetDrawingBaseEditAs     = window['AscDFH'].historyitem_type_CommonShape | 110;
 
 	window['AscDFH'].historyitem_ChartFormatSetChart = window['AscDFH'].historyitem_type_CommonShape | 201;
 
@@ -2707,15 +2709,16 @@
 
 	window['AscDFH'].historyitem_PropLockerSetId = window['AscDFH'].historyitem_type_PropLocker | 1;
 
-	window['AscDFH'].historyitem_ThemeSetColorScheme     = window['AscDFH'].historyitem_type_Theme | 1;
-	window['AscDFH'].historyitem_ThemeSetFontScheme      = window['AscDFH'].historyitem_type_Theme | 2;
-	window['AscDFH'].historyitem_ThemeSetFmtScheme       = window['AscDFH'].historyitem_type_Theme | 3;
-	window['AscDFH'].historyitem_ThemeSetName            = window['AscDFH'].historyitem_type_Theme | 4;
-	window['AscDFH'].historyitem_ThemeSetIsThemeOverride = window['AscDFH'].historyitem_type_Theme | 5;
-	window['AscDFH'].historyitem_ThemeSetSpDef           = window['AscDFH'].historyitem_type_Theme | 6;
-	window['AscDFH'].historyitem_ThemeSetLnDef           = window['AscDFH'].historyitem_type_Theme | 7;
-	window['AscDFH'].historyitem_ThemeSetTxDef           = window['AscDFH'].historyitem_type_Theme | 8;
-	window['AscDFH'].historyitem_ThemeAddExtraClrScheme  = window['AscDFH'].historyitem_type_Theme | 9;
+	window['AscDFH'].historyitem_ThemeSetColorScheme        = window['AscDFH'].historyitem_type_Theme | 1;
+	window['AscDFH'].historyitem_ThemeSetFontScheme         = window['AscDFH'].historyitem_type_Theme | 2;
+	window['AscDFH'].historyitem_ThemeSetFmtScheme          = window['AscDFH'].historyitem_type_Theme | 3;
+	window['AscDFH'].historyitem_ThemeSetName               = window['AscDFH'].historyitem_type_Theme | 4;
+	window['AscDFH'].historyitem_ThemeSetIsThemeOverride    = window['AscDFH'].historyitem_type_Theme | 5;
+	window['AscDFH'].historyitem_ThemeSetSpDef              = window['AscDFH'].historyitem_type_Theme | 6;
+	window['AscDFH'].historyitem_ThemeSetLnDef              = window['AscDFH'].historyitem_type_Theme | 7;
+	window['AscDFH'].historyitem_ThemeSetTxDef              = window['AscDFH'].historyitem_type_Theme | 8;
+	window['AscDFH'].historyitem_ThemeAddExtraClrScheme     = window['AscDFH'].historyitem_type_Theme | 9;
+	window['AscDFH'].historyitem_ThemeRemoveExtraClrScheme  = window['AscDFH'].historyitem_type_Theme | 10;
 
 	window['AscDFH'].historyitem_GraphicFrameSetSpPr          = window['AscDFH'].historyitem_type_GraphicFrame | 1;
 	window['AscDFH'].historyitem_GraphicFrameSetGraphicObject = window['AscDFH'].historyitem_type_GraphicFrame | 2;
@@ -3188,6 +3191,8 @@
 	window['AscDFH'].historydescription_Presentation_AddToLayout                    = 0x016f;
 	window['AscDFH'].historydescription_Presentation_FitImagesToSlide               = 0x0170;
 	window['AscDFH'].historydescription_Document_AddTextWithProperties              = 0x0171;
+	window['AscDFH'].historydescription_Document_AddCaption                         = 0x0172;
+	window['AscDFH'].historydescription_Document_CompareDocuments                   = 0x0172;
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

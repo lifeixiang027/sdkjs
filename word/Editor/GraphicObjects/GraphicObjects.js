@@ -384,6 +384,7 @@ CGraphicObjects.prototype =
             oContent.AddToParagraph(new ParaTextPr(oTextPr));
             oContent.SetParagraphAlign(AscCommon.align_Center);
             oContent.SetParagraphSpacing({Before : 0, After: 0,  LineRule : Asc.linerule_Auto, Line : 1.0});
+            oContent.SetParagraphIndent({FirstLine:0, Left:0, Right:0});
             oContent.Set_ApplyToAll(false);
             var oBodyPr = oDrawing.getBodyPr().createDuplicate();
             oBodyPr.rot = 0;
@@ -444,7 +445,7 @@ CGraphicObjects.prototype =
         }
         if (TrackRevisions)
         {
-            this.document.SetTrackRevisions(false);
+            this.document.SetTrackRevisions(true);
         }
         return oParaDrawing;
     },
@@ -4208,7 +4209,7 @@ CGraphicObjects.prototype.documentIsSelectionLocked = function(CheckType)
             oDrawing = this.selectedObjects[i].parent;
             if(bDelete)
             {
-                oDrawing.CheckContentControlDeletingLock();
+                oDrawing.CheckDeletingLock();
             }
             oDrawing.Lock.Check(oDrawing.Get_Id());
         }

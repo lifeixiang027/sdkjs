@@ -664,7 +664,7 @@ function asc_menu_WriteParaBorder(_type, _border, _stream)
 // PARAASCBORDERS
 function asc_menu_ReadParaBorders(_params, _cursor)
 {
-    var _border = new asc_CParagraph();
+    var _border = new Asc.asc_CParagraphBorders();
     var _continue = true;
     while (_continue)
     {
@@ -5000,39 +5000,19 @@ Asc['asc_docs_api'].prototype.AddImageUrlActionNative = function(src, _w, _h, _p
   _w = Math.max(5, boundingWidth);
   _h = Math.max(5, boundingHeight);  
 
-  if (this.isShapeImageChangeUrl)
+  if (false === this.WordControl.m_oLogicDocument.Document_Is_SelectionLocked(changestype_Paragraph_Content))
   {
-    var AscShapeProp       = new Asc.asc_CShapeProperty();
-    AscShapeProp.fill      = new Asc.asc_CShapeFill();
-    AscShapeProp.fill.type = c_oAscFill.FILL_TYPE_BLIP;
-    AscShapeProp.fill.fill = new Asc.asc_CFillBlip();
-    AscShapeProp.fill.fill.asc_putUrl(src);
-    this.ImgApply(new Asc.asc_CImgProperty({ShapeProperties : AscShapeProp}));
-    this.isShapeImageChangeUrl = false;
-  }
-  else if (this.isImageChangeUrl)
-  {
-    var AscImageProp      = new Asc.asc_CImgProperty();
-    AscImageProp.ImageUrl = src;
-    this.ImgApply(AscImageProp);
-    this.isImageChangeUrl = false;
-  }
-  else
-  {
-    if (false === this.WordControl.m_oLogicDocument.Document_Is_SelectionLocked(changestype_Paragraph_Content))
+    var imageLocal = AscCommon.g_oDocumentUrls.getImageLocal(src);
+    if (imageLocal)
     {
-      var imageLocal = AscCommon.g_oDocumentUrls.getImageLocal(src);
-      if (imageLocal)
-      {
-        src = imageLocal;
-      }
-      this.WordControl.m_oLogicDocument.StartAction(AscDFH.historydescription_Document_AddImageUrlLong);
-      //if (undefined === imgProp || undefined === imgProp.WrappingStyle || 0 == imgProp.WrappingStyle)
-        this.WordControl.m_oLogicDocument.AddInlineImage(_w, _h, src);
-      //else
-      //  this.WordControl.m_oLogicDocument.AddInlineImage(_w, _h, src, null, true);
-      this.WordControl.m_oLogicDocument.FinalizeAction();
+      src = imageLocal;
     }
+    this.WordControl.m_oLogicDocument.StartAction(AscDFH.historydescription_Document_AddImageUrlLong);
+    //if (undefined === imgProp || undefined === imgProp.WrappingStyle || 0 == imgProp.WrappingStyle)
+      this.WordControl.m_oLogicDocument.AddInlineImage(_w, _h, src);
+    //else
+    //  this.WordControl.m_oLogicDocument.AddInlineImage(_w, _h, src, null, true);
+    this.WordControl.m_oLogicDocument.FinalizeAction();
   }
 };
 
@@ -5378,7 +5358,7 @@ function CStylesPainter()
 }
 CStylesPainter.prototype =
 {
-GenerateStyles: function(_api, ds)
+    GenerateStyles: function(_api, ds)
     {
         if (_api.WordControl.bIsRetinaSupport)
         {
@@ -5471,8 +5451,7 @@ GenerateStyles: function(_api, ds)
             var style = styles[i];
             if (true == style.qFormat)
             {
-                this.defaultStyles.push({ Name: AscCommon.translateManager.getValue(style.Name), Style: style });
-                //this.drawStyle(_graphics, style, _api);
+                this.defaultStyles.push({ Name: style.Name, Style: style });
             }
         }
     },
@@ -5500,12 +5479,11 @@ GenerateStyles: function(_api, ds)
                 var index = (res) ? res[1] - 1 : -1;
 
                 var _dr_style = __Styles.Get_Pr(i, styletype_Paragraph);
-                _dr_style.Name = AscCommon.translateManager.getValue(style.Name);
+                _dr_style.Name = style.Name;
                 _dr_style.Id = i;
 
-                //this.drawStyle(_graphics, _dr_style, _api);
-
                 var _name = _dr_style.Name;
+                
                 // алгоритм смены имени
                 if (style.Default)
                 {
@@ -5556,7 +5534,7 @@ GenerateStyles: function(_api, ds)
 
         var par = new AscCommonWord.Paragraph(_api.WordControl.m_oDrawingDocument, _dc, 0, 0, 0, 0, false);
         var run = new AscCommonWord.ParaRun(par, false);
-        run.AddText(style.Name);
+        run.AddText(AscCommon.translateManager.getValue(style.Name));
 
         _dc.Internal_Content_Add(0, par, false);
         par.Add_ToContent(0, run);
@@ -5654,7 +5632,7 @@ GenerateStyles: function(_api, ds)
         _stream["ClearNoAttack"]();
 
         _stream["WriteByte"](0);
-        _stream["WriteString2"](AscCommon.translateManager.getValue(style.Name));
+        _stream["WriteString2"](style.Name);
 
         _api.WordControl.m_oDrawingDocument.Native["DD_EndNativeDraw"](_stream);
         graphics.ClearParams();

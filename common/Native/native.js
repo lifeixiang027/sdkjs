@@ -271,10 +271,14 @@ function GetNativeEngine() { return window.native; }
 var Api = null; // main builder object
 
 // OPEN
-function NativeOpenFileData(data, version, xlsx_file_path)
+function NativeOpenFileData(data, version, xlsx_file_path, options)
 {
 	window.NATIVE_DOCUMENT_TYPE = window.native.GetEditorType();
     Api = null;
+
+    if (options && options["printOptions"] && options["printOptions"]["retina"])
+        AscBrowser.isRetina = true;
+
 	if (window.NATIVE_DOCUMENT_TYPE == "presentation" || window.NATIVE_DOCUMENT_TYPE == "document")
 	{
         Api = new window["Asc"]["asc_docs_api"]({});
@@ -283,6 +287,8 @@ function NativeOpenFileData(data, version, xlsx_file_path)
 	else
 	{
         Api = new window["Asc"]["spreadsheet_api"]({});
+        if (options && undefined !== options["locale"])
+            Api.asc_setLocale(options["locale"]);
         Api.asc_nativeOpenFile(data, version, undefined, xlsx_file_path);
 	}
 }

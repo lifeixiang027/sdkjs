@@ -59,6 +59,8 @@ function CSdtPr()
 	this.ComboBox = undefined;
 	this.DropDown = undefined;
 	this.Date     = undefined;
+
+	this.TextPr = new CTextPr();
 }
 
 CSdtPr.prototype.Copy = function()
@@ -87,10 +89,14 @@ CSdtPr.prototype.Copy = function()
 	if (this.Date)
 		oPr.Date = this.Date.Copy();
 
+	oPr.TextPr = this.TextPr.Copy();
+
 	return oPr;
 };
 CSdtPr.prototype.Write_ToBinary = function(Writer)
 {
+	this.TextPr.WriteToBinary(Writer);
+
 	var StartPos = Writer.GetCurPosition();
 	Writer.Skip(4);
 	var Flags = 0;
@@ -185,6 +191,7 @@ CSdtPr.prototype.Write_ToBinary = function(Writer)
 		Flags |= 16384;
 	}
 
+
 	var EndPos = Writer.GetCurPosition();
 	Writer.Seek(StartPos);
 	Writer.WriteLong(Flags);
@@ -192,6 +199,9 @@ CSdtPr.prototype.Write_ToBinary = function(Writer)
 };
 CSdtPr.prototype.Read_FromBinary = function(Reader)
 {
+	this.TextPr = new CTextPr();
+	this.TextPr.ReadFromBinary(Reader);
+
 	var Flags = Reader.GetLong();
 
 	if (Flags & 1)
@@ -531,7 +541,7 @@ CSdtGlobalSettings.prototype.Read_FromBinary = function(oReader)
  */
 function CSdtCheckBoxPr()
 {
-	this.Checked         = true;
+	this.Checked         = false;
 	this.CheckedSymbol   = Asc.c_oAscSdtCheckBoxDefaults.CheckedSymbol;
 	this.UncheckedSymbol = Asc.c_oAscSdtCheckBoxDefaults.UncheckedSymbol;
 	this.CheckedFont     = Asc.c_oAscSdtCheckBoxDefaults.CheckedFont;
@@ -697,6 +707,11 @@ CSdtComboBoxPr.prototype.AddItem = function(sDisplay, sValue)
 
 	return true;
 };
+CSdtComboBoxPr.prototype.Clear = function()
+{
+	this.ListItems = [];
+	this.LastValue = -1;
+};
 CSdtComboBoxPr.prototype.GetTextByValue = function(sValue)
 {
 	if (!sValue || "" === sValue)
@@ -764,7 +779,7 @@ CSdtComboBoxPr.prototype.GetItemValue = function(nIndex)
  */
 function CSdtDatePickerPr()
 {
-	this.FullDate   = "2019-10-18T00:00:00Z";
+	this.FullDate   = (new Date()).toISOString().slice(0, 19) + 'Z';
 	this.LangId     = 1033;
 	this.DateFormat = "dd.MM.yyyy";
 	this.Calendar   = Asc.c_oAscCalendarType.Gregorian;
@@ -836,7 +851,8 @@ CSdtDatePickerPr.prototype.GetFullDate = function()
 };
 CSdtDatePickerPr.prototype.SetFullDate = function(sFullDate)
 {
-	this.FullDate = sFullDate;
+	var oDate = sFullDate instanceof Date ? sFullDate : new Date(sFullDate);
+	this.FullDate = oDate.toISOString().slice(0, 19) + 'Z';
 };
 CSdtDatePickerPr.prototype.GetLangId = function()
 {
@@ -930,6 +946,7 @@ window['AscCommon'].CSdtComboBoxPr    = CSdtComboBoxPr;
 window['AscCommon']['CSdtComboBoxPr'] = CSdtComboBoxPr;
 
 CSdtComboBoxPr.prototype['add_Item']            = CSdtComboBoxPr.prototype.AddItem;
+CSdtComboBoxPr.prototype['clear']               = CSdtComboBoxPr.prototype.Clear;
 CSdtComboBoxPr.prototype['get_TextByValue']     = CSdtComboBoxPr.prototype.GetTextByValue;
 CSdtComboBoxPr.prototype['get_ItemsCount']      = CSdtComboBoxPr.prototype.GetItemsCount;
 CSdtComboBoxPr.prototype['get_ItemDisplayText'] = CSdtComboBoxPr.prototype.GetItemDisplayText;

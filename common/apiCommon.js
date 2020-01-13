@@ -1321,6 +1321,10 @@
 			return (this.r === Color.r && this.g === Color.g && this.b === Color.b && this.a === Color.a);
 		}, Copy: function () {
 			return new CColor(this.r, this.g, this.b, this.a);
+		},
+
+		getVal: function () {
+			return (((this.r << 16) & 0xFF0000) + ((this.g << 8)&0xFF00)+this.b);
 		}
 	};
 
@@ -1807,6 +1811,18 @@
 			return this.Before;
 		}, asc_getAfter: function () {
 			return this.After;
+		},
+		asc_putLine: function(v) {
+			this.Line = v;
+		},
+		asc_putLineRule: function(v){
+			this.LineRule = v;
+		},
+		asc_putBefore: function(v){
+			this.Before = v;
+		},
+		asc_putAfter: function(v){
+			this.After = v;
 		}
 	};
 
@@ -1956,7 +1972,7 @@
 				{
 					if(oBullet.bulletType.AutoNumType > 0)
 					{
-						this.NumStartAt = AscFormat.isRealNumber(oBullet.bulletType.startAt) ? Math.max(1, oBullet.bulletType.startAt) : 1;
+						this.NumStartAt = AscFormat.isRealNumber(oBullet.bulletType.startAt) ? Math.max(1, oBullet.bulletType.startAt) : null;
 					}
 					else
 					{
@@ -3224,6 +3240,8 @@
 	function CAscColorScheme() {
 		this.colors = [];
 		this.name = "";
+		this.scheme = null;
+		this.summ = 0;
 	}
 
 	CAscColorScheme.prototype.get_colors = function () {
@@ -3268,6 +3286,27 @@
 	CAscColorScheme.prototype.get_folHlink = function () {
 		return this.colors[11];
 	};
+	CAscColorScheme.prototype.putColor = function (color) {
+		this.colors.push(color);
+		this.summ += color.getVal();
+	};
+	CAscColorScheme.prototype.isEqual = function (oColorScheme) {
+		if(this.summ === oColorScheme.summ)
+		{
+			for(var i = 0; i < this.colors.length; ++i)
+			{
+				var oColor1 = this.colors[i];
+				var oColor2 = oColorScheme.colors[i];
+				if(!(!oColor1 && !oColor2 || oColor2 && oColor2 && oColor1.Compare(oColor2)))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+		return false;
+	};
+
 
 	//-----------------------------------------------------------------
 	// События движения мыши
@@ -4749,7 +4788,7 @@
 	prot["get_ForSelectedCells"] = prot["asc_getForSelectedCells"] = prot.asc_getForSelectedCells;
 	prot["put_ForSelectedCells"] = prot["asc_putForSelectedCells"] = prot.asc_putForSelectedCells;
 
-	window["Asc"]["asc_CParagraphBorders"] = asc_CParagraphBorders;
+	window["Asc"]["asc_CParagraphBorders"] = window["Asc"].asc_CParagraphBorders = asc_CParagraphBorders;
 	prot = asc_CParagraphBorders.prototype;
 	prot["get_Left"] = prot["asc_getLeft"] = prot.asc_getLeft;
 	prot["put_Left"] = prot["asc_putLeft"] = prot.asc_putLeft;
@@ -4839,9 +4878,13 @@
 	window["AscCommon"].asc_CParagraphSpacing = asc_CParagraphSpacing;
 	prot = asc_CParagraphSpacing.prototype;
 	prot["get_Line"] = prot["asc_getLine"] = prot.asc_getLine;
+	prot["put_Line"] = prot["asc_putLine"] = prot.asc_putLine;
 	prot["get_LineRule"] = prot["asc_getLineRule"] = prot.asc_getLineRule;
+	prot["put_LineRule"] = prot["asc_putLineRule"] = prot.asc_putLineRule;
 	prot["get_Before"] = prot["asc_getBefore"] = prot.asc_getBefore;
+	prot["put_Before"] = prot["asc_putBefore"] = prot.asc_putBefore;
 	prot["get_After"] = prot["asc_getAfter"] = prot.asc_getAfter;
+	prot["put_After"] = prot["asc_putAfter"] = prot.asc_putAfter;
 
 	window["Asc"]["asc_CParagraphInd"] = window["Asc"].asc_CParagraphInd = asc_CParagraphInd;
 	prot = asc_CParagraphInd.prototype;

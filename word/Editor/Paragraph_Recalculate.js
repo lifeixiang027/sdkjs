@@ -1187,6 +1187,9 @@ Paragraph.prototype.private_RecalculateLineInfo        = function(CurLine, CurPa
 
     if (true === PRS.TextOnLine)
     	this.Lines[CurLine].Info |= paralineinfo_TextOnLine;
+
+    if (true === PRS.BreakLine)
+    	this.Lines[CurLine].Info |= paralineinfo_BreakLine;
 };
 
 Paragraph.prototype.private_RecalculateLineMetrics     = function(CurLine, CurPage, PRS, ParaPr)
@@ -1461,7 +1464,7 @@ Paragraph.prototype.private_RecalculateLinePosition    = function(CurLine, CurPa
 		// TODO: Здесь нужно сделать корректировку YLimit с учетом сносок. Надо разобраться почему вообще здесь
 		// используется this.YLimit вместо Page.YLimit
 
-		if (false === this.Parent.IsTableCellContent() && Bottom > this.YLimit && Bottom - this.YLimit <= ParaPr.Spacing.After)
+		if (!this.Parent.IsCalculatingContinuousSectionBottomLine() && false === this.Parent.IsTableCellContent() && Bottom > this.YLimit && Bottom - this.YLimit <= ParaPr.Spacing.After)
 			Bottom = this.YLimit;
 	}
 
@@ -1575,7 +1578,10 @@ Paragraph.prototype.private_RecalculateLineCheckRanges = function(CurLine, CurPa
 	}
 
 	if (this.LogicDocument && this.LogicDocument.GetCompatibilityMode && this.LogicDocument.GetCompatibilityMode() >= document_compatibility_mode_Word15)
+	{
 		Bottom = Bottom2;
+		Top2   = Top;
+	}
 
     if ( true === this.Use_Wrap() )
         Ranges2 = this.Parent.CheckRange(Left, Top, Right, Bottom, Top2, Bottom2, PageFields.X, PageFields.XLimit, this.private_GetRelativePageIndex(CurPage), true, PRS.MathNotInline);
@@ -1811,6 +1817,8 @@ Paragraph.prototype.private_RecalculateLineAlign       = function(CurLine, CurPa
     var Line        = this.Lines[CurLine];
     var RangesCount = Line.Ranges.length;
 
+    var isDoNotExpandShiftReturn = this.LogicDocument ? this.LogicDocument.IsDoNotExpandShiftReturn() : false;
+
     for (var CurRange = 0; CurRange < RangesCount; CurRange++)
     {
         var Range = Line.Ranges[CurRange];
@@ -1929,7 +1937,7 @@ Paragraph.prototype.private_RecalculateLineAlign       = function(CurLine, CurPa
             }
 
             // В последнем отрезке последней строки не делаем текст "по ширине"
-            if (CurLine === this.ParaEnd.Line && CurRange === this.ParaEnd.Range)
+            if ((CurLine === this.ParaEnd.Line && CurRange === this.ParaEnd.Range) || (this.Lines[CurLine].Info & paralineinfo_BreakLine && isDoNotExpandShiftReturn))
             {
                 JustifyWord  = 0;
                 JustifySpace = 0;
@@ -2410,6 +2418,7 @@ var paralineinfo_BreakRealPage = 0x0010; // В строке есть PageBreak
 var paralineinfo_BadLeftTab    = 0x0020; // В строке есть левый таб, который правее правой границы
 var paralineinfo_Notes         = 0x0040; // В строке есть сноски
 var paralineinfo_TextOnLine    = 0x0080; // Есть ли в строке текст
+var paralineinfo_BreakLine     = 0x0100; // Строка закончилась переносом строки
 
 function CParaLine()
 {
@@ -2813,6 +2822,7 @@ function CParagraphRecalculateStateWrap(Para)
     this.BreakPageLineEmpty = false;
     this.BreakRealPageLine  = false; // Разрыв страницы документа (не только параграфа) в данной строке
     this.BadLeftTab         = false; // Левый таб правее правой границы
+	this.BreakLine          = false; // Строка закончилась принудительным разрывом
 
 	this.ComplexFields = new CParagraphComplexFieldsInfo();
 
@@ -2859,6 +2869,7 @@ function CParagraphRecalculateStateWrap(Para)
                                                       // отрезка или строки, если что-то не умещается (например,
                                                       // если у нас не убирается слово, то разрыв ставим перед ним)
 	this.LastItem       = null;                       // Последний непробельный элемент
+	this.UpdateLBP      = true;                       // Флаг для первичного обновления позиции переноса в отрезке
 
 
     this.RunRecalcInfoLast  = null; // RecalcInfo последнего рана
@@ -2933,6 +2944,7 @@ CParagraphRecalculateStateWrap.prototype =
 
         this.EmptyLine           = true;
         this.BreakPageLine       = false;
+        this.BreakLine           = false;
         this.End                 = false;
         this.UseFirstLine        = false;
         this.BreakRealPageLine   = false;
@@ -2976,6 +2988,7 @@ CParagraphRecalculateStateWrap.prototype =
     {
         this.LastTab.Reset();
 
+        this.BreakLine       = false;
         this.SpaceLen        = 0;
         this.WordLen         = 0;
         this.SpacesCount     = 0;
@@ -2991,6 +3004,7 @@ CParagraphRecalculateStateWrap.prototype =
 		this.LineBreakPos   = new CParagraphContentPos();
 		this.LineBreakFirst = true;
 		this.LastItem       = null;
+		this.UpdateLBP      = true;
 
         // for ParaMath
         this.bMath_OneLine    = false;
@@ -3301,44 +3315,28 @@ CParagraphRecalculateStateWrap.prototype =
             var Level = Para.PresentationPr.Level;
             var Bullet = Para.PresentationPr.Bullet;
 
-            var BulletNum = 1;
-            if (Bullet.Get_Type() >= numbering_presentationnumfrmt_ArabicPeriod)
+            var BulletNum = Para.GetBulletNum();
+            if(BulletNum === null)
             {
-                var Prev = Para.Prev;
-                BulletNum = Bullet.Get_StartAt();
-                while (null != Prev && type_Paragraph === Prev.GetType())
-                {
-                    var PrevLevel = Prev.PresentationPr.Level;
-                    var PrevBullet = Prev.Get_PresentationNumbering();
-                    // Если предыдущий параграф более низкого уровня, тогда его не учитываем
-                    if (Level < PrevLevel)
-                    {
-                        Prev = Prev.Prev;
-                        continue;
-                    }
-                    else if (Level > PrevLevel)
-                        break;
-                    else if (PrevBullet.Get_Type() === Bullet.Get_Type() && Bullet.Get_StartAt() === PrevBullet.Get_StartAt())
-                    {
-                        if (true != Prev.IsEmpty())
-                            BulletNum++;
-
-                        Prev = Prev.Prev;
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
+                BulletNum = 1;
             }
-
             // Найдем настройки для первого текстового элемента
             var FirstTextPr = Para.Get_FirstTextPr2();
 
+
             if(BulletNum > 32767)
             {
-                BulletNum -= 32767;
+                BulletNum = (BulletNum % 32767);
             }
+            if (Bullet.Get_Type() >= numbering_presentationnumfrmt_AlphaLcParenR)
+            {
+                if(BulletNum > 780)
+                {
+                    BulletNum = (BulletNum % 780);
+                }
+            }
+
+
             NumberingItem.Bullet = Bullet;
             NumberingItem.BulletNum = BulletNum;
             NumberingItem.Measure(g_oTextMeasurer, FirstTextPr, Para.Get_Theme(), Para.Get_ColorMap());
@@ -3490,6 +3488,15 @@ CParagraphRecalculateStateWrap.prototype.SetMathRecalcInfoLine = function(nLine)
 CParagraphRecalculateStateWrap.prototype.IsCondensedSpaces = function()
 {
 	return this.CondensedSpaces;
+};
+CParagraphRecalculateStateWrap.prototype.CheckUpdateLBP = function(nInRunPos)
+{
+	 if (this.UpdateLBP)
+	 {
+		 this.UpdateLBP = false;
+		 this.LineBreakPos.Set(this.CurPos);
+		 this.LineBreakPos.Add(nInRunPos);
+	 }
 };
 
 function CParagraphRecalculateStateCounter()

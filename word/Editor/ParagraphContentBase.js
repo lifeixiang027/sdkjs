@@ -327,9 +327,14 @@ CParagraphContentBase.prototype.Check_PageBreak = function()
 {
 	return false;
 };
-CParagraphContentBase.prototype.Check_BreakPageEnd = function(PBChecker)
+/**
+ * Проверяем нужно ли разрывать страницу после заданного PageBreak элемента
+ * @param oPBChecker {CParagraphCheckSplitPageOnPageBreak}
+ * @returns {boolean}
+ */
+CParagraphContentBase.prototype.CheckSplitPageOnPageBreak = function(oPBChecker)
 {
-	return true;
+	return false;
 };
 CParagraphContentBase.prototype.Recalculate_CurPos = function(X, Y, CurrentRun, _CurRange, _CurLine, CurPage, UpdateCurPos, UpdateTarget, ReturnTarget)
 {
@@ -1465,26 +1470,28 @@ CParagraphContentWithParagraphLikeContent.prototype.Remove_FromContent = functio
 };
 CParagraphContentWithParagraphLikeContent.prototype.Remove = function(Direction, bOnAddText)
 {
-    var Selection = this.State.Selection;
+	var Selection = this.State.Selection;
 
-    if (true === Selection.Use)
-    {
-        var StartPos = Selection.StartPos;
-        var EndPos   = Selection.EndPos;
+	if (true === Selection.Use)
+	{
+		var StartPos = Selection.StartPos;
+		var EndPos   = Selection.EndPos;
 
-        if (StartPos > EndPos)
-        {
-            StartPos = Selection.EndPos;
-            EndPos   = Selection.StartPos;
-        }
+		if (StartPos > EndPos)
+		{
+			StartPos = Selection.EndPos;
+			EndPos   = Selection.StartPos;
+		}
 
-        if (StartPos === EndPos)
-        {
-        	if (this.Content[StartPos].IsSolid())
+		var oTextPr = this.IsSelectedAll() ? this.GetDirectTextPr() : null;
+
+		if (StartPos === EndPos)
+		{
+			if (this.Content[StartPos].IsSolid())
 			{
 				this.RemoveFromContent(StartPos, 1, true);
 			}
-        	else
+			else
 			{
 				this.Content[StartPos].Remove(Direction, bOnAddText);
 
@@ -1493,10 +1500,10 @@ CParagraphContentWithParagraphLikeContent.prototype.Remove = function(Direction,
 					this.Remove_FromContent(StartPos, 1, true);
 				}
 			}
-        }
-        else
-        {
-        	if (this.Content[EndPos].IsSolid())
+		}
+		else
+		{
+			if (this.Content[EndPos].IsSolid())
 			{
 				this.RemoveFromContent(EndPos, 1, true);
 			}
@@ -1510,7 +1517,7 @@ CParagraphContentWithParagraphLikeContent.prototype.Remove = function(Direction,
 				}
 			}
 
-            if (this.Paragraph && this.Paragraph.LogicDocument && true === this.Paragraph.LogicDocument.IsTrackRevisions())
+			if (this.Paragraph && this.Paragraph.LogicDocument && true === this.Paragraph.LogicDocument.IsTrackRevisions())
 			{
 				for (var nCurPos = EndPos - 1; nCurPos > StartPos; --nCurPos)
 				{
@@ -1529,15 +1536,15 @@ CParagraphContentWithParagraphLikeContent.prototype.Remove = function(Direction,
 					}
 				}
 			}
-            else
-            {
-                for (var CurPos = EndPos - 1; CurPos > StartPos; CurPos--)
-                {
-                    this.Remove_FromContent(CurPos, 1, true);
-                }
-            }
+			else
+			{
+				for (var CurPos = EndPos - 1; CurPos > StartPos; CurPos--)
+				{
+					this.Remove_FromContent(CurPos, 1, true);
+				}
+			}
 
-            if (this.Content[StartPos].IsSolid())
+			if (this.Content[StartPos].IsSolid())
 			{
 				this.RemoveFromContent(StartPos, 1, true);
 			}
@@ -1548,52 +1555,63 @@ CParagraphContentWithParagraphLikeContent.prototype.Remove = function(Direction,
 				if (true === this.Content[StartPos].Is_Empty())
 					this.Remove_FromContent(StartPos, 1, true);
 			}
-        }
+		}
+		this.RemoveSelection();
 
-        this.RemoveSelection();
-        this.State.ContentPos = StartPos;
-    }
-    else
-    {
-        var ContentPos = this.State.ContentPos;
+		if (this.Content.length <= 0)
+		{
+			this.AddToContent(0, new ParaRun(this.GetParagraph(), false));
+			this.State.ContentPos = 0;
 
-        if (true === this.Cursor_Is_Start() || true === this.Cursor_Is_End())
-        {
-            this.SelectAll();
-            this.SelectThisElement(1);
-        }
-        else
-        {
-            while (false === this.Content[ContentPos].Remove(Direction, bOnAddText))
-            {
-                if (Direction < 0)
-                    ContentPos--;
-                else
-                    ContentPos++;
+			if (oTextPr)
+				this.Content[0].SetPr(oTextPr);
+		}
+		else
+		{
+			this.State.ContentPos = StartPos;
+		}
+	}
+	else
+	{
+		var ContentPos = this.State.ContentPos;
 
-                if (ContentPos < 0 || ContentPos >= this.Content.length)
-                    break;
+		if (true === this.Cursor_Is_Start() || true === this.Cursor_Is_End())
+		{
+			this.SelectAll();
+			this.SelectThisElement(1);
+		}
+		else
+		{
+			while (false === this.Content[ContentPos].Remove(Direction, bOnAddText))
+			{
+				if (Direction < 0)
+					ContentPos--;
+				else
+					ContentPos++;
 
-                if (Direction < 0)
-                    this.Content[ContentPos].MoveCursorToEndPos(false);
-                else
-                    this.Content[ContentPos].MoveCursorToStartPos();
+				if (ContentPos < 0 || ContentPos >= this.Content.length)
+					break;
 
-            }
+				if (Direction < 0)
+					this.Content[ContentPos].MoveCursorToEndPos(false);
+				else
+					this.Content[ContentPos].MoveCursorToStartPos();
 
-            if (ContentPos < 0 || ContentPos >= this.Content.length)
-                return false;
-            else
-            {
-                if (ContentPos !== this.Content.length - 1 && true === this.Content[ContentPos].Is_Empty() && true !== bOnAddText)
-                    this.Remove_FromContent(ContentPos, 1, true);
+			}
 
-                this.State.ContentPos = ContentPos;
-            }
-        }
-    }
+			if (ContentPos < 0 || ContentPos >= this.Content.length)
+				return false;
+			else
+			{
+				if (ContentPos !== this.Content.length - 1 && true === this.Content[ContentPos].Is_Empty() && true !== bOnAddText)
+					this.Remove_FromContent(ContentPos, 1, true);
 
-    return true;
+				this.State.ContentPos = ContentPos;
+			}
+		}
+	}
+
+	return true;
 };
 CParagraphContentWithParagraphLikeContent.prototype.GetCurrentParaPos = function()
 {
@@ -2274,18 +2292,15 @@ CParagraphContentWithParagraphLikeContent.prototype.Check_PageBreak = function()
 
     return false;
 };
-CParagraphContentWithParagraphLikeContent.prototype.Check_BreakPageEnd = function(PBChecker)
+CParagraphContentWithParagraphLikeContent.prototype.CheckSplitPageOnPageBreak = function(oPBChecker)
 {
-    var ContentLen = this.Content.length;
-    for ( var CurPos = 0; CurPos < ContentLen; CurPos++ )
-    {
-        var Element = this.Content[CurPos];
+	for (var nPos = 0, nCount = this.Content.length; nPos < nCount; ++nPos)
+	{
+		if (this.Content[nPos].CheckSplitPageOnPageBreak(oPBChecker))
+			return true;
+	}
 
-        if ( true !== Element.Check_BreakPageEnd(PBChecker) )
-            return false;
-    }
-
-    return true;
+	return false;
 };
 CParagraphContentWithParagraphLikeContent.prototype.Get_ParaPosByContentPos = function(ContentPos, Depth)
 {
@@ -3911,6 +3926,7 @@ CParagraphContentWithParagraphLikeContent.prototype.AddContentControl = function
 			}
 
 			var oContentControl = new CInlineLevelSdt();
+			oContentControl.SetDefaultTextPr(this.GetDirectTextPr());
 
 			var oNewRun = this.Content[nEndPos].Split_Run(Math.max(this.Content[nEndPos].Selection.StartPos, this.Content[nEndPos].Selection.EndPos));
 			this.Add_ToContent(nEndPos + 1, oNewRun);
@@ -3938,7 +3954,7 @@ CParagraphContentWithParagraphLikeContent.prototype.AddContentControl = function
 	else
 	{
 		var oContentControl = new CInlineLevelSdt();
-		oContentControl.Add_ToContent(0, new ParaRun());
+		oContentControl.SetDefaultTextPr(this.GetDirectTextPr());
 		this.Add(oContentControl);
 		return oContentControl;
 	}
