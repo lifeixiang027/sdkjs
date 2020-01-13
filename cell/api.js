@@ -2282,13 +2282,28 @@ var editor;
     this.collaborativeEditing.lock(arrLocks, copyWorksheet);
   };
 
-  spreadsheet_api.prototype.asc_StartMoveSheet = function (deleteIndex) {
-      var ws = this.wb.getWorksheet(deleteIndex);
-      //получаем полный бинарник + удаляем лист
-      var binaryStr = AscCommonExcel.g_clipboardExcel.copyProcessor.getBinaryForCopy(ws.model, null, null, true);
+  spreadsheet_api.prototype.asc_StartMoveSheet = function (arrSheets) {
+	  // Проверка глобального лока
+	  // Лок каждого листа необходимо проверять в интерфейсе. если что-то залочено - не переносим
+      if (this.collaborativeEditing.getGlobalLock()) {
+		  return false;
+	  }
 
-      //this.wb.asc_deleteWorksheet(deleteIndex);
-      return binaryStr;
+	  //если выделены все - берём последний активный, если всего один - не переносим
+	  if (!arrSheets || (this.wbModel.aWorksheets && this.wbModel.aWorksheets.length === arrSheets.length)) {
+		  arrSheets = [this.wbModel.getActive()];
+	  } else if(this.wbModel.aWorksheets.length === 1) {
+		  return null;
+	  }
+
+	  var sheet, sBinarySheet, res = [];
+	  for (var i = 0; i < arrSheets.length; ++i) {
+		  sheet = arrSheets[i] = this.wbModel.getWorksheet(arrSheets[i]);
+		  sBinarySheet = AscCommonExcel.g_clipboardExcel.copyProcessor.getBinaryForCopy(sheet, null, null, true);
+          res.push(res);
+	  }
+
+      return res;
   };
 
   spreadsheet_api.prototype.asc_EndMoveSheet = function(base64, index, name) {
