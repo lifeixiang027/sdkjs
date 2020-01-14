@@ -2300,7 +2300,7 @@ var editor;
 	  for (var i = 0; i < arrSheets.length; ++i) {
 		  sheet = arrSheets[i] = this.wbModel.getWorksheet(arrSheets[i]);
 		  sBinarySheet = AscCommonExcel.g_clipboardExcel.copyProcessor.getBinaryForCopy(sheet, null, null, true);
-          res.push(res);
+          res.push(sBinarySheet);
 	  }
 
       return res;
